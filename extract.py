@@ -17,12 +17,14 @@ Bruno API → data.json extractor
     --pause-ms 100        пауза между запросами в мс, чтобы не упереться в rate limit
     --skip <resource>     пропустить ресурс (можно несколько раз)
     --dry-run             только проверить токен и права, без выгрузки
+    --gzip                сжать выходной файл (gzip); либо просто укажите --out data.json.gz
 
 Требуется Python 3.8+ и пакет requests:
     pip install requests
 """
 
 import argparse
+import gzip
 import json
 import sys
 import time
@@ -81,8 +83,18 @@ def get_project_info(session, headers):
         log("401 Unauthorized — токен неверный или истёк", "err")
         raise SystemExit(1)
     resp.raise_for_status()
-    body = resp.json()
+    try:
+        body = resp.json()
+    except ValueError:
+        log(f"ответ /apiToken не JSON: {resp.text[:300]}", "warn")
+        return None, {}
     result = body.get("result", {})
+    if not isinstance(result, dict):
+        # Реальная форма ответа отличается от ожидаемой — не гадаем, просто
+        # логируем сырой ответ, чтобы можно было точно поправить маппинг.
+        log(f"неожиданная форма ответа /apiToken (result = {type(result).__name__}): "
+            f"{json.dumps(body, ensure_ascii=False)[:500]}", "warn")
+        return None, {}
     return result.get("projectID"), result.get("apiRule", {}) or {}
 
 
@@ -147,7 +159,8 @@ def main():
     parser.add_argument("--token", required=True, help="JWT API-токен Bruno")
     parser.add_argument("--from", dest="date_from", required=True, help="Начало периода YYYY-MM-DD")
     parser.add_argument("--to", dest="date_to", required=True, help="Конец периода YYYY-MM-DD")
-    parser.add_argument("--out", default="data.json", help="Выходной файл (default: data.json)")
+    parser.add_argument("--out", default="data.json", help="Выходной файл (default: data.json). Если оканчивается на .gz — файл сжимается.")
+    parser.add_argument("--gzip", action="store_true", help="Сжать выходной файл gzip'ом, даже если --out не оканчивается на .gz")
     parser.add_argument("--project-id", help="Явно задать projectID (иначе определится по токену)")
     parser.add_argument("--page-limit", type=int, default=DEFAULT_PAGE_LIMIT, help=f"Размер страницы (default: {DEFAULT_PAGE_LIMIT})")
     parser.add_argument("--pause-ms", type=int, default=100, help="Пауза между запросами в мс (default: 100)")
@@ -166,11 +179,14 @@ def main():
         log("--from не может быть позже --to", "err")
         sys.exit(1)
 
+    out_path = Path(args.out)
+    use_gzip = args.gzip or out_path.suffix == ".gz"
+
     print("=" * 60)
     print("Bruno API extractor")
     print(f"  Base URL: {API_BASE}")
     print(f"  Период: {args.date_from} — {args.date_to}")
-    print(f"  Выход:  {args.out}")
+    print(f"  Выход:  {args.out}{'  (gzip)' if use_gzip else ''}")
     print("=" * 60)
 
     session = requests.Session()
@@ -246,10 +262,13 @@ def main():
             result[name] = []
 
     # 4. Сохраняем
-    out_path = Path(args.out)
     try:
-        with open(out_path, "w", encoding="utf-8") as f:
-            json.dump(result, f, ensure_ascii=False, default=str)
+        if use_gzip:
+            with gzip.open(out_path, "wt", encoding="utf-8", compresslevel=6) as f:
+                json.dump(result, f, ensure_ascii=False, default=str)
+        else:
+            with open(out_path, "w", encoding="utf-8") as f:
+                json.dump(result, f, ensure_ascii=False, default=str)
     except Exception as e:
         log(f"не удалось записать {out_path}: {e}", "err")
         sys.exit(1)
@@ -257,7 +276,7 @@ def main():
     size_kb = out_path.stat().st_size / 1024
     print()
     print("=" * 60)
-    log(f"Сохранено: {out_path.resolve()} ({size_kb:,.1f} КБ)", "ok")
+    log(f"Сохранено: {out_path.resolve()} ({size_kb:,.1f} КБ){' (gzip)' if use_gzip else ''}", "ok")
     print()
     print("Итоги:")
     for name, _, _ in RESOURCES:
