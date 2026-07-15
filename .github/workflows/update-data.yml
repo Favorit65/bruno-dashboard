@@ -1,8 +1,15 @@
 name: Update Bruno data
 
-# Раз в день обновляет data.json из Bruno API и коммитит его в репозиторий.
-# Первый запуск делаем ВРУЧНУЮ в режиме dry_run=true — только проверка связи и токена,
-# без выгрузки и коммита. Это подтверждает, что раннер GitHub достаёт до api.brunosystem.ru.
+# Раз в день обновляет data.json.gz из Bruno API и коммитит его в репозиторий.
+#
+# ВАЖНО (после инцидента 15.07 — случайный полный прогон на 1.5 года данных):
+#   - dry_run по умолчанию TRUE. Чтобы сделать настоящую выгрузку, явно поставь
+#     галочку dry_run = false при запуске Run workflow.
+#   - date_from по умолчанию пуст — тогда берётся окно "30 дней назад" (безопасный
+#     короткий период). Полную историческую выгрузку (месяцы истории) сюда лучше
+#     НЕ гонять — это делается один раз локально у пользователя, см. SETUP_hosting.md.
+#   - Данные сохраняются сжатыми (data.json.gz) — dashboard_live.html умеет их
+#     распаковывать в браузере.
 
 on:
   schedule:
@@ -13,11 +20,11 @@ on:
       dry_run:
         description: 'Только проверка токена и связи (без выгрузки и коммита)'
         type: boolean
-        default: false
+        default: true
       date_from:
-        description: 'Начало периода YYYY-MM-DD'
+        description: 'Начало периода YYYY-MM-DD (пусто = 30 дней назад)'
         type: string
-        default: '2025-01-01'
+        default: ''
 
 # Разрешаем боту коммитить обратно в репозиторий.
 permissions:
@@ -54,25 +61,28 @@ jobs:
             exit 1
           fi
           FROM="${{ inputs.date_from }}"
-          FROM="${FROM:-2025-01-01}"
+          if [ -z "$FROM" ]; then
+            FROM="$(date -u -d '-30 days' +%Y-%m-%d)"
+            echo "date_from не задан — беру безопасное окно: 30 дней назад ($FROM)"
+          fi
           TO="$(date -u +%Y-%m-%d)"
           echo "Период: $FROM .. $TO"
           if [ "${{ inputs.dry_run }}" = "true" ]; then
             echo "== DRY RUN: только health-check =="
             python extract.py --token "$BRUNO_TOKEN" --from "$FROM" --to "$TO" --dry-run
           else
-            python extract.py --token "$BRUNO_TOKEN" --from "$FROM" --to "$TO" --out data.json
+            python extract.py --token "$BRUNO_TOKEN" --from "$FROM" --to "$TO" --out data.json.gz
           fi
 
-      - name: Commit data.json
+      - name: Commit data.json.gz
         if: ${{ inputs.dry_run != true }}
         run: |
           set -euo pipefail
           git config user.name  "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add data.json
+          git add data.json.gz
           if git diff --staged --quiet; then
-            echo "Изменений в data.json нет — коммит не нужен."
+            echo "Изменений в data.json.gz нет — коммит не нужен."
           else
             git commit -m "data: автообновление $(date -u +%F)"
             git push
