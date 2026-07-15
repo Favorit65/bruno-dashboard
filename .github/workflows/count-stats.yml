@@ -1,0 +1,84 @@
+name: Count Bruno stats
+
+on:
+  workflow_dispatch:
+
+jobs:
+  count:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install deps
+        run: pip install requests
+      - name: Count
+        env:
+          BRUNO_TOKEN: ${{ secrets.BRUNO_TOKEN }}
+        run: |
+          python3 - <<'PY'
+          import os, json, time, requests
+          from datetime import datetime, timezone, timedelta
+          from urllib.parse import urlencode
+
+          B = "https://api.brunosystem.ru"
+          tok = os.environ.get("BRUNO_TOKEN", "")
+          h = {"token": tok, "Accept": "application/json", "User-Agent": "bruno-count/1.0"}
+
+          r = requests.get(B + "/api/v2/apiToken", headers=h, timeout=15)
+          pid = None
+          if r.status_code == 200:
+              b = r.json()
+              pid = b.get("projectID")
+              if not pid and isinstance(b.get("result"), dict):
+                  pid = b["result"].get("projectID")
+          if pid:
+              h["projectid"] = pid
+          print("projectID:", pid or "<нет>")
+
+          now = datetime.now(timezone.utc)
+          def iso(d): return d.strftime("%Y-%m-%dT%H:%M:%S.000Z")
+          FULL = "date ge '2025-01-01T00:00:00.000Z' AND date le '%s'" % iso(now)
+
+          for name in ["statByZone", "statByWorkType", "statByEmployee", "statByTeam"]:
+              url = B + "/api/v2/" + name + "?" + urlencode({"from": 0, "limit": 1, "filter": FULL})
+              try:
+                  r = requests.get(url, headers=h, timeout=30)
+                  print("=" * 55)
+                  print(name, "HTTP", r.status_code)
+                  if r.status_code == 200:
+                      b = r.json()
+                      print("overall (записей за всю историю) =", b.get("overall"))
+                      res = b.get("result") or []
+                      if res:
+                          print("пример записи:", json.dumps(res[0], ensure_ascii=False))
+                  else:
+                      print(r.text[:200])
+              except Exception as e:
+                  print(name, "сеть:", e)
+              time.sleep(1.1)
+
+          wk = now - timedelta(days=7)
+          SHORT = "date ge '%s' AND date le '%s'" % (iso(wk), iso(now))
+          for name in ["statByZone/byDays", "statByEmployee/byDays"]:
+              url = B + "/api/v2/" + name + "?" + urlencode({"filter": SHORT})
+              try:
+                  r = requests.get(url, headers=h, timeout=30)
+                  print("=" * 55)
+                  print(name, "HTTP", r.status_code)
+                  if r.status_code == 200:
+                      b = r.json()
+                      res = b.get("result") or {}
+                      print("дней в ответе:", len(res))
+                      for k in list(res)[:1]:
+                          print("пример дня:", k, "->", json.dumps(res[k], ensure_ascii=False))
+                  else:
+                      print(r.text[:200])
+              except Exception as e:
+                  print(name, "сеть:", e)
+              time.sleep(1.1)
+          print("=" * 55)
+          print("Готово. Пришлите этот лог целиком.")
+          PY
