@@ -72,7 +72,15 @@ def log(msg, level="info"):
 
 
 def get_project_info(session, headers):
-    """Определяет projectID и список прав по токену."""
+    """Определяет projectID и (если API их отдаёт) права по токену.
+
+    Реальный ответ /api/v2/apiToken (проверено на живом API 15.07.2026):
+        {"result": "ok", "projectID": "<uuid>"}
+    — projectID лежит на ВЕРХНЕМ уровне, а result — это просто строка-статус,
+    отдельного объекта apiRule в ответе нет. Поэтому предварительно проверить
+    read-права по токену нельзя — полагаемся на живые ответы 403 по каждому ресурсу.
+    На всякий случай поддерживаем и старую вложенную форму {"result": {...}}.
+    """
     url = f"{API_BASE}/api/v2/apiToken"
     try:
         resp = session.get(url, headers=headers, timeout=15)
@@ -88,14 +96,15 @@ def get_project_info(session, headers):
     except ValueError:
         log(f"ответ /apiToken не JSON: {resp.text[:300]}", "warn")
         return None, {}
-    result = body.get("result", {})
-    if not isinstance(result, dict):
-        # Реальная форма ответа отличается от ожидаемой — не гадаем, просто
-        # логируем сырой ответ, чтобы можно было точно поправить маппинг.
-        log(f"неожиданная форма ответа /apiToken (result = {type(result).__name__}): "
-            f"{json.dumps(body, ensure_ascii=False)[:500]}", "warn")
-        return None, {}
-    return result.get("projectID"), result.get("apiRule", {}) or {}
+
+    project_id = body.get("projectID")
+    api_rule = {}
+    result = body.get("result")
+    if isinstance(result, dict):
+        # Старая (ожидавшаяся) вложенная форма — projectID и apiRule внутри result.
+        project_id = project_id or result.get("projectID")
+        api_rule = result.get("apiRule", {}) or {}
+    return project_id, api_rule
 
 
 def fetch_all(session, path, headers, filter_str, resource_name, page_limit, pause_ms):
