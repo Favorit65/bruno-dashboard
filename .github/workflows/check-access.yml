@@ -1,0 +1,98 @@
+name: Check Bruno access
+
+on:
+  workflow_dispatch:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install deps
+        run: pip install requests
+
+      - name: Probe endpoints
+        env:
+          BRUNO_TOKEN: ${{ secrets.BRUNO_TOKEN }}
+        run: |
+          python3 - <<'PY'
+          import os, time, requests
+          from datetime import datetime, timezone, timedelta
+          from urllib.parse import urlencode
+
+          B = "https://api.brunosystem.ru"
+          tok = os.environ.get("BRUNO_TOKEN", "")
+          if not tok:
+              print("BRUNO_TOKEN пуст — обновите секрет в Settings -> Secrets -> Actions")
+              raise SystemExit(0)
+
+          h = {"token": tok, "Accept": "application/json", "User-Agent": "bruno-access-check/1.0"}
+          now = datetime.now(timezone.utc)
+          frm = now - timedelta(days=3)
+          def iso(d): return d.strftime("%Y-%m-%dT%H:%M:%S.000Z")
+          flt = "date ge '%s' AND date le '%s'" % (iso(frm), iso(now))
+
+          s = requests.Session()
+          pid = None
+          try:
+              r = s.get(B + "/api/v2/apiToken", headers=h, timeout=15)
+              if r.status_code == 401:
+                  print("401 Unauthorized — токен неверный/истёк. Проверьте секрет BRUNO_TOKEN.")
+              elif r.status_code == 200:
+                  b = r.json()
+                  pid = b.get("projectID")
+                  if not pid and isinstance(b.get("result"), dict):
+                      pid = b["result"].get("projectID")
+          except Exception as e:
+              print("apiToken:", e)
+          if pid:
+              h["projectid"] = pid
+
+          probes = [
+              ("object", "/api/v2/object", {"limit": 1}),
+              ("zone", "/api/v2/zone", {"limit": 1}),
+              ("workType", "/api/v2/workType", {"limit": 1}),
+              ("user", "/api/v2/user", {"limit": 1}),
+              ("team", "/api/v2/team", {"limit": 1}),
+              ("feedback", "/api/v2/feedback", {"limit": 1}),
+              ("taskPlan", "/api/v2/taskPlan", {"limit": 1}),
+              ("remark", "/api/v2/remark", {"limit": 1}),
+              ("survey/surveyResult", "/api/v2/survey/surveyResult", {}),
+              ("statByZone", "/api/v2/statByZone", {"limit": 1, "filter": flt}),
+              ("statByZone/byDays", "/api/v2/statByZone/byDays", {"filter": flt}),
+              ("statByWorkType/byDays", "/api/v2/statByWorkType/byDays", {"filter": flt}),
+              ("statByEmployee/byDays", "/api/v2/statByEmployee/byDays", {"filter": flt}),
+              ("statByTeam/byDays", "/api/v2/statByTeam/byDays", {"filter": flt}),
+          ]
+          M = {200: "OK доступно", 400: "400 запрос отклонён", 401: "401 токен неверный",
+               403: "403 нет прав", 404: "404 нет модуля / не в тарифе", 429: "429 лимит"}
+
+          print("=" * 60)
+          print("projectID:", pid or "<не определён>")
+          print("=" * 60)
+          print("%-24s %-5s %s" % ("РЕСУРС", "HTTP", "СТАТУС"))
+          print("-" * 60)
+          res = {}
+          for name, path, params in probes:
+              url = B + path + ("?" + urlencode(params) if params else "")
+              try:
+                  r = s.get(url, headers=h, timeout=30)
+                  res[name] = r.status_code
+                  print("%-24s %-5s %s" % (name, r.status_code, M.get(r.status_code, "HTTP %s" % r.status_code)))
+              except Exception as e:
+                  print("%-24s %-5s сеть: %s" % (name, "---", e))
+              time.sleep(1.1)
+          print("=" * 60)
+          an = any(res.get(k) == 200 for k in ("statByZone/byDays", "statByWorkType/byDays",
+                                               "statByEmployee/byDays", "statByTeam/byDays"))
+          if an:
+              print("ВЫВОД: аналитика statBy* ДОСТУПНА -> строим на агрегатах (полная история).")
+          else:
+              print("ВЫВОД: аналитики statBy* нет -> сырой taskPlan, короткое окно.")
+          print("=" * 60)
+          PY
