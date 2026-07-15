@@ -1,0 +1,22 @@
+# Секреты — НИКОГДА не коммитить. Токен Bruno живёт только в GitHub Actions Secrets.
+*.env
+.env
+token.txt
+*secret*
+*token*.txt
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# ОС/редакторы
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Локальные пробные выгрузки (рабочий data.json коммитит робот GitHub Actions).
+# Если хочешь коммитить и локальный data.json вручную — убери строку ниже.
+/data.local.json
