@@ -1,0 +1,1045 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Дашборд обслуживания объектов — ВТБ</title>
+<style>
+  :root {
+    /* ===== БРЕНДБУК ВТБ ===== */
+    --vtb-navy: #002882; --vtb-navy-2: #0A2896; --vtb-blue: #00AAFF;
+    --vtb-blue-2: #33539B; --vtb-blue-3: #667EB4; --vtb-blue-4: #A3B0D4;
+    --vtb-green: #23A75B; --vtb-red: #E62632; --vtb-amber: #F5A623;
+    --bg: #FFFFFF; --surface-2: #FFFFFF; --surface-1: #F4F7FC; --surface-0: #EAF1FB;
+    --text-primary: #1C1C1C; --text-secondary: #58595B; --text-muted: #858585;
+    --border: #E4E8F0; --border-strong: #C9D3E4;
+    --radius: 8px; --card-radius: 10px;
+    --text-accent: #002882; --bg-accent: #EAF1FB; --border-accent: #00AAFF;
+    --text-success: #1B8449; --text-danger: #C31B26; --text-warning: #9A6510; --bg-warning: #FEF3E0;
+    /* Фирменные шрифты ВТБ подхватятся на корпоративной машине; иначе — системный fallback (без CDN). */
+    --font-sans: 'VTB Group Book','VTB Group','Golos Text','PT Sans',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;
+    --font-head: 'VTB Group Demi Bold','VTB Group','Golos Text','PT Sans',-apple-system,'Segoe UI',Roboto,Arial,sans-serif;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; font-family: var(--font-sans); background: var(--bg); color: var(--text-primary); font-size: 14px; line-height: 1.5; }
+  .app { max-width: 1440px; margin: 0 auto; padding: 18px 24px 48px; }
+
+  /* ШАПКА */
+  .top-bar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; padding-bottom: 14px; border-bottom: 2px solid var(--vtb-navy); }
+  .brand { display: flex; align-items: center; gap: 14px; }
+  .brand h1 { font-family: var(--font-head); font-size: 20px; font-weight: 600; margin: 0; letter-spacing: -0.01em; color: var(--vtb-navy); line-height: 1.1; }
+  .brand .sub { font-size: 12px; color: var(--text-muted); display: block; margin-top: 2px; }
+  .top-right { display: flex; align-items: center; gap: 14px; }
+  .role-switch { display: inline-flex; background: var(--surface-1); border: 1px solid var(--border); border-radius: 999px; padding: 3px; font-size: 11px; }
+  .role-switch button { border: 0; background: transparent; padding: 4px 11px; border-radius: 999px; cursor: pointer; color: var(--text-secondary); font-size: 11px; font-family: inherit; }
+  .role-switch button.active { background: var(--vtb-navy); color: #fff; font-weight: 500; }
+  .updated { font-size: 12px; color: var(--text-secondary); display: inline-flex; align-items: center; gap: 6px; }
+  .updated::before { content: ''; width: 8px; height: 8px; border-radius: 50%; background: var(--vtb-green); }
+
+  /* ФИЛЬТРЫ */
+  .filters { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; padding: 10px 12px; background: var(--surface-0); border: 1px solid var(--border); border-radius: var(--radius); margin-bottom: 6px; position: sticky; top: 0; z-index: 200; box-shadow: 0 2px 10px rgba(0,40,130,0.05); }
+  .filters.stuck { box-shadow: 0 4px 16px rgba(0,40,130,0.12); border-color: var(--border-strong); }
+  .filters .lbl { font-family: var(--font-head); font-size: 11px; color: var(--vtb-navy); text-transform: uppercase; letter-spacing: 0.05em; margin-right: 4px; font-weight: 600; }
+  .flt { display: inline-flex; align-items: center; gap: 6px; padding: 6px 11px; border-radius: 999px; background: var(--surface-2); border: 1px solid var(--border-strong); font-size: 12px; cursor: pointer; user-select: none; position: relative; }
+  .flt:hover { border-color: var(--vtb-blue); }
+  .flt.disabled { opacity: 0.5; cursor: not-allowed; }
+  .flt .chev { color: var(--text-muted); font-size: 10px; }
+  .flt-menu { position: absolute; top: calc(100% + 6px); left: 0; background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: 0 8px 24px rgba(0,40,130,0.14); z-index: 300; min-width: 240px; max-height: 360px; overflow-y: auto; display: none; padding: 5px; }
+  .flt-menu.open { display: block; }
+  .flt-menu label { display: flex; align-items: center; gap: 8px; padding: 6px 8px; font-size: 12px; cursor: pointer; border-radius: 4px; }
+  .flt-menu label:hover { background: var(--surface-1); }
+  .flt-menu input { margin: 0; accent-color: var(--vtb-navy); }
+  .flt-menu .divider { border-bottom: 1px solid var(--border); margin: 5px 2px; }
+  .flt-menu .grp { font-size: 10px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; padding: 5px 8px 3px; }
+  .flt-menu .custom { display: flex; gap: 6px; padding: 6px 8px; align-items: center; font-size: 11px; flex-wrap: wrap; }
+  .flt-menu .custom input[type="date"] { font-size: 11px; padding: 4px 6px; border: 1px solid var(--border-strong); border-radius: 4px; font-family: inherit; }
+  .flt-menu .custom button { font-size: 11px; padding: 4px 10px; border: 0; background: var(--vtb-navy); color: #fff; border-radius: 4px; cursor: pointer; }
+  .flt-menu .presets { display: flex; flex-wrap: wrap; gap: 4px; padding: 4px 8px; }
+  .flt-menu .preset { font-size: 11px; padding: 4px 9px; background: var(--surface-1); border: 1px solid var(--border); border-radius: 4px; cursor: pointer; font-family: inherit; }
+  .flt-menu .preset:hover { background: var(--vtb-navy); color: #fff; border-color: var(--vtb-navy); }
+  .flt-reset { font-size: 11px; color: var(--vtb-navy); background: none; border: 0; cursor: pointer; padding: 4px 8px; margin-left: auto; font-family: inherit; font-weight: 500; }
+  .scope-hint { font-size: 11px; color: var(--text-muted); margin: 0 0 14px; padding: 0 4px; }
+
+  /* СЕКЦИИ */
+  .section-title { position: relative; font-family: var(--font-head); font-size: 14px; font-weight: 600; color: #fff; margin: 22px 0 12px; padding: 9px 40px 9px 16px; letter-spacing: 0.01em; background: linear-gradient(90deg, var(--vtb-navy) 0%, var(--vtb-navy-2) 45%, var(--vtb-blue) 140%); clip-path: polygon(0 0, 100% 0, calc(100% - 22px) 100%, 0 100%); display: inline-block; min-width: 320px; }
+  .section-title .snum { opacity: 0.65; margin-right: 8px; font-weight: 400; }
+  .section-title .hint { color: rgba(255,255,255,0.85); font-size: 10.5px; margin-left: 10px; text-transform: none; letter-spacing: 0; font-weight: 400; }
+  .section-wrap { margin-top: 22px; }
+  .section-wrap:first-of-type { margin-top: 8px; }
+
+  .row { display: grid; gap: 12px; }
+  .card { background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--card-radius); padding: 13px 15px; }
+  .card-title { font-family: var(--font-head); font-size: 12.5px; color: var(--vtb-navy); margin: 0 0 8px; font-weight: 600; display: flex; align-items: center; gap: 6px; }
+  .card-title .hint { color: var(--text-muted); font-size: 11px; font-weight: 400; margin-left: auto; font-family: var(--font-sans); }
+
+  /* Breadcrumbs */
+  .crumbs { display: none; align-items: center; gap: 6px; padding: 6px 10px; background: var(--bg-accent); border-radius: var(--radius); font-size: 12px; margin-bottom: 8px; }
+  .crumbs.on { display: flex; }
+  .crumbs .cur { color: var(--text-primary); font-weight: 500; }
+  .crumbs .back { margin-left: auto; display: inline-flex; align-items: center; gap: 4px; padding: 3px 8px; border: 1px solid var(--border-strong); border-radius: 6px; cursor: pointer; color: var(--text-secondary); background: var(--surface-2); font-size: 11px; font-family: inherit; }
+  .crumbs .back:hover { border-color: var(--vtb-blue); }
+
+  /* Legends */
+  .legend { display: flex; flex-wrap: wrap; gap: 8px 12px; font-size: 11px; color: var(--text-secondary); margin: 4px 0 6px; }
+  .legend span { display: inline-flex; align-items: center; gap: 4px; }
+  .sw { width: 10px; height: 10px; border-radius: 2px; display: inline-block; }
+
+  /* KPI */
+  .kpi-grid { display: grid; gap: 8px; margin-top: 10px; }
+  .kpi-tile { background: var(--surface-1); border-radius: var(--radius); padding: 9px 11px; display: grid; grid-template-columns: 1fr 52px; gap: 6px; align-items: center; border-left: 3px solid var(--vtb-blue); }
+  .kpi-tile.solo { grid-template-columns: 1fr; }
+  .kpi-tile .lbl { font-size: 10.5px; color: var(--text-secondary); margin: 0; }
+  .kpi-tile .val { font-family: var(--font-head); font-size: 20px; font-weight: 600; margin: 1px 0 0; letter-spacing: -0.01em; line-height: 1.15; color: var(--vtb-navy); }
+  .kpi-tile .delta { font-size: 10.5px; margin-top: 1px; }
+  .spark { height: 30px; }
+  .ok { color: var(--text-success); } .bad { color: var(--text-danger); } .neutral { color: var(--text-muted); }
+
+  /* Категории/воронка */
+  .cat-cmp { display: flex; flex-direction: column; gap: 9px; margin-top: 2px; }
+  .cat-item .ch { display: flex; justify-content: space-between; font-size: 11px; color: var(--text-secondary); margin-bottom: 3px; }
+  .cat-bar { height: 20px; border-radius: 4px; display: flex; align-items: center; padding-left: 8px; font-size: 11px; font-weight: 500; color: #fff; transition: width 0.4s ease; }
+  .funnel { display: flex; flex-direction: column; gap: 7px; margin-top: 6px; }
+  .funnel-item .fh { display: flex; justify-content: space-between; font-size: 10.5px; color: var(--text-secondary); margin-bottom: 3px; }
+  .funnel-item .fh .conv { color: var(--text-success); margin-left: 6px; font-weight: 500; }
+  .funnel-bar { height: 22px; border-radius: 4px; display: flex; align-items: center; padding-left: 8px; font-size: 11px; font-weight: 500; }
+
+  /* Treemap */
+  #b2a-treemap { position: relative; width: 100%; height: 340px; }
+  .tm-cell { position: absolute; border-radius: 4px; padding: 6px 8px; overflow: hidden; cursor: pointer; transition: filter 0.15s; display: flex; flex-direction: column; justify-content: space-between; }
+  .tm-cell:hover { filter: brightness(1.06); z-index: 5; }
+  .tm-cell .tm-name { font-size: 12px; font-weight: 600; line-height: 1.1; }
+  .tm-cell .tm-val { font-size: 11px; opacity: 0.9; line-height: 1.2; }
+  .tm-cell .tm-eff { font-size: 11px; font-weight: 600; align-self: flex-start; padding: 1px 5px; background: rgba(255,255,255,0.4); border-radius: 3px; }
+  .tm-cell.dim { filter: grayscale(1) opacity(0.4); }
+  .tm-cell.tiny .tm-val, .tm-cell.tiny .tm-eff { display: none; }
+  .tm-cell.tiny .tm-name { font-size: 10px; }
+  .zones-panel { position: absolute; right: 0; top: 0; width: 44%; height: 100%; background: var(--surface-2); border-left: 1px solid var(--border); padding: 10px 12px; display: none; overflow-y: auto; }
+  .zones-panel.on { display: block; }
+  .zones-panel h4 { font-size: 12px; margin: 0 0 8px; font-weight: 600; color: var(--vtb-navy); display: flex; align-items: center; gap: 6px; }
+  .zones-panel h4 .close { margin-left: auto; cursor: pointer; color: var(--text-muted); background: none; border: 0; padding: 2px 6px; font-size: 14px; border-radius: 4px; }
+  .zone-row { display: grid; grid-template-columns: 1fr 44px; align-items: center; gap: 8px; font-size: 12px; padding: 4px 0; border-bottom: 1px solid var(--border); }
+  .zone-row:last-child { border-bottom: 0; }
+  .zone-bar-wrap { display: flex; align-items: center; gap: 8px; }
+  .zone-name { min-width: 120px; }
+  .zone-bar { height: 6px; border-radius: 2px; flex: 1; }
+  .mini-num { font-size: 11px; color: var(--text-secondary); text-align: right; }
+
+  /* Персонал */
+  .staff-cat { display: inline-flex; gap: 2px; background: var(--surface-1); padding: 3px; border-radius: 8px; font-size: 12px; }
+  .staff-cat button { background: transparent; border: 0; padding: 6px 14px; border-radius: 6px; color: var(--text-secondary); cursor: pointer; font-size: 12px; font-family: inherit; }
+  .staff-cat button.active { background: var(--vtb-navy); color: #fff; font-weight: 500; }
+  .staff-cat button .cnt { opacity: 0.7; font-size: 10px; margin-left: 4px; }
+  .toggle { display: inline-flex; gap: 2px; background: var(--surface-1); padding: 3px; border-radius: 8px; font-size: 11px; }
+  .toggle button { background: transparent; border: 0; padding: 5px 10px; border-radius: 6px; color: var(--text-secondary); cursor: pointer; font-size: 11px; font-family: inherit; }
+  .toggle button.active { background: var(--surface-2); color: var(--vtb-navy); font-weight: 500; box-shadow: 0 1px 3px rgba(0,40,130,0.1); }
+  .staff-head { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 10px; }
+  .staff-avg-note { font-size: 11px; color: var(--text-secondary); margin-left: auto; }
+  .staff-avg-note b { color: var(--vtb-navy); font-family: var(--font-head); }
+  .detail-btn { font-size: 12px; padding: 7px 14px; border: 1px solid var(--vtb-navy); background: var(--surface-2); color: var(--vtb-navy); border-radius: 8px; cursor: pointer; font-family: inherit; font-weight: 500; }
+  .detail-btn:hover, .detail-btn.on { background: var(--vtb-navy); color: #fff; }
+  .detail-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-top: 14px; }
+  .detail-col h5 { font-family: var(--font-head); font-size: 12px; color: var(--vtb-navy); margin: 0 0 6px; font-weight: 600; }
+  .staff-table { width: 100%; font-size: 11.5px; border-collapse: collapse; }
+  .staff-table th { text-align: left; padding: 4px 6px; color: var(--text-muted); font-weight: 500; font-size: 10px; text-transform: uppercase; letter-spacing: 0.03em; border-bottom: 1px solid var(--border); }
+  .staff-table td { padding: 5px 6px; border-bottom: 1px solid var(--border); }
+  .staff-table tr.leader td:first-child::before { content: '▲'; color: var(--text-success); margin-right: 4px; font-size: 9px; }
+  .staff-table tr.loser td:first-child::before { content: '▼'; color: var(--text-danger); margin-right: 4px; font-size: 9px; }
+  .staff-scroll { overflow-x: auto; }
+
+  .note { font-size: 10.5px; color: var(--text-muted); font-style: italic; margin-top: 8px; }
+  .note.warn { color: var(--text-warning); font-style: normal; background: var(--bg-warning); padding: 7px 10px; border-radius: 6px; border-left: 3px solid var(--vtb-amber); }
+  .note.parked { color: var(--text-secondary); font-style: normal; background: var(--surface-1); padding: 9px 11px; border-radius: 6px; border-left: 3px solid var(--vtb-blue-3); line-height: 1.45; }
+  .note.parked b { color: var(--vtb-navy); }
+
+  .anon { filter: blur(4px); user-select: none; }
+
+  /* SVG charts */
+  .chart-svg { width: 100%; display: block; }
+  .chart-svg text { font-family: var(--font-sans); }
+  .grid-line { stroke: rgba(0,40,130,0.08); stroke-width: 1; }
+  .axis-line { stroke: var(--border-strong); stroke-width: 1; }
+  .tick-lbl { fill: var(--text-muted); font-size: 10px; }
+  .bar-hit { fill: transparent; cursor: pointer; }
+  .bar-hit:hover ~ .bar-hover, .bar-hit.hl { }
+  .svg-bar { transition: opacity 0.12s; }
+  #tooltip { position: fixed; pointer-events: none; background: #0A1A3A; color: #fff; font-size: 11px; line-height: 1.5; padding: 7px 10px; border-radius: 6px; box-shadow: 0 6px 20px rgba(0,0,0,0.25); z-index: 9999; opacity: 0; transition: opacity 0.1s; max-width: 260px; }
+  #tooltip .tt-title { font-weight: 600; margin-bottom: 3px; }
+  #tooltip .tt-row { display: flex; justify-content: space-between; gap: 14px; }
+  #tooltip .tt-row .k { color: #A9C4EA; }
+  #tooltip .tt-sw { display: inline-block; width: 8px; height: 8px; border-radius: 2px; margin-right: 5px; }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <div class="top-bar">
+    <div class="brand">
+      <svg width="112" height="40" viewBox="0 0 112 40" aria-label="ВТБ">
+        <polygon points="6,24 34,24 30,30 2,30" fill="#002882"/>
+        <polygon points="10,14 38,14 34,20 6,20" fill="#002882"/>
+        <polygon points="14,4 42,4 38,10 10,10" fill="#00AAFF"/>
+        <text x="50" y="30" font-family="Arial" font-size="26" font-weight="700" fill="#002882" letter-spacing="0.5">ВТБ</text>
+      </svg>
+      <div>
+        <h1>Дашборд обслуживания объектов</h1>
+        <span class="sub" id="sub-lbl">Система Bruno · агрегированные данные</span>
+      </div>
+    </div>
+    <div class="top-right">
+      <div class="role-switch" id="role-switch">
+        <button data-role="admin" class="active">Администратор</button>
+        <button data-role="viewer">Наблюдатель</button>
+      </div>
+      <span class="updated" id="updated-lbl">обновлено сейчас</span>
+    </div>
+  </div>
+
+  <!-- Фильтры -->
+  <div class="filters" id="filters">
+    <span class="lbl">Фильтры</span>
+    <div class="flt" data-flt="period">
+      <span>Период:</span> <span id="flt-period-lbl">весь период</span>
+      <span class="chev">▾</span>
+      <div class="flt-menu" id="menu-period"></div>
+    </div>
+    <div class="flt" data-flt="object">
+      <span>Объекты:</span> <span id="flt-object-lbl">все</span>
+      <span class="chev">▾</span>
+      <div class="flt-menu" id="menu-object"></div>
+    </div>
+    <div class="flt" data-flt="workType" id="flt-workType">
+      <span>Вид работ:</span> <span id="flt-workType-lbl">нет данных</span>
+      <span class="chev">▾</span>
+      <div class="flt-menu" id="menu-workType"></div>
+    </div>
+    <div class="flt" data-flt="assignee">
+      <span>Исполнители:</span> <span id="flt-assignee-lbl">все</span>
+      <span class="chev">▾</span>
+      <div class="flt-menu" id="menu-assignee"></div>
+    </div>
+    <button class="flt-reset" id="btn-reset">Сбросить всё</button>
+  </div>
+  <p class="scope-hint">Период — на динамику (блок 1) и план-факт (блок 3). Фильтры объектов — на структуру (блок 2), исполнителей — на персонал (блок 4). Блоки 2 и 4 считаются по окну последних 30 дней.</p>
+
+  <!-- BLOCK 1 -->
+  <div class="section-wrap">
+  <div class="section-title"><span class="snum">01</span>Динамика и категории<span class="hint">клик по столбику — детализация во времени</span></div>
+  <div class="crumbs" id="b1-crumbs">
+    <span class="cur" id="b1-cur">—</span>
+    <button class="back" id="b1-back">← к месяцам</button>
+  </div>
+  <div class="row" style="grid-template-columns: 1.7fr 1fr;">
+    <div class="card">
+      <p class="card-title">Задачи по статусам во времени <span class="hint" id="b1-hint">клик — детализация во времени</span></p>
+      <div class="legend">
+        <span><span class="sw" style="background:#002882"></span>Выполнено</span>
+        <span><span class="sw" style="background:#00AAFF"></span>В работе / прочее</span>
+        <span><span class="sw" style="background:#E62632"></span>Пропущено</span>
+      </div>
+      <div id="b1-chart" data-h="216"></div>
+      <div class="kpi-grid" style="grid-template-columns: repeat(4, 1fr);" id="b1-kpi"></div>
+    </div>
+    <div class="card">
+      <p class="card-title">Категории · окно 30 дней <span class="hint">обращения vs плановые</span></p>
+      <div class="cat-cmp" id="b1-cat"></div>
+      <p class="card-title" style="margin-top:14px;">Воронка обращений <span class="hint">по статусам заявки</span></p>
+      <div class="funnel" id="b1-funnel"></div>
+      <p class="note" id="b1-note"></p>
+    </div>
+  </div>
+  </div>
+
+  <!-- BLOCK 2 -->
+  <div class="section-wrap">
+  <div class="section-title"><span class="snum">02</span>Структура<span class="hint">окно 30 дней · клик по объекту — топ зон</span></div>
+  <div class="row" style="grid-template-columns: 1.35fr 1fr;">
+    <div class="card">
+      <p class="card-title" id="b2a-title">Объекты <span class="hint">площадь = объём задач, цвет = эффективность</span></p>
+      <div id="b2a-treemap">
+        <div class="zones-panel" id="b2a-zones">
+          <h4><span id="b2a-zones-title">Топ зон объекта</span><button class="close" id="b2a-zones-close">✕</button></h4>
+          <div id="b2a-zones-list"></div>
+        </div>
+      </div>
+    </div>
+    <div class="card">
+      <p class="card-title" id="b2b-title">Виды работ</p>
+      <div id="b2b-heat"></div>
+    </div>
+  </div>
+  </div>
+
+  <!-- BLOCK 3 -->
+  <div class="section-wrap">
+  <div class="section-title"><span class="snum">03</span>План–факт<span class="hint">плановые данные заводятся вне Bruno</span></div>
+  <div class="row" style="grid-template-columns: 1.5fr 1fr;">
+    <div class="card">
+      <p class="card-title">План vs факт по месяцам <span class="hint" id="b3-year"></span></p>
+      <div class="legend">
+        <span><span class="sw" style="background:#858585"></span>План (демо)</span>
+        <span><span class="sw" style="background:#002882"></span>Факт (выполнено)</span>
+        <span><span class="sw" style="background:#E62632"></span>Пропущено</span>
+      </div>
+      <div id="b3-chart" data-h="200"></div>
+      <p class="note parked"><b>Блок-заглушка.</b> В Bruno отдельной сущности «план» нет — «факт» и «пропущено» реальны (из суточных агрегатов), линия «план» демонстрационная. Точка интеграции сохранена: план заводится из внутренних документов.</p>
+    </div>
+    <div class="card">
+      <p class="card-title">Статистика года</p>
+      <div class="kpi-grid" style="grid-template-columns: 1fr 1fr;" id="b3-kpi"></div>
+    </div>
+  </div>
+  </div>
+
+  <!-- BLOCK 4 -->
+  <div class="section-wrap">
+  <div class="section-title"><span class="snum">04</span>Персонал<span class="hint">окно 30 дней · команды · работники · администраторы</span></div>
+  <div class="card">
+    <div class="staff-head">
+      <div class="staff-cat" id="b4-cat"></div>
+      <div class="toggle" id="b4-toggle">
+        <button data-metric="completed" class="active">объём (выполнено)</button>
+        <button data-metric="efficiency">эффективность</button>
+      </div>
+      <span class="staff-avg-note" id="b4-avg-note"></span>
+      <button class="detail-btn" id="b4-detail-btn">Детализация ▾</button>
+    </div>
+    <div class="staff-scroll"><div id="b4-chart" data-h="266"></div></div>
+    <div class="detail-grid" id="b4-detail" style="display:none;"></div>
+  </div>
+  </div>
+
+  <!-- BLOCK 5 -->
+  <div class="section-wrap">
+  <div class="section-title"><span class="snum">05</span>Замечания и качество</div>
+  <div class="row" style="grid-template-columns: 1fr 1fr;">
+    <div class="card">
+      <p class="card-title">Замечания (remark)</p>
+      <p class="note parked" id="b5r-note"><b>Модуль недоступен.</b> Сущность «замечания» отключена у проекта Bruno (нет в тарифе/правах токена). Блок оживёт после выдачи прав <code>remark.read</code> — точка интеграции сохранена.</p>
+    </div>
+    <div class="card">
+      <p class="card-title">Проверки качества (survey)</p>
+      <p class="note parked" id="b5s-note"><b>Модуль недоступен.</b> Опросы качества не входят в тариф проекта Bruno. При появлении данных здесь будет деление «довольные (4–5) / недовольные (1–3)» и распределение оценок.</p>
+    </div>
+  </div>
+  </div>
+
+  <div class="note warn" style="margin-top: 18px;">
+    <strong>LIVE-версия — реальные агрегаты Bruno.</strong> Данные из <code>data.json.gz</code> (fallback <code>data.json</code>), файл формирует робот <code>build-data.py</code> (GitHub Actions, ежедневно). Эффективность = выполнено / (выполнено + пропущено + предупреждения). Виды работ, замечания и качество, а также группа «Администраторы» зависят от прав токена и списка <code>ADMIN_USER_IDS</code> — см. ТЗ §5.
+  </div>
+</div>
+
+<div id="tooltip"></div>
+
+<script>
+/* ==============================================================
+   КОНФИГ
+   ============================================================== */
+// id пользователей-администраторов (Role.controlPanelLogin). Заполните из data.json → directories.user[].id.
+// Пусто = группа «Администраторы» пуста (см. ТЗ, задача C).
+const ADMIN_USER_IDS = [];
+const DATA_URLS = ['data.json.gz', 'data.json'];
+
+/* ==============================================================
+   ЗАГРУЗКА
+   ============================================================== */
+let META = {}, OBJECTS = [], ZONES = [], USERS = [], TEAMS = [], WORK_TYPES = [];
+let WORKERS = [], ADMINS = [], ASSIGNEES = [];
+let DAILY = [];              // [{d:Date, all, completed, missed}]
+let WINDOW = {};            // {byObject, byZone, byEmployee, byTeam, feedbackTasks}
+let CATEGORIES = {};
+let YEARS = [], CUR_YEAR = new Date().getFullYear(), DATA_MIN = null, DATA_MAX = null;
+const objById = {}, zoneById = {}, userById = {}, teamById = {};
+
+async function fetchData() {
+  for (const url of DATA_URLS) {
+    try {
+      const resp = await fetch(url, { cache: 'no-store' });
+      if (!resp.ok) continue;
+      if (url.endsWith('.gz')) {
+        if (!('DecompressionStream' in window)) continue;
+        const stream = resp.body.pipeThrough(new DecompressionStream('gzip'));
+        return JSON.parse(await new Response(stream).text());
+      }
+      return await resp.json();
+    } catch (e) { /* следующий url */ }
+  }
+  throw new Error('Не удалось загрузить данные (' + DATA_URLS.join(' / ') + '). Запустите робота и откройте страницу через веб-сервер (не file://).');
+}
+
+function mergeDaily(daily) {
+  // три параллельных среза (zone/employee/team) — проектные суточные итоги; берём по датам,
+  // для каждой даты — первый непустой (в норме совпадают).
+  const acc = {};
+  ['zone', 'employee', 'team'].forEach(k => {
+    const src = (daily && daily[k]) || {};
+    for (const [ds, v] of Object.entries(src)) {
+      if (!acc[ds]) acc[ds] = { all: 0, completed: 0, missed: 0 };
+      acc[ds].all = Math.max(acc[ds].all, v.allTasksCount || 0);
+      acc[ds].completed = Math.max(acc[ds].completed, v.completedTasksCount || 0);
+      acc[ds].missed = Math.max(acc[ds].missed, v.missedTasksCount || 0);
+    }
+  });
+  return Object.entries(acc).map(([ds, v]) => ({ d: new Date(ds + 'T00:00:00'), ds, ...v }))
+                            .filter(r => !isNaN(r.d.getTime()))
+                            .sort((a, b) => a.d - b.d);
+}
+
+async function loadAndMap() {
+  showStatus('Загружаю данные…');
+  const raw = await fetchData();
+  META = raw.meta || {};
+  const dir = raw.directories || {};
+  OBJECTS = (dir.object || []).map(o => ({ id: String(o.id), name: o.name || '(без имени)', address: o.address || null }));
+  ZONES = (dir.zone || []).map(z => ({ id: String(z.id), objectID: String(z.objectID || ''), name: z.name || '(без имени)' }));
+  USERS = (dir.user || []).map(u => ({ id: String(u.id), name: u.name || [u.lastName, u.firstName].filter(Boolean).join(' ') || '(без имени)' }));
+  TEAMS = (dir.team || []).map(t => ({ id: String(t.id), name: t.name || '(без имени)' }));
+  WORK_TYPES = (dir.workType || []).map(w => ({ id: String(w.id), name: w.name || '(без имени)' }));
+  OBJECTS.forEach(o => objById[o.id] = o);
+  ZONES.forEach(z => zoneById[z.id] = z);
+  USERS.forEach(u => userById[u.id] = u);
+  TEAMS.forEach(t => teamById[t.id] = t);
+
+  const adminSet = new Set(ADMIN_USER_IDS.map(String));
+  ADMINS = USERS.filter(u => adminSet.has(u.id));
+  WORKERS = USERS.filter(u => !adminSet.has(u.id));
+  ASSIGNEES = [...TEAMS.map(t => ({ id: t.id, name: t.name, type: 'team' })), ...USERS.map(u => ({ id: u.id, name: u.name, type: 'employee' }))];
+
+  DAILY = mergeDaily(raw.daily || {});
+  WINDOW = raw.window || { byObject: {}, byZone: {}, byEmployee: {}, byTeam: {}, feedbackTasks: [] };
+  WINDOW.feedbackTasks = WINDOW.feedbackTasks || [];
+  CATEGORIES = raw.categories || { total: {}, feedback: {}, planned: {} };
+
+  if (DAILY.length) {
+    DATA_MIN = DAILY[0].d; DATA_MAX = DAILY[DAILY.length - 1].d;
+    YEARS = [...new Set(DAILY.map(r => r.d.getFullYear()))].sort((a, b) => a - b);
+    CUR_YEAR = YEARS[YEARS.length - 1];
+  } else {
+    YEARS = [CUR_YEAR]; DATA_MIN = new Date(CUR_YEAR, 0, 1); DATA_MAX = new Date(CUR_YEAR, 11, 31);
+  }
+  console.log('mapped:', { objects: OBJECTS.length, zones: ZONES.length, users: USERS.length, teams: TEAMS.length, workTypes: WORK_TYPES.length, dailyDays: DAILY.length, fbTasks: WINDOW.feedbackTasks.length, years: YEARS });
+}
+
+function showStatus(msg) { let el = document.getElementById('load-status'); if (!el) { el = document.createElement('div'); el.id = 'load-status'; el.style.cssText = 'position:fixed;top:0;left:0;right:0;padding:14px;background:#002882;color:#fff;font-family:sans-serif;font-size:14px;z-index:10000;text-align:center;'; document.body.appendChild(el); } el.textContent = msg; }
+function hideStatus() { const el = document.getElementById('load-status'); if (el) el.remove(); }
+function showError(msg) { let el = document.getElementById('load-status'); if (!el) { el = document.createElement('div'); el.id = 'load-status'; document.body.appendChild(el); } el.style.cssText = 'position:fixed;top:0;left:0;right:0;padding:18px;background:#C31B26;color:#fff;font-family:sans-serif;font-size:13px;z-index:10000;line-height:1.5;'; el.innerHTML = '<strong>Ошибка загрузки данных:</strong><br>' + msg; }
+
+/* ==============================================================
+   СОСТОЯНИЕ
+   ============================================================== */
+const state = {
+  role: 'admin',
+  period: { mode: 'all', year: null, month: null, from: null, to: null },
+  objects: new Set(),
+  assignees: new Set(),
+  drill: { b1level: 'months', b1ym: null, b2aObj: null, b4cat: 'team', b4metric: 'completed', b4detail: false },
+};
+
+/* ==============================================================
+   ФИЛЬТРАЦИЯ / АГРЕГАЦИЯ
+   ============================================================== */
+const MONTH_NAMES = ['Янв', 'Фев', 'Мар', 'Апр', 'Май', 'Июн', 'Июл', 'Авг', 'Сен', 'Окт', 'Ноя', 'Дек'];
+function inPeriod(d) {
+  const p = state.period;
+  if (p.mode === 'custom' && p.from && p.to) return d >= p.from && d <= p.to;
+  if (p.year != null && d.getFullYear() !== p.year) return false;
+  if (p.mode === 'month' && p.month != null && d.getMonth() !== p.month) return false;
+  return true;
+}
+function dailyFiltered() { return DAILY.filter(r => inPeriod(r.d)); }
+function effCMW(c, m, w) { const den = c + m + w; return den > 0 ? c / den : 0; }
+function effCM(c, m) { const den = c + m; return den > 0 ? c / den : 0; }
+
+// Помесячные / посуточные корзины из DAILY по текущему периоду
+function b1Buckets() {
+  const rows = dailyFiltered();
+  if (state.drill.b1level === 'days' && state.drill.b1ym) {
+    const [yy, mm] = state.drill.b1ym.split('-').map(Number);
+    const inMonth = rows.filter(r => r.d.getFullYear() === yy && r.d.getMonth() === mm - 1);
+    const dim = new Date(yy, mm, 0).getDate();
+    const buckets = [];
+    for (let day = 1; day <= dim; day++) {
+      const r = inMonth.find(x => x.d.getDate() === day);
+      const all = r ? r.all : 0, comp = r ? r.completed : 0, miss = r ? r.missed : 0;
+      buckets.push({ key: String(day), label: String(day), completed: comp, missed: miss, other: Math.max(0, all - comp - miss), all });
+    }
+    return buckets;
+  }
+  // помесячно
+  const map = new Map();
+  rows.forEach(r => {
+    const ym = r.d.getFullYear() + '-' + String(r.d.getMonth() + 1).padStart(2, '0');
+    if (!map.has(ym)) map.set(ym, { completed: 0, missed: 0, all: 0 });
+    const b = map.get(ym); b.completed += r.completed; b.missed += r.missed; b.all += r.all;
+  });
+  const keys = [...map.keys()].sort();
+  const multiYear = new Set(keys.map(k => k.split('-')[0])).size > 1;
+  return keys.map(ym => {
+    const [yy, mm] = ym.split('-').map(Number);
+    const b = map.get(ym);
+    return { key: ym, label: MONTH_NAMES[mm - 1] + (multiYear ? ' ' + String(yy).slice(2) : ''), completed: b.completed, missed: b.missed, other: Math.max(0, b.all - b.completed - b.missed), all: b.all };
+  });
+}
+function b1Kpi() {
+  const rows = dailyFiltered();
+  const all = rows.reduce((a, r) => a + r.all, 0);
+  const completed = rows.reduce((a, r) => a + r.completed, 0);
+  const missed = rows.reduce((a, r) => a + r.missed, 0);
+  return { all, completed, missed, other: Math.max(0, all - completed - missed), eff: effCM(completed, missed) };
+}
+function b1Sparks() {
+  // помесячные ряды по всему периоду (для спарклайнов)
+  const b = b1BucketsMonthlyRaw();
+  return { all: b.map(x => x.all), completed: b.map(x => x.completed), missed: b.map(x => x.missed), eff: b.map(x => Math.round(effCM(x.completed, x.missed) * 100)) };
+}
+function b1BucketsMonthlyRaw() {
+  const rows = dailyFiltered();
+  const map = new Map();
+  rows.forEach(r => { const ym = r.d.getFullYear() + '-' + String(r.d.getMonth() + 1).padStart(2, '0'); if (!map.has(ym)) map.set(ym, { completed: 0, missed: 0, all: 0 }); const b = map.get(ym); b.completed += r.completed; b.missed += r.missed; b.all += r.all; });
+  return [...map.keys()].sort().map(k => map.get(k));
+}
+
+// окно: структура по объектам (с учётом фильтра объектов — dim)
+function structureByObject() {
+  const bo = WINDOW.byObject || {};
+  return OBJECTS.map(o => {
+    const v = bo[o.id] || { c: 0, m: 0, w: 0 };
+    const cnt = v.c + v.m + v.w;
+    return { id: o.id, name: o.name, count: cnt, eff: effCMW(v.c, v.m, v.w), c: v.c, m: v.m, w: v.w, isDim: !state.objects.has(o.id) };
+  }).filter(r => r.count > 0).sort((a, b) => b.count - a.count);
+}
+function topZonesOfObject(objectID, limit = 12) {
+  const bz = WINDOW.byZone || {};
+  return ZONES.filter(z => z.objectID === objectID).map(z => {
+    const v = bz[z.id] || { c: 0, m: 0, w: 0 };
+    return { id: z.id, name: z.name, count: v.c + v.m + v.w, eff: effCMW(v.c, v.m, v.w) };
+  }).filter(r => r.count > 0).sort((a, b) => b.count - a.count).slice(0, limit);
+}
+// категории окна
+function categoryCompare() {
+  const c = CATEGORIES || {};
+  const mk = (o) => ({ all: (o && o.all) || 0, completed: (o && o.completed) || 0, missed: (o && o.missed) || 0 });
+  return { feedback: mk(c.feedback), planned: mk(c.planned), total: mk(c.total) };
+}
+function feedbackFunnel() {
+  // из feedbackTasks окна: статусы обращений
+  const ft = WINDOW.feedbackTasks || [];
+  const by = { NEW: 0, WAITING: 0, COMPLETING: 0, COMPLETED: 0, MISSED: 0 };
+  ft.forEach(t => { if (by[t.s] != null) by[t.s]++; });
+  const total = ft.length;
+  const started = by.COMPLETING + by.COMPLETED;
+  return { total, waiting: by.NEW + by.WAITING, started, completed: by.COMPLETED, missed: by.MISSED, by };
+}
+// план-факт по месяцам года
+function planFactByMonth(year) {
+  const fact = new Array(12).fill(0), missed = new Array(12).fill(0);
+  DAILY.forEach(r => { if (r.d.getFullYear() === year) { fact[r.d.getMonth()] += r.completed; missed[r.d.getMonth()] += r.missed; } });
+  // план — демонстрационный: сглаженный факт с целевой надбавкой
+  const plan = fact.map((f, i) => f > 0 ? Math.round(f * 1.08 + 20) : 0);
+  return { plan, fact, missed };
+}
+// персонал окна
+function staffGroups(metric) {
+  const build = (entities, src) => {
+    const rows = entities.map(e => {
+      const v = (src[e.id]) || { c: 0, m: 0, w: 0 };
+      return { id: e.id, name: e.name, completed: v.c, total: v.c + v.m + v.w, eff: effCMW(v.c, v.m, v.w), c: v.c, m: v.m, w: v.w };
+    }).filter(r => r.total > 0);
+    const vals = rows.map(r => metric === 'completed' ? r.completed : r.eff);
+    const avg = vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : 0;
+    rows.sort((a, b) => metric === 'completed' ? b.completed - a.completed : b.eff - a.eff);
+    return { avg, rows };
+  };
+  return {
+    team: build(TEAMS, WINDOW.byTeam || {}),
+    worker: build(WORKERS, WINDOW.byEmployee || {}),
+    admin: build(ADMINS, WINDOW.byEmployee || {}),
+  };
+}
+
+/* ==============================================================
+   SVG-ДВИЖОК (без внешних библиотек)
+   ============================================================== */
+const NS = 'http://www.w3.org/2000/svg';
+function svg(tag, attrs, children) {
+  const el = document.createElementNS(NS, tag);
+  if (attrs) for (const k in attrs) el.setAttribute(k, attrs[k]);
+  if (children) (Array.isArray(children) ? children : [children]).forEach(c => c && el.appendChild(c));
+  return el;
+}
+function svgText(x, y, str, cls, extra) { const t = svg('text', Object.assign({ x, y, class: cls || 'tick-lbl' }, extra || {})); t.textContent = str; return t; }
+function niceMax(v) { if (v <= 0) return 10; const pow = Math.pow(10, Math.floor(Math.log10(v))); const n = v / pow; const step = n <= 1 ? 1 : n <= 2 ? 2 : n <= 5 ? 5 : 10; return step * pow; }
+const TT = document.getElementById('tooltip');
+function showTip(html, evt) { TT.innerHTML = html; TT.style.opacity = '1'; moveTip(evt); }
+function moveTip(evt) { const pad = 14; let x = evt.clientX + pad, y = evt.clientY + pad; const r = TT.getBoundingClientRect(); if (x + r.width > window.innerWidth) x = evt.clientX - r.width - pad; if (y + r.height > window.innerHeight) y = evt.clientY - r.height - pad; TT.style.left = x + 'px'; TT.style.top = y + 'px'; }
+function hideTip() { TT.style.opacity = '0'; }
+function fmt(n) { return new Intl.NumberFormat('ru-RU').format(Math.round(n)); }
+function pct(x, d = 0) { return (x * 100).toFixed(d) + '%'; }
+function pctSigned(x, d = 0) { return (x >= 0 ? '▲ ' : '▼ ') + Math.abs(x * 100).toFixed(d) + '%'; }
+function deltaClass(x) { return x > 0.005 ? 'ok' : x < -0.005 ? 'bad' : 'neutral'; }
+function effColor(eff) {
+  if (eff >= 0.85) return { bg: '#23A75B', fg: '#FFFFFF' };
+  if (eff >= 0.75) return { bg: '#7BC47F', fg: '#0F2E17' };
+  if (eff >= 0.60) return { bg: '#F5C84B', fg: '#4A3306' };
+  if (eff >= 0.45) return { bg: '#F0A05A', fg: '#4A1B0C' };
+  return { bg: '#E86A6A', fg: '#FFFFFF' };
+}
+
+// Столбиковая (стек) диаграмма
+function renderStackedBars(host, buckets, series, opts) {
+  opts = opts || {};
+  const W = Math.max(320, host.clientWidth || 560);
+  const H = parseInt(host.dataset.h || '210', 10);
+  const L = 40, R = 8, T = 10, B = 26;
+  const pw = W - L - R, ph = H - T - B;
+  const maxV = niceMax(Math.max(1, ...buckets.map(b => series.reduce((a, s) => a + (b[s.key] || 0), 0))));
+  const yOf = v => T + ph - (v / maxV) * ph;
+  const n = buckets.length || 1;
+  const step = pw / n, bw = Math.min(46, step * 0.7);
+  const s = svg('svg', { class: 'chart-svg', viewBox: `0 0 ${W} ${H}`, height: H });
+  // сетка + оси Y
+  for (let i = 0; i <= 2; i++) { const v = maxV * i / 2; const y = yOf(v); s.appendChild(svg('line', { class: i === 0 ? 'axis-line' : 'grid-line', x1: L, y1: y, x2: W - R, y2: y })); s.appendChild(svgText(L - 5, y + 3, fmt(v), 'tick-lbl', { 'text-anchor': 'end' })); }
+  const skip = Math.ceil(n / (opts.maxLabels || 16));
+  buckets.forEach((b, i) => {
+    const cx = L + step * i + (step - bw) / 2;
+    let acc = 0;
+    series.forEach(se => {
+      const v = b[se.key] || 0; if (v <= 0) return;
+      const h = (v / maxV) * ph; const y = yOf(acc + v);
+      s.appendChild(svg('rect', { class: 'svg-bar', x: cx, y, width: bw, height: Math.max(0.5, h), rx: 2, fill: se.color }));
+      acc += v;
+    });
+    // hit-area + hover/click
+    const hit = svg('rect', { class: 'bar-hit', x: L + step * i, y: T, width: step, height: ph });
+    hit.addEventListener('mousemove', (e) => {
+      const rows = series.map(se => `<div class="tt-row"><span class="k"><span class="tt-sw" style="background:${se.color}"></span>${se.label}</span><span>${fmt(b[se.key] || 0)}</span></div>`).join('');
+      showTip(`<div class="tt-title">${opts.tipTitle ? opts.tipTitle(b) : b.label}</div>${rows}<div class="tt-row" style="margin-top:3px;border-top:1px solid rgba(255,255,255,.2);padding-top:3px"><span class="k">Всего</span><span>${fmt(b.all != null ? b.all : series.reduce((a, se) => a + (b[se.key] || 0), 0))}</span></div>`, e);
+    });
+    hit.addEventListener('mouseleave', hideTip);
+    if (opts.onClick) { hit.style.cursor = 'pointer'; hit.addEventListener('click', () => { hideTip(); opts.onClick(b, i); }); }
+    s.appendChild(hit);
+    if (i % skip === 0) s.appendChild(svgText(L + step * i + step / 2, H - 8, b.label, 'tick-lbl', { 'text-anchor': 'middle' }));
+  });
+  host.innerHTML = ''; host.appendChild(s);
+}
+
+// Линейная диаграмма (несколько рядов)
+function renderLines(host, labels, lines, opts) {
+  opts = opts || {};
+  const W = Math.max(320, host.clientWidth || 560);
+  const H = parseInt(host.dataset.h || '200', 10);
+  const L = 40, R = 10, T = 10, B = 26;
+  const pw = W - L - R, ph = H - T - B;
+  const maxV = niceMax(Math.max(1, ...lines.flatMap(l => l.data)));
+  const n = labels.length || 1;
+  const xOf = i => L + (n === 1 ? pw / 2 : pw * i / (n - 1));
+  const yOf = v => T + ph - (v / maxV) * ph;
+  const s = svg('svg', { class: 'chart-svg', viewBox: `0 0 ${W} ${H}`, height: H });
+  for (let i = 0; i <= 2; i++) { const v = maxV * i / 2; const y = yOf(v); s.appendChild(svg('line', { class: i === 0 ? 'axis-line' : 'grid-line', x1: L, y1: y, x2: W - R, y2: y })); s.appendChild(svgText(L - 5, y + 3, fmt(v), 'tick-lbl', { 'text-anchor': 'end' })); }
+  lines.forEach(l => {
+    const pts = l.data.map((v, i) => `${xOf(i)},${yOf(v)}`).join(' ');
+    s.appendChild(svg('polyline', { points: pts, fill: 'none', stroke: l.color, 'stroke-width': l.width || 2, 'stroke-dasharray': l.dash || '', 'stroke-linejoin': 'round', 'stroke-linecap': 'round' }));
+    if (l.points !== false) l.data.forEach((v, i) => s.appendChild(svg('circle', { cx: xOf(i), cy: yOf(v), r: l.r || 2.5, fill: l.color })));
+  });
+  labels.forEach((lab, i) => { if (i % (opts.skip || 1) === 0) s.appendChild(svgText(xOf(i), H - 8, lab, 'tick-lbl', { 'text-anchor': 'middle' })); });
+  // hover-области
+  labels.forEach((lab, i) => {
+    const hit = svg('rect', { class: 'bar-hit', x: xOf(i) - pw / (2 * n), y: T, width: pw / n, height: ph });
+    hit.addEventListener('mousemove', (e) => { const rows = lines.map(l => `<div class="tt-row"><span class="k"><span class="tt-sw" style="background:${l.color}"></span>${l.label}</span><span>${fmt(l.data[i])}</span></div>`).join(''); showTip(`<div class="tt-title">${lab}</div>${rows}`, e); });
+    hit.addEventListener('mouseleave', hideTip);
+    s.appendChild(hit);
+  });
+  host.innerHTML = ''; host.appendChild(s);
+}
+
+// Вертикальные бары (персонал) с линией среднего
+function renderVBars(host, items, opts) {
+  opts = opts || {};
+  const minBar = 40;
+  const W = Math.max(host.clientWidth || 560, items.length * minBar + 60);
+  const H = parseInt(host.dataset.h || '260', 10);
+  const L = 44, R = 10, T = 12, B = 64;
+  const pw = W - L - R, ph = H - T - B;
+  const maxV = niceMax(Math.max(1, ...items.map(it => it.value), opts.avg || 0));
+  const yOf = v => T + ph - (v / maxV) * ph;
+  const n = items.length || 1;
+  const step = pw / n, bw = Math.min(46, step * 0.66);
+  const s = svg('svg', { class: 'chart-svg', viewBox: `0 0 ${W} ${H}`, width: W, height: H });
+  for (let i = 0; i <= 2; i++) { const v = maxV * i / 2; const y = yOf(v); s.appendChild(svg('line', { class: i === 0 ? 'axis-line' : 'grid-line', x1: L, y1: y, x2: W - R, y2: y })); s.appendChild(svgText(L - 5, y + 3, opts.fmtY ? opts.fmtY(v) : fmt(v), 'tick-lbl', { 'text-anchor': 'end' })); }
+  items.forEach((it, i) => {
+    const cx = L + step * i + (step - bw) / 2;
+    const h = (it.value / maxV) * ph; const y = yOf(it.value);
+    const rect = svg('rect', { class: 'svg-bar', x: cx, y, width: bw, height: Math.max(0.5, h), rx: 3, fill: it.color });
+    rect.addEventListener('mousemove', (e) => showTip(`<div class="tt-title">${it.full || it.label}</div>${(it.tip || []).map(r => `<div class="tt-row"><span class="k">${r[0]}</span><span>${r[1]}</span></div>`).join('')}`, e));
+    rect.addEventListener('mouseleave', hideTip);
+    s.appendChild(rect);
+    // подпись под баром (повёрнутая)
+    const lx = L + step * i + step / 2;
+    s.appendChild(svgText(lx, H - B + 14, it.label, 'tick-lbl', { 'text-anchor': 'end', transform: `rotate(-38 ${lx} ${H - B + 14})` }));
+  });
+  if (opts.avg != null && opts.avg > 0) {
+    const y = yOf(opts.avg);
+    s.appendChild(svg('line', { x1: L, y1: y, x2: W - R, y2: y, stroke: '#E62632', 'stroke-width': 1.5, 'stroke-dasharray': '6 4' }));
+    s.appendChild(svgText(W - R - 3, y - 5, 'среднее ' + (opts.avgLabel || fmt(opts.avg)), '', { 'text-anchor': 'end', fill: '#E62632', 'font-size': 11, 'font-weight': 600 }));
+  }
+  host.innerHTML = ''; host.appendChild(s);
+}
+
+// Спарклайн
+function renderSpark(host, data, color) {
+  const W = Math.max(40, host.clientWidth || 52), H = parseInt(host.dataset.h || '30', 10);
+  const max = Math.max(1, ...data), min = Math.min(0, ...data);
+  const n = data.length || 1;
+  const xOf = i => (n === 1 ? W / 2 : W * i / (n - 1));
+  const yOf = v => H - 2 - ((v - min) / (max - min || 1)) * (H - 4);
+  const s = svg('svg', { class: 'chart-svg', viewBox: `0 0 ${W} ${H}`, height: H, preserveAspectRatio: 'none' });
+  const pts = data.map((v, i) => `${xOf(i)},${yOf(v)}`).join(' ');
+  s.appendChild(svg('polyline', { points: pts, fill: 'none', stroke: color, 'stroke-width': 1.6, 'stroke-linejoin': 'round' }));
+  const area = svg('polygon', { points: `${xOf(0)},${H} ${pts} ${xOf(n - 1)},${H}`, fill: color, opacity: 0.13 });
+  s.insertBefore(area, s.firstChild);
+  host.innerHTML = ''; host.appendChild(s);
+}
+
+/* ==============================================================
+   SQUARIFIED TREEMAP
+   ============================================================== */
+function squarify(items, W, H) {
+  const total = items.reduce((a, b) => a + b.value, 0);
+  if (total === 0) return [];
+  const scale = (W * H) / total;
+  const scaled = items.map(it => ({ ...it, area: it.value * scale }));
+  const rects = [];
+  const rec = (list, x, y, w, h) => {
+    if (list.length === 0) return;
+    if (list.length === 1) { rects.push({ ...list[0], x, y, w, h }); return; }
+    const short = Math.min(w, h);
+    let bestRatio = Infinity, bestIdx = 0, sum = 0;
+    for (let i = 0; i < list.length; i++) {
+      sum += list[i].area;
+      const maxA = list[0].area, minA = list[i].area;
+      const worst = Math.max((short * short * maxA) / (sum * sum), (sum * sum) / (short * short * minA));
+      if (worst < bestRatio) { bestRatio = worst; bestIdx = i; } else { sum -= list[i].area; break; }
+    }
+    const strip = list.slice(0, bestIdx + 1), rest = list.slice(bestIdx + 1);
+    const stripArea = strip.reduce((a, b) => a + b.area, 0), stripLen = stripArea / short;
+    if (w <= h) { let cx = x; strip.forEach(el => { const eh = stripLen, ew = el.area / eh; rects.push({ ...el, x: cx, y, w: ew, h: eh }); cx += ew; }); rec(rest, x, y + stripLen, w, h - stripLen); }
+    else { let cy = y; strip.forEach(el => { const ew = stripLen, eh = el.area / ew; rects.push({ ...el, x, y: cy, w: ew, h: eh }); cy += eh; }); rec(rest, x + stripLen, y, w - stripLen, h); }
+  };
+  rec(scaled.sort((a, b) => b.area - a.area), 0, 0, W, H);
+  return rects;
+}
+
+/* ==============================================================
+   РЕНДЕР БЛОКОВ
+   ============================================================== */
+function renderB1() {
+  const isDays = state.drill.b1level === 'days';
+  const cr = document.getElementById('b1-crumbs');
+  if (isDays && state.drill.b1ym) {
+    cr.classList.add('on');
+    const [yy, mm] = state.drill.b1ym.split('-').map(Number);
+    document.getElementById('b1-cur').textContent = MONTH_NAMES[mm - 1] + ' ' + yy + ' · по дням';
+    document.getElementById('b1-hint').textContent = 'клик по столбику — вернёт к месяцам';
+  } else { cr.classList.remove('on'); document.getElementById('b1-hint').textContent = 'клик по месяцу — детализация по дням'; }
+
+  const buckets = b1Buckets();
+  const series = [
+    { key: 'completed', label: 'Выполнено', color: '#002882' },
+    { key: 'other', label: 'В работе / прочее', color: '#00AAFF' },
+    { key: 'missed', label: 'Пропущено', color: '#E62632' },
+  ];
+  renderStackedBars(document.getElementById('b1-chart'), buckets, series, {
+    onClick: (b) => {
+      if (!isDays && /^\d{4}-\d{2}$/.test(b.key)) { state.drill.b1level = 'days'; state.drill.b1ym = b.key; renderB1(); }
+      else if (isDays) { state.drill.b1level = 'months'; state.drill.b1ym = null; renderB1(); }
+    },
+    tipTitle: (b) => b.label,
+  });
+
+  // KPI + спарклайны
+  const kpi = b1Kpi(), sp = b1Sparks();
+  const tiles = [
+    { lbl: 'Задач всего', val: fmt(kpi.all), delta: '', cls: 'neutral', spark: sp.all, col: '#002882' },
+    { lbl: 'Выполнено', val: fmt(kpi.completed), delta: kpi.all > 0 ? pct(kpi.completed / kpi.all) + ' от всех' : '—', cls: 'ok', spark: sp.completed, col: '#00AAFF' },
+    { lbl: 'Пропущено', val: fmt(kpi.missed), delta: kpi.all > 0 ? pct(kpi.missed / kpi.all, 1) + ' от всех' : '—', cls: 'bad', spark: sp.missed, col: '#E62632' },
+    { lbl: 'Эффективность', val: pct(kpi.eff, 1), delta: 'вып. / (вып.+проп.)', cls: 'neutral', spark: sp.eff, col: '#23A75B' },
+  ];
+  const wrap = document.getElementById('b1-kpi'); wrap.innerHTML = '';
+  tiles.forEach((t, i) => {
+    const el = document.createElement('div'); el.className = 'kpi-tile';
+    el.innerHTML = `<div><p class="lbl">${t.lbl}</p><p class="val">${t.val}</p><p class="delta ${t.cls}">${t.delta}</p></div><div class="spark" id="sp-b1-${i}" data-h="30"></div>`;
+    wrap.appendChild(el);
+    renderSpark(el.querySelector('.spark'), t.spark.length ? t.spark : [0], t.col);
+  });
+
+  // категории окна
+  const cc = categoryCompare();
+  const maxAll = Math.max(1, cc.feedback.all, cc.planned.all);
+  const catHost = document.getElementById('b1-cat');
+  const catRow = (name, o, color) => {
+    const eff = effCM(o.completed, o.missed);
+    return `<div class="cat-item"><div class="ch"><span>${name}</span><span>${fmt(o.all)} задач · эфф. ${pct(eff)}</span></div>
+      <div class="cat-bar" style="background:${color};width:${Math.max(12, o.all / maxAll * 100)}%">вып. ${fmt(o.completed)}</div></div>`;
+  };
+  catHost.innerHTML = catRow('Обращения (feedback)', cc.feedback, '#6A4C9C') + catRow('Плановые', cc.planned, '#0E9488');
+
+  // воронка обращений
+  const f = feedbackFunnel();
+  const steps = [
+    { name: 'Обращений', val: f.total, w: 100, bg: '#6A4C9C', conv: null },
+    { name: 'Взято в работу', val: f.started + 0, w: f.total ? (f.total - f.waiting) / f.total * 100 : 0, bg: '#00AAFF', conv: f.total ? (f.total - f.waiting) / f.total : null },
+    { name: 'Начато', val: f.started, w: f.total ? f.started / f.total * 100 : 0, bg: '#33539B', conv: (f.total - f.waiting) ? f.started / (f.total - f.waiting) : null },
+    { name: 'Завершено', val: f.completed, w: f.total ? f.completed / f.total * 100 : 0, bg: '#002882', conv: f.started ? f.completed / f.started : null },
+  ];
+  document.getElementById('b1-funnel').innerHTML = steps.map(s => `<div class="funnel-item"><div class="fh"><span>${s.name}</span><span>${fmt(s.val)}${s.conv != null ? ` <span class="conv">${pct(s.conv)}</span>` : ''}</span></div><div class="funnel-bar" style="background:${s.bg};color:#fff;width:${Math.max(8, s.w)}%">${Math.round(s.w)}%</div></div>`).join('');
+  const conv = f.total ? f.completed / f.total : 0;
+  document.getElementById('b1-note').textContent = `Итоговая конверсия обращений в завершённые: ${pct(conv, 1)}. Пропущено обращений: ${fmt(f.missed)}.`;
+}
+
+function renderB2a() {
+  const rows = structureByObject();
+  const cont = document.getElementById('b2a-treemap');
+  Array.from(cont.querySelectorAll('.tm-cell')).forEach(el => el.remove());
+  const zoomID = state.drill.b2aObj;
+  const rect = cont.getBoundingClientRect();
+  const W = (zoomID ? rect.width * 0.56 : rect.width) || 500, H = rect.height || 340;
+  if (!rows.length) { cont.querySelector('.zones-panel').classList.remove('on'); const e = document.createElement('div'); e.className = 'note parked'; e.style.margin = '8px'; e.textContent = 'Нет данных по объектам в окне 30 дней.'; e.classList.add('tm-cell'); return; }
+  const cells = squarify(rows.map(r => ({ ...r, value: r.count })), W, H);
+  cells.forEach(c => {
+    const col = effColor(c.eff);
+    const el = document.createElement('div');
+    el.className = 'tm-cell' + (c.isDim ? ' dim' : '') + (c.w * c.h < 3200 ? ' tiny' : '');
+    el.style.cssText = `background:${col.bg};color:${col.fg};left:${c.x}px;top:${c.y}px;width:${c.w - 3}px;height:${c.h - 3}px;`;
+    el.innerHTML = `<div><div class="tm-name">${c.name}</div><div class="tm-val">${fmt(c.count)} задач</div></div><div class="tm-eff">${pct(c.eff)}</div>`;
+    el.onclick = () => { state.drill.b2aObj = c.id; renderB2a(); };
+    el.addEventListener('mousemove', (e) => showTip(`<div class="tt-title">${c.name}</div><div class="tt-row"><span class="k">Задач</span><span>${fmt(c.count)}</span></div><div class="tt-row"><span class="k">Выполнено</span><span>${fmt(c.c)}</span></div><div class="tt-row"><span class="k">Пропущено</span><span>${fmt(c.m)}</span></div><div class="tt-row"><span class="k">Эффективность</span><span>${pct(c.eff)}</span></div>`, e));
+    el.addEventListener('mouseleave', hideTip);
+    cont.appendChild(el);
+  });
+  const panel = document.getElementById('b2a-zones');
+  if (zoomID) {
+    panel.classList.add('on');
+    document.getElementById('b2a-zones-title').textContent = 'Топ зон · ' + (objById[zoomID] ? objById[zoomID].name : '');
+    const zones = topZonesOfObject(zoomID);
+    const maxC = Math.max(1, ...zones.map(z => z.count));
+    document.getElementById('b2a-zones-list').innerHTML = zones.length ? zones.map(z => { const col = effColor(z.eff); return `<div class="zone-row"><div class="zone-bar-wrap"><span class="zone-name">${z.name}</span><div class="zone-bar" style="width:${z.count / maxC * 100}%;background:${col.bg}"></div></div><span class="mini-num">${fmt(z.count)}</span></div>`; }).join('') : '<p class="note">Нет зон с задачами в окне.</p>';
+  } else panel.classList.remove('on');
+}
+
+function renderB2b() {
+  const cont = document.getElementById('b2b-heat');
+  const title = document.getElementById('b2b-title');
+  if (!WORK_TYPES.length) {
+    title.innerHTML = 'Виды работ';
+    cont.innerHTML = '<p class="note parked"><b>Нет данных по видам работ.</b> Каталог <code>workType</code> пуст, у задач нет <code>workTypeID</code> — нужны права <code>workType.read</code> и наполнение справочника (ТЗ §5). При появлении данных здесь будет heatmap «вид работ × офис» (цвет = эффективность, насыщенность = объём) с drill-down по офисам.</p>';
+    return;
+  }
+  // (при наличии данных о видах работ — таблица-heatmap; в текущем тарифе не активно)
+  title.innerHTML = 'Виды работ · heatmap по офисам';
+  cont.innerHTML = '<p class="note">Отрисовка heatmap активируется автоматически при наличии данных workType.</p>';
+}
+
+function renderB3() {
+  const year = state.period.year || CUR_YEAR;
+  document.getElementById('b3-year').textContent = year;
+  const pf = planFactByMonth(year);
+  renderLines(document.getElementById('b3-chart'), MONTH_NAMES, [
+    { label: 'План (демо)', data: pf.plan, color: '#858585', width: 2, dash: '5 4', points: false },
+    { label: 'Факт', data: pf.fact, color: '#002882', width: 2.5 },
+    { label: 'Пропущено', data: pf.missed, color: '#E62632', width: 1.5, dash: '2 2', r: 2 },
+  ]);
+  const totFact = pf.fact.reduce((a, b) => a + b, 0), totPlan = pf.plan.reduce((a, b) => a + b, 0), totMiss = pf.missed.reduce((a, b) => a + b, 0);
+  const dev = totPlan ? (totFact - totPlan) / totPlan : 0;
+  const diffs = pf.fact.map((f, i) => ({ m: i, v: f })).filter(x => x.v > 0);
+  const best = diffs.length ? diffs.reduce((a, b) => b.v > a.v ? b : a) : { m: 0, v: 0 };
+  const worst = diffs.length ? diffs.reduce((a, b) => b.v < a.v ? b : a) : { m: 0, v: 0 };
+  const tiles = [
+    { lbl: 'Факт за год', val: fmt(totFact), sub: 'выполнено задач', cls: 'ok' },
+    { lbl: 'План (демо)', val: fmt(totPlan), sub: `факт vs план ${pctSigned(dev, 1)}`, cls: deltaClass(dev) },
+    { lbl: 'Пропущено', val: fmt(totMiss), sub: 'за год', cls: 'bad' },
+    { lbl: 'Эффективность', val: pct(effCM(totFact, totMiss), 1), sub: 'вып. / (вып.+проп.)', cls: 'neutral' },
+    { lbl: 'Лучший месяц', val: MONTH_NAMES[best.m], sub: fmt(best.v) + ' вып.', cls: 'ok' },
+    { lbl: 'Слабый месяц', val: MONTH_NAMES[worst.m], sub: fmt(worst.v) + ' вып.', cls: 'neutral' },
+  ];
+  const wrap = document.getElementById('b3-kpi'); wrap.innerHTML = '';
+  tiles.forEach(t => { const el = document.createElement('div'); el.className = 'kpi-tile solo'; el.innerHTML = `<div><p class="lbl">${t.lbl}</p><p class="val">${t.val}</p><p class="delta ${t.cls}">${t.sub}</p></div>`; wrap.appendChild(el); });
+}
+
+const CAT_META = { team: { lbl: 'Команды', unit: 'команду', one: 'Команда' }, worker: { lbl: 'Работники', unit: 'работника', one: 'Работник' }, admin: { lbl: 'Администраторы', unit: 'администратора', one: 'Администратор' } };
+function renderB4() {
+  const metric = state.drill.b4metric, isEff = metric === 'efficiency';
+  const groups = staffGroups(metric);
+  const catBox = document.getElementById('b4-cat');
+  catBox.innerHTML = ['team', 'worker', 'admin'].map(k => `<button data-cat="${k}" class="${state.drill.b4cat === k ? 'active' : ''}">${CAT_META[k].lbl}<span class="cnt">${groups[k].rows.length}</span></button>`).join('');
+  catBox.querySelectorAll('button').forEach(b => b.onclick = () => { state.drill.b4cat = b.dataset.cat; renderB4(); });
+
+  const g = groups[state.drill.b4cat];
+  const anon = state.role !== 'admin';
+  const dimSet = state.assignees;
+  // применяем фильтр исполнителей (dim → исключаем из графика)
+  let rows = g.rows.filter(r => dimSet.size === 0 || dimSet.has(r.id));
+  if (dimSet.size === 0) rows = g.rows;
+  const avgNote = document.getElementById('b4-avg-note');
+  const chartHost = document.getElementById('b4-chart');
+  if (!rows.length) {
+    chartHost.innerHTML = '';
+    avgNote.innerHTML = state.drill.b4cat === 'admin'
+      ? 'Список администраторов не задан (<b>ADMIN_USER_IDS</b> вверху файла) или нет их задач за окно — ТЗ, задача C.'
+      : 'Нет данных для этой группы в окне 30 дней.';
+  } else {
+    const avgVal = isEff ? g.avg : g.avg;
+    const items = rows.map((r, i) => ({
+      label: anon ? `${CAT_META[state.drill.b4cat].one} ${i + 1}` : (r.name.length > 14 ? r.name.slice(0, 13) + '…' : r.name),
+      full: anon ? `${CAT_META[state.drill.b4cat].one} ${i + 1}` : r.name,
+      value: isEff ? r.eff * 100 : r.completed,
+      color: (isEff ? r.eff : r.completed) >= avgVal * (isEff ? 100 : 1) / (isEff ? 100 : 1) ? '#002882' : '#00AAFF',
+      tip: [['Выполнено', fmt(r.completed)], ['Всего', fmt(r.total)], ['Пропущено', fmt(r.m)], ['Эффективность', pct(r.eff)]],
+    }));
+    // цвет: выше/ниже среднего
+    items.forEach((it, i) => { const v = isEff ? rows[i].eff : rows[i].completed; it.color = v >= (isEff ? g.avg : g.avg) ? '#002882' : '#00AAFF'; });
+    renderVBars(chartHost, items, {
+      avg: isEff ? g.avg * 100 : g.avg,
+      avgLabel: isEff ? (g.avg * 100).toFixed(0) + '%' : fmt(g.avg),
+      fmtY: (v) => isEff ? v.toFixed(0) + '%' : fmt(v),
+    });
+    avgNote.innerHTML = `Среднее по группе «${CAT_META[state.drill.b4cat].lbl.toLowerCase()}»: <b>${isEff ? (g.avg * 100).toFixed(1) + '%' : fmt(g.avg)}</b> ${isEff ? 'эффективность' : 'вып. задач на ' + CAT_META[state.drill.b4cat].unit}`;
+  }
+
+  const btn = document.getElementById('b4-detail-btn');
+  btn.classList.toggle('on', state.drill.b4detail);
+  btn.textContent = state.drill.b4detail ? 'Детализация ▴' : 'Детализация ▾';
+  const det = document.getElementById('b4-detail');
+  if (!state.drill.b4detail) { det.style.display = 'none'; return; }
+  det.style.display = 'grid';
+  det.innerHTML = ['team', 'worker', 'admin'].map(k => {
+    const rws = groups[k].rows;
+    const top3 = rws.slice(0, 3), bot3 = rws.slice(-3).reverse().filter(r => !top3.includes(r));
+    const val = r => isEff ? pct(r.eff) : fmt(r.completed);
+    const nm = (r, i, pre) => anon ? `${CAT_META[k].one} ${pre}${i + 1}` : r.name;
+    if (!rws.length) return `<div class="detail-col"><h5>${CAT_META[k].lbl}</h5><p class="note">${k === 'admin' ? 'Список не задан (ADMIN_USER_IDS).' : 'Нет данных.'}</p></div>`;
+    return `<div class="detail-col"><h5>${CAT_META[k].lbl}</h5><table class="staff-table">
+      <tr><th>Топ-3</th><th style="text-align:right">${isEff ? 'эфф.' : 'вып.'}</th></tr>
+      ${top3.map((r, i) => `<tr class="leader"><td class="${anon ? 'anon' : ''}">${nm(r, i, '')}</td><td style="text-align:right">${val(r)}</td></tr>`).join('')}
+      <tr><th>Антитоп-3</th><th></th></tr>
+      ${bot3.map((r, i) => `<tr class="loser"><td class="${anon ? 'anon' : ''}">${nm(r, i, 'x')}</td><td style="text-align:right">${val(r)}</td></tr>`).join('')}
+    </table></div>`;
+  }).join('');
+}
+
+function renderAll() { renderB1(); renderB2a(); renderB2b(); renderB3(); renderB4(); }
+
+/* ==============================================================
+   ФИЛЬТРЫ (UI)
+   ============================================================== */
+function fltLabel(set, total) { if (set.size === total || set.size === 0) return 'все'; if (set.size === 1) return '1 выбран'; return set.size + ' выбрано'; }
+function setupPeriodMenu() {
+  const menu = document.getElementById('menu-period');
+  const y0 = state.period.year || CUR_YEAR;
+  const minISO = DATA_MIN ? DATA_MIN.toISOString().slice(0, 10) : (y0 + '-01-01');
+  const maxISO = DATA_MAX ? DATA_MAX.toISOString().slice(0, 10) : (y0 + '-12-31');
+  menu.innerHTML = `
+    <div class="grp">Год</div>
+    <label><input type="radio" name="period" value="all" ${state.period.mode === 'all' && state.period.year == null ? 'checked' : ''}>Весь период</label>
+    ${YEARS.map(y => `<label><input type="radio" name="period" value="y${y}" ${state.period.mode !== 'custom' && state.period.year === y && state.period.mode !== 'month' ? 'checked' : ''}>Весь ${y}</label>`).join('')}
+    <div class="divider"></div>
+    <div class="grp">Быстрый выбор</div>
+    <div class="presets"><button class="preset" data-preset="last-month">Последний месяц</button><button class="preset" data-preset="last-quarter">Последний квартал</button></div>
+    <div class="grp">Квартал / полугодие (${y0})</div>
+    <div class="presets"><button class="preset" data-preset="q1">Q1</button><button class="preset" data-preset="q2">Q2</button><button class="preset" data-preset="q3">Q3</button><button class="preset" data-preset="q4">Q4</button><button class="preset" data-preset="h1">H1</button><button class="preset" data-preset="h2">H2</button></div>
+    <div class="divider"></div>
+    <div class="grp">Месяц ${y0} (→ к дням)</div>
+    ${MONTH_NAMES.map((m, i) => `<label><input type="radio" name="period" value="m${i}">${m} ${y0}</label>`).join('')}
+    <div class="divider"></div>
+    <div class="grp">Календарь — произвольный период</div>
+    <div class="custom">с <input type="date" id="dt-from" min="${minISO}" max="${maxISO}" value="${minISO}"> по <input type="date" id="dt-to" min="${minISO}" max="${maxISO}" value="${maxISO}"> <button id="dt-apply">Применить</button></div>`;
+  const setLbl = t => document.getElementById('flt-period-lbl').textContent = t;
+  menu.querySelectorAll('input[type=radio]').forEach(inp => inp.onchange = e => {
+    const v = e.target.value;
+    if (v === 'all') { state.period = { mode: 'all', year: null, month: null, from: null, to: null }; state.drill.b1level = 'months'; state.drill.b1ym = null; setLbl('весь период'); }
+    else if (v[0] === 'y') { const y = +v.slice(1); state.period = { mode: 'all', year: y, month: null, from: null, to: null }; state.drill.b1level = 'months'; state.drill.b1ym = null; setLbl('весь ' + y); setupPeriodMenu(); }
+    else if (v[0] === 'm') { const m = +v.slice(1); const y = y0; state.period = { mode: 'month', year: y, month: m, from: null, to: null }; state.drill.b1level = 'days'; state.drill.b1ym = y + '-' + String(m + 1).padStart(2, '0'); setLbl(MONTH_NAMES[m] + ' ' + y); }
+    renderAll();
+  });
+  menu.querySelectorAll('.preset').forEach(btn => btn.onclick = e => {
+    e.stopPropagation(); const p = btn.dataset.preset; const y = y0; let fromD, toD, lbl;
+    if (p === 'last-month') { const mm = DATA_MAX || new Date(y, 11, 31); fromD = new Date(mm.getFullYear(), mm.getMonth(), 1); toD = new Date(mm.getFullYear(), mm.getMonth() + 1, 0); lbl = 'последний месяц'; }
+    else if (p === 'last-quarter') { const mm = DATA_MAX || new Date(y, 11, 31); const q = Math.floor(mm.getMonth() / 3); fromD = new Date(mm.getFullYear(), q * 3, 1); toD = new Date(mm.getFullYear(), q * 3 + 3, 0); lbl = 'последний квартал'; }
+    else { const rg = { q1: [0, 2], q2: [3, 5], q3: [6, 8], q4: [9, 11], h1: [0, 5], h2: [6, 11] }[p]; fromD = new Date(y, rg[0], 1); toD = new Date(y, rg[1] + 1, 0); lbl = p.toUpperCase() + ' ' + y; }
+    toD.setHours(23, 59, 59);
+    state.period = { mode: 'custom', year: fromD.getFullYear(), month: null, from: fromD, to: toD }; state.drill.b1level = 'months'; state.drill.b1ym = null;
+    menu.querySelectorAll('input[type=radio]').forEach(i => i.checked = false); setLbl(lbl); renderAll();
+  });
+  document.getElementById('dt-apply').onclick = e => {
+    e.stopPropagation(); const fv = document.getElementById('dt-from').value, tv = document.getElementById('dt-to').value; if (!fv || !tv) return;
+    const fromD = new Date(fv + 'T00:00:00'), toD = new Date(tv + 'T23:59:59'); if (fromD > toD) return;
+    state.period = { mode: 'custom', year: fromD.getFullYear(), month: null, from: fromD, to: toD }; state.drill.b1level = 'months'; state.drill.b1ym = null;
+    menu.querySelectorAll('input[type=radio]').forEach(i => i.checked = false); setLbl(fv + ' — ' + tv); renderAll();
+  };
+  menu.querySelectorAll('.custom input, .custom button, .preset').forEach(el => el.addEventListener('click', e => e.stopPropagation()));
+}
+function setupMultiMenu(id, items, stateSet, labelID, onChange) {
+  const menu = document.getElementById(id);
+  menu.innerHTML = `<label style="border-bottom:1px solid var(--border);margin-bottom:4px;padding-bottom:6px;"><input type="checkbox" id="${id}-all" checked>Все</label>
+    ${items.map(it => `<label><input type="checkbox" value="${it.id}" checked>${it.name}${it.type ? ` <span style="color:var(--text-muted);font-size:10px;margin-left:auto;">${it.type === 'team' ? 'ком.' : 'инд.'}</span>` : ''}</label>`).join('')}`;
+  const allInp = menu.querySelector(`#${id}-all`), inps = menu.querySelectorAll('input[value]');
+  const upd = () => { stateSet.clear(); inps.forEach(i => { if (i.checked) stateSet.add(i.value); }); document.getElementById(labelID).textContent = fltLabel(stateSet, items.length); onChange(); };
+  allInp.onchange = () => { inps.forEach(i => i.checked = allInp.checked); upd(); };
+  inps.forEach(i => i.onchange = () => { allInp.checked = [...inps].every(x => x.checked); upd(); });
+}
+function setupFilters() {
+  setupPeriodMenu();
+  setupMultiMenu('menu-object', OBJECTS, state.objects, 'flt-object-lbl', () => renderB2a());
+  setupMultiMenu('menu-assignee', ASSIGNEES, state.assignees, 'flt-assignee-lbl', () => renderB4());
+  // вид работ — недоступен
+  const wtFlt = document.getElementById('flt-workType');
+  wtFlt.classList.add('disabled');
+  document.getElementById('menu-workType').innerHTML = '<div class="grp">Виды работ</div><p style="font-size:11px;color:var(--text-muted);padding:6px 8px;margin:0;">Нет данных о видах работ (нет прав/наполнения). Фильтр появится при активации модуля.</p>';
+
+  document.querySelectorAll('.flt[data-flt]').forEach(el => el.onclick = e => {
+    if (el.classList.contains('disabled')) { e.stopPropagation(); return; }
+    if (e.target.closest('.flt-menu')) return;
+    const menu = el.querySelector('.flt-menu');
+    document.querySelectorAll('.flt-menu.open').forEach(m => { if (m !== menu) m.classList.remove('open'); });
+    menu.classList.toggle('open'); e.stopPropagation();
+  });
+  document.addEventListener('click', () => document.querySelectorAll('.flt-menu.open').forEach(m => m.classList.remove('open')));
+  document.getElementById('btn-reset').onclick = e => {
+    e.stopPropagation();
+    state.period = { mode: 'all', year: null, month: null, from: null, to: null };
+    state.objects = new Set(OBJECTS.map(o => o.id));
+    state.assignees = new Set(ASSIGNEES.map(a => a.id));
+    state.drill = { b1level: 'months', b1ym: null, b2aObj: null, b4cat: 'team', b4metric: 'completed', b4detail: false };
+    setupPeriodMenu();
+    document.getElementById('flt-period-lbl').textContent = 'весь период';
+    ['object', 'assignee'].forEach(k => { document.querySelectorAll(`#menu-${k} input[type=checkbox]`).forEach(i => i.checked = true); document.getElementById(`flt-${k}-lbl`).textContent = 'все'; });
+    document.querySelectorAll('#b4-toggle button').forEach(x => x.classList.toggle('active', x.dataset.metric === 'completed'));
+    renderAll();
+  };
+}
+document.getElementById('b1-back').onclick = () => { state.drill.b1level = 'months'; state.drill.b1ym = null; renderB1(); };
+document.getElementById('b2a-zones-close').onclick = () => { state.drill.b2aObj = null; renderB2a(); };
+document.querySelectorAll('#b4-toggle button').forEach(b => b.onclick = () => { document.querySelectorAll('#b4-toggle button').forEach(x => x.classList.remove('active')); b.classList.add('active'); state.drill.b4metric = b.dataset.metric; renderB4(); });
+document.getElementById('b4-detail-btn').onclick = () => { state.drill.b4detail = !state.drill.b4detail; renderB4(); };
+document.querySelectorAll('#role-switch button').forEach(b => b.onclick = () => { document.querySelectorAll('#role-switch button').forEach(x => x.classList.remove('active')); b.classList.add('active'); state.role = b.dataset.role; renderB4(); });
+
+/* === СТАРТ === */
+(async () => {
+  try {
+    await loadAndMap();
+    state.period = { mode: 'all', year: null, month: null, from: null, to: null };
+    state.objects = new Set(OBJECTS.map(o => o.id));
+    state.assignees = new Set(ASSIGNEES.map(a => a.id));
+    document.getElementById('sub-lbl').textContent = `Система Bruno · ${OBJECTS.length} объектов · окно ${META.windowDays || 30} дн.`;
+    setupFilters();
+    renderAll();
+    hideStatus();
+    const el = document.getElementById('updated-lbl');
+    if (META && META.extractedAt) { const d = new Date(META.extractedAt); if (!isNaN(d.getTime())) el.textContent = 'данные на ' + d.toLocaleDateString('ru-RU'); }
+  } catch (err) { console.error(err); showError(err.message); }
+})();
+let _rt = null;
+window.addEventListener('resize', () => { clearTimeout(_rt); _rt = setTimeout(renderAll, 180); });
+const filtersEl = document.getElementById('filters');
+window.addEventListener('scroll', () => filtersEl.classList.toggle('stuck', window.scrollY > 8));
+</script>
+</body>
+</html>
