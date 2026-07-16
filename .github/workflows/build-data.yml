@@ -1,0 +1,50 @@
+name: build-data
+# Ежедневно собирает АГРЕГАТЫ из Bruno API (build-data.py) и коммитит data.json.gz (~230 КБ).
+# Токен — ТОЛЬКО из секрета репозитория BRUNO_TOKEN (никогда в коде).
+# Файл кладётся рядом с dashboard_vtb_live.html (один хостинг, относительный fetch).
+
+on:
+  schedule:
+    - cron: '0 3 * * *'      # 03:00 UTC = 10:00 Новосибирск, ежедневно
+  workflow_dispatch: {}       # + кнопка «Run workflow» вручную
+
+permissions:
+  contents: write
+
+concurrency:
+  group: build-data
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install deps
+        run: pip install requests
+
+      - name: Build aggregates from Bruno API
+        env:
+          BRUNO_TOKEN: ${{ secrets.BRUNO_TOKEN }}
+        run: |
+          if [ -z "$BRUNO_TOKEN" ]; then echo "::error::secret BRUNO_TOKEN не задан"; exit 1; fi
+          python build-data.py --token "$BRUNO_TOKEN" \
+            --from 2025-01-01 --to "$(date +%F)" \
+            --window-days 30 --out data.json
+          gzip -9 -c data.json > data.json.gz
+          echo "Размеры:"; ls -lh data.json data.json.gz
+          # сырой data.json не коммитим — только компактный .gz
+          rm -f data.json
+
+      - name: Commit data.json.gz
+        run: |
+          git config user.name  "bruno-bot"
+          git config user.email "bruno-bot@users.noreply.github.com"
+          git add -f data.json.gz
+          git commit -m "data: $(date +%F)" || { echo "нет изменений"; exit 0; }
+          git push
