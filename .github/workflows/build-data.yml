@@ -191,8 +191,8 @@ jobs:
           by_team = agg(st, "teamID")
 
           print("Категории задач за %d дней…" % WD)
-          FB = "feedbackID not null AND " + WINF
-          TT = "taskTemplateID not null AND " + WINF
+          FB = "feedbackID ne null AND " + WINF
+          TT = "taskTemplateID ne null AND " + WINF
 
           print("Обращения (детально)…")
           fbtasks = fetch_list("/api/v2/taskPlan", FB)
