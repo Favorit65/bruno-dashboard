@@ -4,9 +4,11 @@ on:
   workflow_dispatch:
     inputs:
       window_days:
-        description: 'Окно детальных разрезов, дней'
+        description: 'Окно разрезов/категорий, дней'
         type: string
-        default: '90'
+        default: '30'
+  schedule:
+    - cron: '0 21 * * *'
 
 permissions:
   contents: write
@@ -37,7 +39,7 @@ jobs:
 
           B = "https://api.brunosystem.ru"
           TOK = os.environ.get("BRUNO_TOKEN", "")
-          WD = int(os.environ.get("WINDOW_DAYS") or "90")
+          WD = int(os.environ.get("WINDOW_DAYS") or "30")
           H = {"token": TOK, "Accept": "application/json", "User-Agent": "bruno-agg/1.0"}
           S = requests.Session()
           _last = [0.0]
@@ -101,7 +103,8 @@ jobs:
               return out
 
           def fetch_list(path, flt):
-              out, frm = [], 0
+              out, frm, page = [], 0, 0
+              overall = "?"
               while True:
                   r = GET(path, {"from": frm, "limit": 500, "filter": flt})
                   if r is None or r.status_code != 200:
@@ -109,12 +112,23 @@ jobs:
                       break
                   b = r.json()
                   res = b.get("result") or []
+                  overall = b.get("overall")
                   out += res
-                  print("  %s: %d/%s" % (path, len(out), b.get("overall")))
+                  page += 1
+                  if page % 20 == 0:
+                      print("  %s: %d/%s" % (path, len(out), overall))
                   if len(res) < 500:
                       break
                   frm += 500
+              print("  %s: ИТОГО %d/%s" % (path, len(out), overall))
               return out
+
+          def COUNT(flt):
+              r = GET("/api/v2/taskPlan", {"from": 0, "limit": 1, "filter": flt})
+              if r is None or r.status_code != 200:
+                  print("  count HTTP", getattr(r, "status_code", "-"), (r.text[:100] if r is not None else ""))
+                  return None
+              return r.json().get("overall")
 
           def bydays(path):
               r = GET(path, {"filter": FULLF})
@@ -152,23 +166,55 @@ jobs:
               "team": bydays("/api/v2/statByTeam/byDays"),
           }
 
-          print("Списки statBy* за %d дней…" % WD)
+          print("Списки statBy* за %d дней (сворачиваем в суммы)…" % WD)
           sz = fetch_list("/api/v2/statByZone", WINF)
           se = fetch_list("/api/v2/statByEmployee", WINF)
           st = fetch_list("/api/v2/statByTeam", WINF)
 
-          def base(r):
-              return {"d": daynum(r), "o": str(r.get("objectID") or ""), "z": str(r.get("zoneID") or ""),
-                      "c": r.get("completedTasksCount", 0) or 0, "m": r.get("missedTasksCount", 0) or 0,
-                      "w": r.get("warningsTasksCount", 0) or 0}
+          def agg(rows, key):
+              out = {}
+              for r in rows:
+                  k = str(r.get(key) or "")
+                  if not k:
+                      continue
+                  a = out.get(k)
+                  if a is None:
+                      a = out[k] = {"c": 0, "m": 0, "w": 0}
+                  a["c"] += r.get("completedTasksCount", 0) or 0
+                  a["m"] += r.get("missedTasksCount", 0) or 0
+                  a["w"] += r.get("warningsTasksCount", 0) or 0
+              return out
 
-          win_zone = [base(r) for r in sz]
-          win_emp = []
-          for r in se:
-              d = base(r); d["e"] = str(r.get("employeeID") or ""); win_emp.append(d)
-          win_team = []
-          for r in st:
-              d = base(r); d["t"] = str(r.get("teamID") or ""); win_team.append(d)
+          by_object = agg(sz, "objectID")
+          by_zone = agg(sz, "zoneID")
+          by_employee = agg(se, "employeeID")
+          by_team = agg(st, "teamID")
+
+          print("Категории задач за %d дней…" % WD)
+          FB = "feedbackID not null AND " + WINF
+          TT = "taskTemplateID not null AND " + WINF
+
+          print("Обращения (детально)…")
+          fbtasks = fetch_list("/api/v2/taskPlan", FB)
+          feedback_rows = [{"d": daynum(r), "o": str(r.get("objectID") or ""), "z": str(r.get("zoneID") or ""),
+                            "s": (r.get("status") or "").upper(), "e": str(r.get("employeeID") or ""),
+                            "t": str(r.get("teamID") or "")} for r in fbtasks]
+
+          def cst(rows, s):
+              return sum(1 for x in rows if x["s"] == s)
+
+          categories = {
+              "windowDays": WD,
+              "windowFrom": winfrom.strftime("%Y-%m-%d"),
+              "windowTo": now.strftime("%Y-%m-%d"),
+              "total":    {"all": COUNT(WINF)},
+              "feedback": {"all": len(feedback_rows),
+                           "completed": cst(feedback_rows, "COMPLETED"),
+                           "missed": cst(feedback_rows, "MISSED")},
+              "planned":  {"all": COUNT(TT),
+                           "completed": COUNT(TT + " AND status eq 'COMPLETED'"),
+                           "missed": COUNT(TT + " AND status eq 'MISSED'")},
+          }
 
           data = {
               "meta": {
@@ -179,23 +225,35 @@ jobs:
               },
               "directories": directories,
               "daily": daily,
-              "window": {"zone": win_zone, "employee": win_emp, "team": win_team},
+              "window": {
+                  "byObject": by_object, "byZone": by_zone,
+                  "byEmployee": by_employee, "byTeam": by_team,
+                  "feedbackTasks": feedback_rows,
+              },
+              "categories": categories,
           }
 
           with gzip.open("data.json.gz", "wt", encoding="utf-8", compresslevel=6) as f:
               json.dump(data, f, ensure_ascii=False, default=str)
 
           size = os.path.getsize("data.json.gz") / 1024
-          print("=" * 60)
+          print("=" * 62)
           print("Справочники: object=%d zone=%d user=%d team=%d" % (
               len(directories["object"]), len(directories["zone"]),
               len(directories["user"]), len(directories["team"])))
-          print("Дней в byDays: zone=%d employee=%d team=%d" % (
+          print("byDays дней: zone=%d employee=%d team=%d" % (
               len(daily["zone"]), len(daily["employee"]), len(daily["team"])))
-          print("Окно(%d дн): zone=%d employee=%d team=%d строк" % (
-              WD, len(win_zone), len(win_emp), len(win_team)))
+          print("Свёрнуто: объектов=%d зон=%d сотрудников=%d команд=%d" % (
+              len(by_object), len(by_zone), len(by_employee), len(by_team)))
+          print("Категории(%d дн): всего=%s" % (WD, categories["total"]["all"]))
+          print("  обращения:  all=%s completed=%s missed=%s (строк=%d)" % (
+              categories["feedback"]["all"], categories["feedback"]["completed"],
+              categories["feedback"]["missed"], len(feedback_rows)))
+          print("  плановые:   all=%s completed=%s missed=%s" % (
+              categories["planned"]["all"], categories["planned"]["completed"],
+              categories["planned"]["missed"]))
           print("data.json.gz = %.1f КБ" % size)
-          print("=" * 60)
+          print("=" * 62)
           PY
 
       - name: Commit data.json.gz
