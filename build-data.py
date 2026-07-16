@@ -62,6 +62,28 @@ def pick(o, key, default=None):
             return o[k]
     return default
 
+def _as_rows(res):
+    """Приводит result к списку записей. Понимает: список; {ключ-дата: {...}} → добавляет date;
+    {'rows'/'days'/'items'/'data': [...]} → берёт вложенный список. Иначе None (не распознали)."""
+    if isinstance(res, list):
+        return res
+    if isinstance(res, dict):
+        # вложенный список под каким-либо ключом
+        for v in res.values():
+            if isinstance(v, list):
+                return v
+        # словарь, ключи которого — даты, значения — {all/completed/missed}
+        rows, ok = [], False
+        for k, v in res.items():
+            if isinstance(v, dict):
+                d = parse_day(k) or parse_day(pick(v, "date"))
+                if d:
+                    ok = True
+                    rows.append({**v, "date": d})
+        if ok:
+            return rows
+    return None
+
 def iso_utc(dt): return dt.strftime("%Y-%m-%dT%H:%M:%S.000Z")
 def log(m, lvl="info"):
     print({"info": "  ", "ok": "  ✓ ", "warn": "  ! ", "err": "  ✗ ", "step": "\n→ "}[lvl] + str(m))
@@ -82,8 +104,11 @@ def project_info(session, headers):
     if r.status_code == 401:
         log("401 — токен неверный/истёк", "err"); raise SystemExit(1)
     r.raise_for_status()
-    res = r.json().get("result", {}) or {}
-    return res.get("projectID"), (res.get("apiRule", {}) or {})
+    body = r.json()
+    res = body.get("result", body) if isinstance(body, dict) else {}
+    if not isinstance(res, dict): res = {}
+    rule = res.get("apiRule", {})
+    return res.get("projectID"), (rule if isinstance(rule, dict) else {})
 
 def fetch_all(session, path, headers, filt, name, debug=False):
     """Пагинация from+limit. Возвращает список result[]. 403/404 -> []."""
@@ -101,10 +126,15 @@ def fetch_all(session, path, headers, filt, name, debug=False):
         try: body = r.json()
         except ValueError:
             log(f"[{name}] не JSON: {r.text[:160]}", "err"); return items
-        chunk = body.get("result", body if isinstance(body, list) else [])
-        if not isinstance(chunk, list):
-            log(f"[{name}] result не массив", "err"); return items
-        if debug and page == 0 and chunk:
+        res = body.get("result", body) if isinstance(body, dict) else body
+        chunk = _as_rows(res)
+        if chunk is None:
+            # не распознали форму — логируем реальную структуру, чтобы поправить парсер
+            keys = list(res.keys()) if isinstance(res, dict) else type(res).__name__
+            log(f"[{name}] result не массив; ключи/тип: {keys}", "warn")
+            log(f"[{name}] сырой ответ (обрезан): {json.dumps(res, ensure_ascii=False, default=str)[:400]}", "info")
+            return items
+        if (debug or page == 0) and chunk:
             log(f"[{name}] пример записи: {json.dumps(chunk[0], ensure_ascii=False, default=str)[:300]}", "info")
         items += chunk; page += 1
         overall = body.get("overall", len(items))
@@ -206,12 +236,18 @@ def main():
             a = agg.setdefault(eid, {"c": 0, "m": 0, "w": 0})
             a["c"] += c; a["m"] += m; a["w"] += w
         return agg
-    window = {
-        "byObject":   win_sums("/api/v2/statByObject",   "statByObject",   "objectID"),
-        "byZone":     win_sums("/api/v2/statByZone",     "statByZone",     "zoneID"),
-        "byEmployee": win_sums("/api/v2/statByEmployee", "statByEmployee", "userID"),
-        "byTeam":     win_sums("/api/v2/statByTeam",     "statByTeam",     "teamID"),
-    }
+    byZone     = win_sums("/api/v2/statByZone",     "statByZone",     "zoneID")
+    byEmployee = win_sums("/api/v2/statByEmployee", "statByEmployee", "userID")
+    byTeam     = win_sums("/api/v2/statByTeam",     "statByTeam",     "teamID")
+    # statByObject в песочнице отдаёт 404 → объектные суммы собираем из зон (zone→object по справочнику)
+    zone_obj = {z["id"]: z["objectID"] for z in zones}
+    byObject = {}
+    for zid, v in byZone.items():
+        oid = zone_obj.get(zid)
+        if not oid: continue
+        a = byObject.setdefault(oid, {"c": 0, "m": 0, "w": 0})
+        a["c"] += v["c"]; a["m"] += v["m"]; a["w"] += v["w"]
+    window = {"byObject": byObject, "byZone": byZone, "byEmployee": byEmployee, "byTeam": byTeam}
 
     # --- feedbackTasks: обращения (taskPlan c feedbackID ne null) за окно ---
     log("Обращения окна (taskPlan feedbackID ne null)…", "step")
