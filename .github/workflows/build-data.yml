@@ -36,20 +36,17 @@ jobs:
           import os, json, gzip, time, requests
           from datetime import datetime, timezone, timedelta
           from urllib.parse import urlencode
-
           B = "https://api.brunosystem.ru"
           TOK = os.environ.get("BRUNO_TOKEN", "")
           WD = int(os.environ.get("WINDOW_DAYS") or "30")
           H = {"token": TOK, "Accept": "application/json", "User-Agent": "bruno-agg/1.0"}
           S = requests.Session()
           _last = [0.0]
-
           def rl():
               dt = time.monotonic() - _last[0]
               if dt < 1.1:
                   time.sleep(1.1 - dt)
               _last[0] = time.monotonic()
-
           def GET(path, params):
               url = B + path + ("?" + urlencode(params) if params else "")
               r = None
@@ -61,22 +58,18 @@ jobs:
                       continue
                   return r
               return r
-
           def iso(d):
               return d.strftime("%Y-%m-%dT%H:%M:%S.000Z")
-
           def daynum(rec):
               dl = rec.get("dateLocal")
               if dl:
                   s = str(dl)
                   return "%s-%s-%s" % (s[0:4], s[4:6], s[6:8])
               return (rec.get("date") or "")[:10]
-
           now = datetime.now(timezone.utc)
           FULLF = "date ge '2025-01-01T00:00:00.000Z' AND date le '%s'" % iso(now)
           winfrom = now - timedelta(days=WD)
           WINF = "date ge '%s' AND date le '%s'" % (iso(winfrom), iso(now))
-
           r = GET("/api/v2/apiToken", None)
           pid = None
           if r is not None and r.status_code == 200:
@@ -87,7 +80,6 @@ jobs:
           if pid:
               H["projectid"] = pid
           print("projectID:", pid or "<нет>")
-
           def fetch_dir(path):
               out, frm = [], 0
               while True:
@@ -101,7 +93,6 @@ jobs:
                       break
                   frm += 500
               return out
-
           def fetch_list(path, flt):
               out, frm, page = [], 0, 0
               overall = "?"
@@ -122,33 +113,27 @@ jobs:
                   frm += 500
               print("  %s: ИТОГО %d/%s" % (path, len(out), overall))
               return out
-
           def COUNT(flt):
               r = GET("/api/v2/taskPlan", {"from": 0, "limit": 1, "filter": flt})
               if r is None or r.status_code != 200:
                   print("  count HTTP", getattr(r, "status_code", "-"), (r.text[:100] if r is not None else ""))
                   return None
               return r.json().get("overall")
-
           def bydays(path):
               r = GET(path, {"filter": FULLF})
               if r is None or r.status_code != 200:
                   print("  ", path, "HTTP", getattr(r, "status_code", "-"))
                   return {}
               return r.json().get("result") or {}
-
           def uid(x):
               return str(x.get("id") or x.get("uuid") or x.get("_id") or "")
-
           def uname(u):
               return u.get("name") or " ".join([p for p in [u.get("lastName"), u.get("firstName")] if p]) or u.get("login") or ""
-
           print("Справочники…")
           obj = fetch_dir("/api/v2/object")
           zone = fetch_dir("/api/v2/zone")
           user = fetch_dir("/api/v2/user")
           team = fetch_dir("/api/v2/team")
-
           directories = {
               "object": [{"id": uid(o), "name": o.get("name") or "", "address": o.get("address")}
                          for o in obj if not o.get("deleted")],
@@ -158,19 +143,16 @@ jobs:
               "team": [{"id": uid(t), "name": t.get("name") or ""} for t in team if not t.get("deleted")],
               "workType": [],
           }
-
           print("byDays (вся история)…")
           daily = {
               "zone": bydays("/api/v2/statByZone/byDays"),
               "employee": bydays("/api/v2/statByEmployee/byDays"),
               "team": bydays("/api/v2/statByTeam/byDays"),
           }
-
           print("Списки statBy* за %d дней (сворачиваем в суммы)…" % WD)
           sz = fetch_list("/api/v2/statByZone", WINF)
           se = fetch_list("/api/v2/statByEmployee", WINF)
           st = fetch_list("/api/v2/statByTeam", WINF)
-
           def agg(rows, key):
               out = {}
               for r in rows:
@@ -184,14 +166,11 @@ jobs:
                   a["m"] += r.get("missedTasksCount", 0) or 0
                   a["w"] += r.get("warningsTasksCount", 0) or 0
               return out
-
           by_object = agg(sz, "objectID")
           by_zone = agg(sz, "zoneID")
           by_employee = agg(se, "employeeID")
           by_team = agg(st, "teamID")
-
           print("Категории задач за %d дней…" % WD)
-
           def detect_notnull():
               cands = ["%s ne null", "%s ne ''", "%s gt ''", "%s not null"]
               for c in cands:
@@ -202,10 +181,8 @@ jobs:
                   if r is not None and code == 200:
                       return c
               return None
-
           def cst(rows, s):
               return sum(1 for x in rows if x["s"] == s)
-
           nn = detect_notnull()
           feedback_rows = []
           categories = {
@@ -233,7 +210,6 @@ jobs:
                                        "missed": COUNT(TT + " AND status eq 'MISSED'")}
           else:
               print("  Синтаксис not-null не подобран — категории пропущены, нужен точный фильтр от Bruno.")
-
           data = {
               "meta": {
                   "extractedAt": iso(now), "projectID": pid, "source": "bruno-aggregates",
@@ -250,10 +226,8 @@ jobs:
               },
               "categories": categories,
           }
-
           with gzip.open("data.json.gz", "wt", encoding="utf-8", compresslevel=6) as f:
               json.dump(data, f, ensure_ascii=False, default=str)
-
           size = os.path.getsize("data.json.gz") / 1024
           print("=" * 62)
           print("Справочники: object=%d zone=%d user=%d team=%d" % (
@@ -273,7 +247,6 @@ jobs:
           print("data.json.gz = %.1f КБ" % size)
           print("=" * 62)
           PY
-
       - name: Commit data.json.gz
         run: |
           set -euo pipefail
