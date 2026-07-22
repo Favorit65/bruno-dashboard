@@ -52,6 +52,7 @@ RESOURCES = [
     ("workType",     "/api/v2/workType",     None),
     ("user",         "/api/v2/user",         None),
     ("team",         "/api/v2/team",         None),
+    ("role",         "/api/v2/role",         None),  # + роли: комендант/уборщица (связь через user.projects[].roleID)
     # События
     ("feedback",     "/api/v2/feedback",     "date"),
     ("taskPlan",     "/api/v2/taskPlan",     "date"),
