@@ -1,0 +1,33 @@
+name: Deploy to GitHub Pages
+
+# Публикует статику (index.html, dashboard_*.html, data.json.gz) на GitHub Pages.
+# Срабатывает при каждом push в main — в т.ч. когда робот build-data.yml
+# коммитит свежий data.json.gz, поэтому данные на сайте обновляются сами.
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: '.'          # публикуем корень репозитория целиком
+      - id: deployment
+        uses: actions/deploy-pages@v4
