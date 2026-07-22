@@ -233,9 +233,40 @@
     .detail-grid { grid-template-columns: 1fr; }
     .legend { font-size: 10px; }
   }
+  /* Экран входа (клиентский барьер) */
+  #auth-gate { position: fixed; inset: 0; z-index: 10001; background: linear-gradient(160deg, #EAF1FB, #FFFFFF); display: none; align-items: center; justify-content: center; padding: 20px; }
+  .auth-card { background: #fff; border: 1px solid #E4E8F0; border-radius: 14px; box-shadow: 0 12px 44px rgba(0,40,130,.14); padding: 30px 28px; max-width: 360px; width: 100%; text-align: center; }
+  .auth-card h2 { color: #002882; font-size: 18px; margin: 12px 0 4px; font-family: var(--font-head); font-weight: 600; }
+  .auth-sub { color: #58595B; font-size: 12.5px; margin: 0 0 18px; }
+  #auth-form { display: flex; flex-direction: column; gap: 10px; }
+  #auth-form input { padding: 11px 12px; border: 1px solid #C9D3E4; border-radius: 8px; font-size: 14px; font-family: inherit; }
+  #auth-form input:focus { outline: none; border-color: #00AAFF; }
+  #auth-form button { padding: 11px; border: 0; border-radius: 8px; background: #002882; color: #fff; font-size: 14px; font-weight: 600; cursor: pointer; font-family: inherit; }
+  #auth-form button:hover { background: #0A2896; }
+  .auth-err { color: #C31B26; font-size: 12px; min-height: 16px; }
+  .auth-note { color: #858585; font-size: 10.5px; margin-top: 14px; line-height: 1.4; }
 </style>
 </head>
 <body>
+<div id="auth-gate">
+  <div class="auth-card">
+    <svg width="90" height="32" viewBox="0 0 112 40" aria-label="ВТБ">
+      <polygon points="6,24 34,24 30,30 2,30" fill="#002882"/>
+      <polygon points="10,14 38,14 34,20 6,20" fill="#002882"/>
+      <polygon points="14,4 42,4 38,10 10,10" fill="#00AAFF"/>
+      <text x="50" y="30" font-family="Arial" font-size="26" font-weight="700" fill="#002882">ВТБ</text>
+    </svg>
+    <h2>Доступ к дашборду</h2>
+    <p class="auth-sub">Система Bruno · введите логин и пароль</p>
+    <form id="auth-form" autocomplete="on">
+      <input id="auth-login" type="text" placeholder="Логин" autocomplete="username" autofocus>
+      <input id="auth-pass" type="password" placeholder="Пароль" autocomplete="current-password">
+      <button type="submit">Войти</button>
+      <div id="auth-err" class="auth-err"></div>
+    </form>
+    <p class="auth-note">Демо-доступ. Данные агрегированные/синтетические.</p>
+  </div>
+</div>
 <div class="app">
 
   <div class="top-bar">
@@ -1367,7 +1398,9 @@ document.getElementById('b4-detail-btn').onclick = () => { state.drill.b4detail 
 document.querySelectorAll('#role-switch button').forEach(b => b.onclick = () => { document.querySelectorAll('#role-switch button').forEach(x => x.classList.remove('active')); b.classList.add('active'); state.role = b.dataset.role; renderB4(); });
 
 /* === СТАРТ === */
-(async () => {
+let APP_STARTED = false;
+async function startApp() {
+  if (APP_STARTED) return; APP_STARTED = true;
   try {
     await loadAndMap();
     applyYTD();                                        // дефолт — с начала текущего года (правка 2)
@@ -1383,11 +1416,42 @@ document.querySelectorAll('#role-switch button').forEach(b => b.onclick = () => 
     const el = document.getElementById('updated-lbl');
     if (META && META.extractedAt) { const d = new Date(META.extractedAt); if (!isNaN(d.getTime())) el.textContent = 'данные на ' + d.toLocaleDateString('ru-RU'); }
   } catch (err) { console.error(err); showError(err.message); }
-})();
+}
 let _rt = null;
-window.addEventListener('resize', () => { clearTimeout(_rt); _rt = setTimeout(renderAll, 180); });
+window.addEventListener('resize', () => { if (!APP_STARTED) return; clearTimeout(_rt); _rt = setTimeout(renderAll, 180); });
 const filtersEl = document.getElementById('filters');
 window.addEventListener('scroll', () => filtersEl.classList.toggle('stuck', window.scrollY > 8));
+
+/* === Доступ по логину/паролю (клиентский барьер, НЕ настоящая защита данных) ===
+   data.json.gz на GitHub Pages публичен. Для реальных чувствительных данных нужна
+   серверная авторизация (например, basic-auth на Timeweb).
+   Логин/пароль по умолчанию: vtb / bruno2026
+   Сменить: посчитайте SHA-256 строки "bruno-vtb|ЛОГИН:ПАРОЛЬ" и впишите в AUTH.hash.
+   Пример в браузере (консоль):
+     copy([...new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode('bruno-vtb|vtb:bruno2026')))].map(x=>x.toString(16).padStart(2,'0')).join('')) */
+const AUTH = { salt: 'bruno-vtb', hash: '57fb66ae4d242203c6a64172fbe9b12a62f75ab32f0ebdad018db3cf07f64e7a' };
+async function _sha256(str){ const b = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(str)); return [...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,'0')).join(''); }
+(function initGate(){
+  const gate = document.getElementById('auth-gate');
+  const form = document.getElementById('auth-form');
+  const errEl = document.getElementById('auth-err');
+  let authed = false; try { authed = sessionStorage.getItem('bruno_auth') === '1'; } catch(e){}
+  if (authed) { gate.style.display = 'none'; startApp(); return; }
+  gate.style.display = 'flex';
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const login = document.getElementById('auth-login').value.trim();
+    const pass = document.getElementById('auth-pass').value;
+    const h = await _sha256(AUTH.salt + '|' + login + ':' + pass);
+    if (h === AUTH.hash) {
+      try { sessionStorage.setItem('bruno_auth', '1'); } catch(e){}
+      errEl.textContent = ''; gate.style.display = 'none'; startApp();
+    } else {
+      errEl.textContent = 'Неверный логин или пароль';
+      document.getElementById('auth-pass').value = '';
+    }
+  });
+})();
 </script>
 </body>
 </html>
