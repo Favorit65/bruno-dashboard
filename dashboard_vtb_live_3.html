@@ -986,7 +986,7 @@ function renderB1() {
       <div class="split-seg" style="background:#002882;width:${plPct}%">${plPct > 16 ? 'Плановые ' + fmt(plAll) : ''}</div>
     </div>
     <div class="split-eff">
-      <div class="se"><div class="k"><span class="sw" style="background:#00AAFF"></span>Обращения (заявки жильцов)</div><div class="v">${fmt(fbAll)} <small style="font-size:11px;color:var(--text-muted)">· ${pct(sumC ? fbAll / sumC : 0)}</small></div><div class="sub">эффективность ${pct(fbEff)}</div></div>
+      <div class="se"><div class="k"><span class="sw" style="background:#00AAFF"></span>из Обращений</div><div class="v">${fmt(fbAll)} <small style="font-size:11px;color:var(--text-muted)">· ${pct(sumC ? fbAll / sumC : 0)}</small></div><div class="sub">эффективность ${pct(fbEff)}</div></div>
       <div class="se pl"><div class="k"><span class="sw" style="background:#002882"></span>Плановые (регулярные)</div><div class="v">${fmt(plAll)} <small style="font-size:11px;color:var(--text-muted)">· ${pct(sumC ? plAll / sumC : 0)}</small></div><div class="sub">эффективность ${pct(plEff)}</div></div>
     </div>` : '<p class="note">Нет задач в выбранном периоде.</p>';
 
