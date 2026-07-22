@@ -1421,37 +1421,6 @@ let _rt = null;
 window.addEventListener('resize', () => { if (!APP_STARTED) return; clearTimeout(_rt); _rt = setTimeout(renderAll, 180); });
 const filtersEl = document.getElementById('filters');
 window.addEventListener('scroll', () => filtersEl.classList.toggle('stuck', window.scrollY > 8));
-
-/* === Доступ по логину/паролю (клиентский барьер, НЕ настоящая защита данных) ===
-   data.json.gz на GitHub Pages публичен. Для реальных чувствительных данных нужна
-   серверная авторизация (например, basic-auth на Timeweb).
-   Логин/пароль по умолчанию: vtb / bruno2026
-   Сменить: посчитайте SHA-256 строки "bruno-vtb|ЛОГИН:ПАРОЛЬ" и впишите в AUTH.hash.
-   Пример в браузере (консоль):
-     copy([...new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode('bruno-vtb|vtb:bruno2026')))].map(x=>x.toString(16).padStart(2,'0')).join('')) */
-const AUTH = { salt: 'bruno-vtb', hash: '57fb66ae4d242203c6a64172fbe9b12a62f75ab32f0ebdad018db3cf07f64e7a' };
-async function _sha256(str){ const b = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(str)); return [...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,'0')).join(''); }
-(function initGate(){
-  const gate = document.getElementById('auth-gate');
-  const form = document.getElementById('auth-form');
-  const errEl = document.getElementById('auth-err');
-  let authed = false; try { authed = sessionStorage.getItem('bruno_auth') === '1'; } catch(e){}
-  if (authed) { gate.style.display = 'none'; startApp(); return; }
-  gate.style.display = 'flex';
-  form.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const login = document.getElementById('auth-login').value.trim();
-    const pass = document.getElementById('auth-pass').value;
-    const h = await _sha256(AUTH.salt + '|' + login + ':' + pass);
-    if (h === AUTH.hash) {
-      try { sessionStorage.setItem('bruno_auth', '1'); } catch(e){}
-      errEl.textContent = ''; gate.style.display = 'none'; startApp();
-    } else {
-      errEl.textContent = 'Неверный логин или пароль';
-      document.getElementById('auth-pass').value = '';
-    }
-  });
-})();
 </script>
 </body>
 </html>
