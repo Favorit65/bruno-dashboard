@@ -233,40 +233,20 @@
     .detail-grid { grid-template-columns: 1fr; }
     .legend { font-size: 10px; }
   }
-  /* Экран входа (клиентский барьер) */
-  #auth-gate { position: fixed; inset: 0; z-index: 10001; background: linear-gradient(160deg, #EAF1FB, #FFFFFF); display: none; align-items: center; justify-content: center; padding: 20px; }
-  .auth-card { background: #fff; border: 1px solid #E4E8F0; border-radius: 14px; box-shadow: 0 12px 44px rgba(0,40,130,.14); padding: 30px 28px; max-width: 360px; width: 100%; text-align: center; }
-  .auth-card h2 { color: #002882; font-size: 18px; margin: 12px 0 4px; font-family: var(--font-head); font-weight: 600; }
-  .auth-sub { color: #58595B; font-size: 12.5px; margin: 0 0 18px; }
-  #auth-form { display: flex; flex-direction: column; gap: 10px; }
-  #auth-form input { padding: 11px 12px; border: 1px solid #C9D3E4; border-radius: 8px; font-size: 14px; font-family: inherit; }
-  #auth-form input:focus { outline: none; border-color: #00AAFF; }
-  #auth-form button { padding: 11px; border: 0; border-radius: 8px; background: #002882; color: #fff; font-size: 14px; font-weight: 600; cursor: pointer; font-family: inherit; }
-  #auth-form button:hover { background: #0A2896; }
-  .auth-err { color: #C31B26; font-size: 12px; min-height: 16px; }
-  .auth-note { color: #858585; font-size: 10.5px; margin-top: 14px; line-height: 1.4; }
+  /* Полировка под презентацию */
+  .chart-svg text.bar-val { fill: var(--vtb-navy); font-size: 11px; font-weight: 600; }
+  .tick-lbl { fill: var(--text-secondary); }
+  @media print {
+    .filters, .scope-hint, .role-switch, #b4-detail-btn { display: none !important; }
+    .app { max-width: none; padding: 0 6px; }
+    .section-wrap, .card, .row, .kpi-tile { break-inside: avoid; page-break-inside: avoid; }
+    .card { box-shadow: none; border-color: #C9D3E4; }
+    .section-title { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    body { font-size: 12px; }
+  }
 </style>
 </head>
 <body>
-<div id="auth-gate">
-  <div class="auth-card">
-    <svg width="90" height="32" viewBox="0 0 112 40" aria-label="ВТБ">
-      <polygon points="6,24 34,24 30,30 2,30" fill="#002882"/>
-      <polygon points="10,14 38,14 34,20 6,20" fill="#002882"/>
-      <polygon points="14,4 42,4 38,10 10,10" fill="#00AAFF"/>
-      <text x="50" y="30" font-family="Arial" font-size="26" font-weight="700" fill="#002882">ВТБ</text>
-    </svg>
-    <h2>Доступ к дашборду</h2>
-    <p class="auth-sub">Система Bruno · введите логин и пароль</p>
-    <form id="auth-form" autocomplete="on">
-      <input id="auth-login" type="text" placeholder="Логин" autocomplete="username" autofocus>
-      <input id="auth-pass" type="password" placeholder="Пароль" autocomplete="current-password">
-      <button type="submit">Войти</button>
-      <div id="auth-err" class="auth-err"></div>
-    </form>
-    <p class="auth-note">Демо-доступ. Данные агрегированные/синтетические.</p>
-  </div>
-</div>
 <div class="app">
 
   <div class="top-bar">
@@ -628,8 +608,8 @@ function b1Buckets() {
     return buckets;
   }
   const spanDays = (rows[rows.length - 1].d - rows[0].d) / 86400000 + 1;
-  // короткий период (≤ ~квартала) — сразу по дням
-  if (spanDays <= 92) {
+  // короткий период (≤ ~1.5 мес.) — по дням; от 2 месяцев — помесячно (динамика прогресса)
+  if (spanDays <= 45) {
     return rows.map(r => ({ key: r.ds, label: dLabel(r.d), completed: r.completed, missed: r.missed, other: Math.max(0, r.all - r.completed - r.missed), all: r.all }));
   }
   // помесячно
@@ -651,7 +631,7 @@ function b1IsMonthlyDrillable() {
   const rows = dailyFiltered();
   if (!rows.length) return false;
   const spanDays = (rows[rows.length - 1].d - rows[0].d) / 86400000 + 1;
-  return spanDays > 92;
+  return spanDays > 45;
 }
 function b1Kpi() {
   const rows = dailyFiltered();
@@ -669,6 +649,14 @@ function b1BucketsMonthlyRaw() {
   const map = new Map();
   rows.forEach(r => { const ym = r.d.getFullYear() + '-' + String(r.d.getMonth() + 1).padStart(2, '0'); if (!map.has(ym)) map.set(ym, { completed: 0, missed: 0, all: 0 }); const b = map.get(ym); b.completed += r.completed; b.missed += r.missed; b.all += r.all; });
   return [...map.keys()].sort().map(k => map.get(k));
+}
+// Прогресс «месяц к месяцу»: последний полный месяц периода против предыдущего
+function b1MoM() {
+  const b = b1BucketsMonthlyRaw();
+  if (b.length < 2) return null;
+  const last = b[b.length - 1], prev = b[b.length - 2];
+  const rel = (a, p) => p > 0 ? (a - p) / p : null;
+  return { all: rel(last.all, prev.all), completed: rel(last.completed, prev.completed), missed: rel(last.missed, prev.missed), effPP: effCM(last.completed, last.missed) - effCM(prev.completed, prev.missed) };
 }
 
 // окно: структура по объектам (с учётом фильтра объектов — dim)
@@ -813,6 +801,7 @@ function renderStackedBars(host, buckets, series, opts) {
     if (opts.onClick) { hit.style.cursor = 'pointer'; hit.addEventListener('click', () => { hideTip(); opts.onClick(b, i); }); }
     s.appendChild(hit);
     if (i % skip === 0) s.appendChild(svgText(L + step * i + step / 2, H - 8, b.label, 'tick-lbl', { 'text-anchor': 'middle' }));
+    if (n <= 6) { const tot = b.all != null ? b.all : series.reduce((a, se) => a + (b[se.key] || 0), 0); if (tot > 0) s.appendChild(svgText(cx + bw / 2, yOf(tot) - 6, fmt(tot), 'bar-val', { 'text-anchor': 'middle' })); }
   });
   host.innerHTML = ''; host.appendChild(s);
 }
@@ -964,12 +953,17 @@ function renderB1() {
   });
 
   // KPI + спарклайны
-  const kpi = b1Kpi(), sp = b1Sparks();
+  const kpi = b1Kpi(), sp = b1Sparks(), mom = b1MoM();
+  const arr = v => (v >= 0 ? '▲ ' : '▼ ');
+  const momTxt = v => v == null ? '' : arr(v) + Math.abs(v * 100).toFixed(0) + '% к пред. мес.';
+  const ppTxt = v => v == null ? '' : arr(v) + Math.abs(v * 100).toFixed(1) + ' п.п. к пред. мес.';
+  const cUp = v => v == null ? 'neutral' : v > 0.005 ? 'ok' : v < -0.005 ? 'bad' : 'neutral';   // рост = хорошо
+  const cDown = v => v == null ? 'neutral' : v > 0.005 ? 'bad' : v < -0.005 ? 'ok' : 'neutral';  // рост = плохо (пропущено)
   const tiles = [
-    { lbl: 'Задач всего', val: fmt(kpi.all), delta: '', cls: 'neutral', spark: sp.all, col: '#002882' },
-    { lbl: 'Выполнено', val: fmt(kpi.completed), delta: kpi.all > 0 ? pct(kpi.completed / kpi.all) + ' от всех' : '—', cls: 'ok', spark: sp.completed, col: '#00AAFF' },
-    { lbl: 'Пропущено', val: fmt(kpi.missed), delta: kpi.all > 0 ? pct(kpi.missed / kpi.all, 1) + ' от всех' : '—', cls: 'bad', spark: sp.missed, col: '#E62632' },
-    { lbl: 'Эффективность', val: pct(kpi.eff, 1), delta: 'вып. / (вып.+проп.)', cls: 'neutral', spark: sp.eff, col: '#23A75B' },
+    { lbl: 'Задач всего', val: fmt(kpi.all), delta: mom ? momTxt(mom.all) : '', cls: mom ? cUp(mom.all) : 'neutral', spark: sp.all, col: '#002882' },
+    { lbl: 'Выполнено', val: fmt(kpi.completed), delta: mom ? momTxt(mom.completed) : (kpi.all > 0 ? pct(kpi.completed / kpi.all) + ' от всех' : '—'), cls: mom ? cUp(mom.completed) : 'ok', spark: sp.completed, col: '#00AAFF' },
+    { lbl: 'Пропущено', val: fmt(kpi.missed), delta: mom ? momTxt(mom.missed) : (kpi.all > 0 ? pct(kpi.missed / kpi.all, 1) + ' от всех' : '—'), cls: mom ? cDown(mom.missed) : 'bad', spark: sp.missed, col: '#E62632' },
+    { lbl: 'Эффективность', val: pct(kpi.eff, 1), delta: mom ? ppTxt(mom.effPP) : 'вып. / (вып.+проп.)', cls: mom ? cUp(mom.effPP) : 'neutral', spark: sp.eff, col: '#23A75B' },
   ];
   const wrap = document.getElementById('b1-kpi'); wrap.innerHTML = '';
   tiles.forEach((t, i) => {
@@ -1319,6 +1313,15 @@ function applyAll() {
   state.drill.b1level = 'months'; state.drill.b1ym = null;
   document.getElementById('flt-period-lbl').textContent = 'весь период';
 }
+function applyLast3Months() {
+  // три ПОЛНЫХ последних месяца (текущий незакрытый не берём — чтобы динамика была честной)
+  const anchor = DATA_MAX ? new Date(DATA_MAX) : TODAY;
+  const end = new Date(anchor.getFullYear(), anchor.getMonth(), 0, 23, 59, 59); // последний день прошлого месяца
+  const start = new Date(end.getFullYear(), end.getMonth() - 2, 1);
+  state.period = { mode: 'custom', year: null, month: null, from: start, to: end };
+  state.drill.b1level = 'months'; state.drill.b1ym = null;
+  document.getElementById('flt-period-lbl').textContent = 'последние 3 месяца';
+}
 function setupPeriodMenu() {
   const menu = document.getElementById('menu-period');
   const minISO = DATA_MIN ? fmtISO(DATA_MIN) : (CUR_YEAR + '-01-01');
@@ -1329,6 +1332,7 @@ function setupPeriodMenu() {
     <div class="grp">Период — календарь</div>
     <div class="custom">с <input type="date" id="dt-from" min="${minISO}" max="${maxISO}" value="${curFrom}"> по <input type="date" id="dt-to" min="${minISO}" max="${maxISO}" value="${curTo}"> <button id="dt-apply">Применить</button></div>
     <div class="presets">
+      <button class="preset" data-preset="q3m">Последние 3 месяца</button>
       <button class="preset" data-preset="ytd">С начала года</button>
       <button class="preset" data-preset="this-month">Текущий месяц</button>
       <button class="preset" data-preset="quarter">Последний квартал</button>
@@ -1348,7 +1352,7 @@ function setupPeriodMenu() {
   menu.querySelectorAll('.preset').forEach(btn => btn.onclick = e => {
     e.stopPropagation();
     const p = btn.dataset.preset;
-    if (p === 'ytd') applyYTD(); else if (p === 'this-month') applyThisMonth(); else if (p === 'quarter') applyLastQuarter(); else applyAll();
+    if (p === 'q3m') applyLast3Months(); else if (p === 'ytd') applyYTD(); else if (p === 'this-month') applyThisMonth(); else if (p === 'quarter') applyLastQuarter(); else applyAll();
     setupPeriodMenu(); renderAll();
   });
   menu.querySelectorAll('.custom input, .custom button, .preset').forEach(el => el.addEventListener('click', e => e.stopPropagation()));
@@ -1403,6 +1407,10 @@ async function startApp() {
   if (APP_STARTED) return; APP_STARTED = true;
   try {
     await loadAndMap();
+    if (!OBJECTS.length && !DAILY.length) {
+      showError('Данные загружены, но пусты: 0 объектов и 0 дней. Скорее всего робот build-data.yml отработал без валидного BRUNO_TOKEN (или вернул ошибки API) и закоммитил пустой data.json.gz. Проверьте секрет BRUNO_TOKEN и лог робота.');
+      return;
+    }
     applyYTD();                                        // дефолт — с начала текущего года (правка 2)
     state.objects = new Set(OBJECTS.map(o => o.id));
     state.assignees = new Set(ASSIGNEES.map(a => a.id));
@@ -1421,6 +1429,8 @@ let _rt = null;
 window.addEventListener('resize', () => { if (!APP_STARTED) return; clearTimeout(_rt); _rt = setTimeout(renderAll, 180); });
 const filtersEl = document.getElementById('filters');
 window.addEventListener('scroll', () => filtersEl.classList.toggle('stuck', window.scrollY > 8));
+
+startApp();  // авторизация отключена — сразу дашборд
 </script>
 </body>
 </html>
