@@ -1,3 +1,101 @@
-<!doctype html>
-<meta http-equiv="refresh" content="0; url=./dashboard_vtb_live_3.html">
-<a href="./dashboard_vtb_live_3.html">Открыть дашборд</a>
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Дашборд обслуживания объектов — ВТБ</title>
+<style>
+  :root { --vtb-navy:#002882; --vtb-blue:#00AAFF; --vtb-red:#E62632; --bg:#EAF1FB; --muted:#58595B; }
+  * { box-sizing:border-box; }
+  html,body { margin:0; height:100%; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif; background:var(--bg); color:#1C1C1C; }
+  .wrap { min-height:100%; display:flex; align-items:center; justify-content:center; padding:24px; }
+  .card { background:#fff; border:1px solid #E4E8F0; border-radius:14px; box-shadow:0 10px 40px rgba(0,40,130,.10); padding:34px 30px; max-width:440px; width:100%; text-align:center; }
+  .logo { display:flex; gap:12px; align-items:center; justify-content:center; margin-bottom:16px; }
+  h1 { font-size:18px; margin:0 0 4px; color:var(--vtb-navy); }
+  .sub { font-size:13px; color:var(--muted); margin:0 0 22px; }
+  .spinner { width:34px; height:34px; margin:6px auto 16px; border:3px solid #D6E2F5; border-top-color:var(--vtb-navy); border-radius:50%; animation:spin .8s linear infinite; }
+  @keyframes spin { to { transform:rotate(360deg); } }
+  .status { font-size:13px; color:var(--muted); min-height:20px; }
+  .links { display:none; flex-direction:column; gap:8px; margin-top:18px; }
+  .links.on { display:flex; }
+  .links a { display:block; padding:11px 14px; border-radius:9px; text-decoration:none; font-size:14px; font-weight:600; background:var(--vtb-navy); color:#fff; }
+  .links a.alt { background:#fff; color:var(--vtb-navy); border:1px solid var(--vtb-navy); }
+  .warn { display:none; margin-top:16px; font-size:12px; color:#9A6510; background:#FEF3E0; border-left:3px solid #F5A623; border-radius:6px; padding:9px 11px; text-align:left; line-height:1.45; }
+  .warn.on { display:block; }
+  .err { color:var(--vtb-red); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="card">
+    <div class="logo">
+      <svg width="84" height="30" viewBox="0 0 112 40" aria-label="ВТБ">
+        <polygon points="6,24 34,24 30,30 2,30" fill="#002882"/>
+        <polygon points="10,14 38,14 34,20 6,20" fill="#002882"/>
+        <polygon points="14,4 42,4 38,10 10,10" fill="#00AAFF"/>
+        <text x="50" y="30" font-family="Arial" font-size="26" font-weight="700" fill="#002882">ВТБ</text>
+      </svg>
+    </div>
+    <h1>Дашборд обслуживания объектов</h1>
+    <p class="sub">Система Bruno · агрегированные данные</p>
+    <div class="spinner" id="spin"></div>
+    <div class="status" id="status">Определяем актуальную версию дашборда…</div>
+    <div class="links" id="links">
+      <a id="lnk-main" href="#">Открыть дашборд</a>
+    </div>
+    <div class="warn" id="warn"></div>
+  </div>
+</div>
+<script>
+/* Стартовая страница: авто-переход на самую свежую версию дашборда.
+   Порядок кандидатов — от новой к старой; берём первую существующую (HTTP 200). */
+(function () {
+  var CANDIDATES = ['dashboard_vtb_live_4.html', 'dashboard_vtb_live_3.html'];
+  var DATA = ['data.json.gz', 'data.json'];
+  var statusEl = document.getElementById('status');
+  var linksEl = document.getElementById('links');
+  var spin = document.getElementById('spin');
+  var warn = document.getElementById('warn');
+
+  // Предупреждение о формате данных: если браузер не умеет распаковывать gzip
+  // на клиенте, дашборду нужен несжатый data.json рядом с data.json.gz.
+  if (!('DecompressionStream' in window)) {
+    warn.className = 'warn on';
+    warn.innerHTML = '<b>Старый браузер.</b> Нет поддержки клиентской распаковки gzip. ' +
+      'Если рядом с <code>data.json.gz</code> нет несжатого <code>data.json</code>, данные могут не загрузиться. Обновите браузер.';
+  }
+
+  function head(url) {
+    return fetch(url, { method: 'HEAD', cache: 'no-store' })
+      .then(function (r) { return r.ok; }).catch(function () { return false; });
+  }
+
+  (async function () {
+    var target = null;
+    for (var i = 0; i < CANDIDATES.length; i++) {
+      statusEl.textContent = 'Проверяем ' + CANDIDATES[i] + '…';
+      if (await head(CANDIDATES[i])) { target = CANDIDATES[i]; break; }
+    }
+    // проверим, что вообще есть данные (для понятного сообщения об ошибке)
+    var hasData = false;
+    for (var j = 0; j < DATA.length; j++) { if (await head(DATA[j])) { hasData = true; break; } }
+
+    if (target) {
+      statusEl.textContent = 'Открываем ' + target + (hasData ? '' : ' (внимание: файл данных не найден)') + '…';
+      document.getElementById('lnk-main').setAttribute('href', target);
+      // мягкий редирект (replace — чтобы «назад» не возвращал на заглушку)
+      setTimeout(function () { location.replace(target); }, 250);
+    } else {
+      spin.style.display = 'none';
+      statusEl.className = 'status err';
+      statusEl.textContent = 'Не найдена ни одна версия дашборда на сервере.';
+      linksEl.className = 'links on';
+      linksEl.innerHTML = CANDIDATES.map(function (c) {
+        return '<a class="alt" href="' + c + '">Попробовать ' + c + '</a>';
+      }).join('');
+    }
+  })();
+})();
+</script>
+</body>
+</html>
