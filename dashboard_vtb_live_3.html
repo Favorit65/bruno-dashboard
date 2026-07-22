@@ -233,16 +233,61 @@
     .detail-grid { grid-template-columns: 1fr; }
     .legend { font-size: 10px; }
   }
-  /* Полировка под презентацию */
-  .chart-svg text.bar-val { fill: var(--vtb-navy); font-size: 11px; font-weight: 600; }
-  .tick-lbl { fill: var(--text-secondary); }
-  @media print {
-    .filters, .scope-hint, .role-switch, #b4-detail-btn { display: none !important; }
-    .app { max-width: none; padding: 0 6px; }
-    .section-wrap, .card, .row, .kpi-tile { break-inside: avoid; page-break-inside: avoid; }
-    .card { box-shadow: none; border-color: #C9D3E4; }
-    .section-title { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-    body { font-size: 12px; }
+
+  /* ===== Поиск в фильтрах (правка 2) ===== */
+  .flt-search { position: sticky; top: 0; background: var(--surface-2); padding: 6px 6px 7px; z-index: 2; border-bottom: 1px solid var(--border); margin-bottom: 3px; }
+  .flt-search input { width: 100%; box-sizing: border-box; font-size: 12px; padding: 6px 9px; border: 1px solid var(--border-strong); border-radius: 6px; font-family: inherit; outline: none; }
+  .flt-search input:focus { border-color: var(--vtb-blue); }
+  .flt-menu label.hide { display: none; }
+  .flt-empty { font-size: 11px; color: var(--text-muted); padding: 8px; text-align: center; }
+
+  /* ===== Фильтр по типу задач (правка 7) ===== */
+  .flt.ttype { gap: 4px; padding: 4px 8px; cursor: default; }
+  .flt.ttype > span.lbl2 { font-size: 12px; color: var(--text-secondary); margin-right: 2px; }
+  .ttype-seg { padding: 4px 10px; border-radius: 999px; font-size: 11.5px; cursor: pointer; border: 1px solid transparent; user-select: none; }
+  .ttype-seg.active { color: #fff; font-weight: 600; }
+  .ttype-seg[data-tt="all"].active { background: var(--vtb-navy); }
+  .ttype-seg[data-tt="feedback"].active { background: var(--vtb-blue); color: #06263b; }
+  .ttype-seg[data-tt="planned"].active { background: var(--vtb-navy-2); }
+  .ttype-seg:not(.active):hover { border-color: var(--border-strong); }
+  .split-seg.clk { cursor: pointer; }
+  .split-seg.tt-dim { opacity: 0.4; }
+  .split-eff .se.clk { cursor: pointer; transition: box-shadow .15s; }
+  .split-eff .se.clk:hover { box-shadow: 0 2px 8px rgba(0,40,130,.14); }
+  .split-eff .se.tt-active { outline: 2px solid var(--vtb-blue); outline-offset: 1px; }
+  .split-eff .se.tt-dim { opacity: 0.5; }
+
+  /* ===== Кнопки экспорта на карточках (правка 4) ===== */
+  .card { position: relative; }
+  .card-export { position: absolute; right: 10px; bottom: 8px; display: flex; gap: 5px; z-index: 8; opacity: 0.3; transition: opacity .15s; }
+  .card:hover .card-export { opacity: 1; }
+  .card-export button { display: inline-flex; align-items: center; justify-content: center; width: 30px; height: 26px; padding: 0; border: 1px solid var(--border-strong); background: var(--surface-2); color: var(--vtb-navy); border-radius: 6px; cursor: pointer; font-family: inherit; }
+  .card-export button:hover { border-color: var(--vtb-blue); background: var(--bg-accent); }
+  .card-export button svg { width: 15px; height: 15px; display: block; }
+  .card-export button.done { border-color: var(--vtb-green); color: var(--vtb-green); }
+  .card-export.busy { pointer-events: none; opacity: .55; }
+
+  /* ===== Персонал: 3 группы + раскрытие (правка 9) ===== */
+  .grp-list { margin-top: 12px; border: 1px solid var(--border-strong); border-radius: var(--card-radius); background: var(--surface-1); overflow: hidden; display: none; }
+  .grp-list.on { display: block; }
+  .grp-list-head { display: flex; align-items: center; gap: 10px; padding: 10px 14px; background: var(--surface-2); border-bottom: 1px solid var(--border); flex-wrap: wrap; }
+  .grp-list-head h5 { font-family: var(--font-head); font-size: 13.5px; margin: 0; color: var(--vtb-navy); font-weight: 600; }
+  .grp-list-head .badge { font-size: 10.5px; background: var(--bg-accent); color: var(--vtb-navy); padding: 2px 9px; border-radius: 999px; }
+  .grp-list-head .close { margin-left: auto; cursor: pointer; color: var(--text-muted); background: none; border: 1px solid var(--border-strong); border-radius: 6px; padding: 3px 9px; font-size: 12px; font-family: inherit; }
+  .grp-row { display: grid; grid-template-columns: 30px 1fr 128px 66px 116px; gap: 10px; align-items: center; padding: 8px 14px; border-bottom: 1px solid var(--border); font-size: 12px; }
+  .grp-row:last-child { border-bottom: 0; }
+  .grp-row .rk { font-family: var(--font-head); font-weight: 600; color: var(--text-muted); text-align: center; }
+  .grp-row .nm { font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .grp-row .vol { font-size: 11.5px; color: var(--text-secondary); }
+  .grp-row .vol b { color: var(--vtb-navy); font-family: var(--font-head); }
+  .grp-row .effc { text-align: right; font-family: var(--font-head); font-weight: 600; }
+  .grp-row .mini { height: 30px; }
+  .grp-more { display: block; width: 100%; text-align: center; padding: 8px; background: var(--surface-2); border: 0; border-top: 1px solid var(--border); color: var(--vtb-navy); font-family: inherit; font-size: 11.5px; cursor: pointer; font-weight: 500; }
+  .grp-more:hover { background: var(--bg-accent); }
+  .vbar-grp { cursor: pointer; }
+  @media (max-width: 700px) {
+    .grp-row { grid-template-columns: 26px 1fr 66px; }
+    .grp-row .vol, .grp-row .mini { display: none; }
   }
 </style>
 </head>
@@ -294,9 +339,15 @@
       <span class="chev">▾</span>
       <div class="flt-menu" id="menu-assignee"></div>
     </div>
+    <div class="flt ttype" id="flt-ttype">
+      <span class="lbl2">Тип:</span>
+      <span class="ttype-seg active" data-tt="all">все</span>
+      <span class="ttype-seg" data-tt="feedback">обращения</span>
+      <span class="ttype-seg" data-tt="planned">плановые</span>
+    </div>
     <button class="flt-reset" id="btn-reset">Сбросить всё</button>
   </div>
-  <p class="scope-hint">Период (календарь) перестраивает динамику, категории/воронку (блок 1) и план–факт (блок 3). Фильтр объектов — на структуру (блок 2), исполнителей — на персонал (блок 4). Структура и персонал считаются по последнему окну (<span id="win-days-hint">30</span> дн.) — это ограничение суточной выгрузки робота.</p>
+  <p class="scope-hint" id="scope-hint">Все фильтры применяются ко всем блокам. <span id="win-days-hint">30</span></p>
 
   <!-- BLOCK 1 -->
   <div class="section-wrap">
@@ -381,6 +432,7 @@
       <button class="detail-btn" id="b4-detail-btn">Детализация ▾</button>
     </div>
     <div class="staff-scroll"><div id="b4-chart" data-h="266"></div></div>
+    <div class="grp-list" id="b4-grouplist"></div>
     <div class="b4-sel" id="b4-sel"></div>
     <div class="detail-grid" id="b4-detail" style="display:none;"></div>
   </div>
@@ -425,7 +477,33 @@ let PLANNED_DAILY = [];      // [{d:Date, all, completed, missed}] — регу�
 let WINDOW = {};            // {byObject, byZone, byEmployee, byTeam, feedbackTasks}
 let CATEGORIES = {};
 let YEARS = [], CUR_YEAR = new Date().getFullYear(), DATA_MIN = null, DATA_MAX = null;
+let FACTS = [];             // единый плоский массив задач-фактов {d,ds,o,z,e,t,k:'fb'|'pl',s}
+let HAS_FACTS = false;      // включает полное кросс-фильтрование (правки 1,7)
+let FEEDBACK_DAILY = [];    // ряд обращений по дням (если робот отдаёт daily.feedback)
 const objById = {}, zoneById = {}, userById = {}, teamById = {};
+
+function parseFacts(arr) {
+  if (!Array.isArray(arr) || !arr.length) return [];
+  const out = [];
+  for (const r of arr) {
+    if (!r) continue;
+    const ds = _isoDay(r.d || r.date || r.day || r.dateLocal); if (!ds) continue;
+    const kk = String(r.k || r.kind || r.type || '').toLowerCase();
+    const kind = (kk[0] === 'f' || kk === 'fb') ? 'fb'
+               : (kk[0] === 'p' || kk === 'pl' || kk === 'tt') ? 'pl'
+               : (r.feedbackID ? 'fb' : 'pl');
+    out.push({ ds, d: new Date(ds + 'T00:00:00'),
+      o: String(r.o || r.objectID || ''), z: String(r.z || r.zoneID || ''),
+      e: String(r.e || r.employeeID || ''), t: String(r.t || r.teamID || ''),
+      k: kind, s: String(r.s || r.status || '').toUpperCase() });
+  }
+  return out.filter(f => !isNaN(f.d.getTime())).sort((a, b) => a.d - b.d);
+}
+function mergeNamedDaily(daily, name) {
+  const m = _sliceToMap((daily && daily[name]) || {});
+  return Object.entries(m).map(([ds, v]) => ({ d: new Date(ds + 'T00:00:00'), ds, ...v }))
+                          .filter(r => !isNaN(r.d.getTime())).sort((a, b) => a.d - b.d);
+}
 
 async function fetchData() {
   for (const url of DATA_URLS) {
@@ -516,6 +594,9 @@ async function loadAndMap() {
 
   DAILY = mergeDaily(raw.daily || {});
   PLANNED_DAILY = mergePlannedDaily(raw.daily || {});
+  FACTS = parseFacts(raw.facts || raw.tasks || []);
+  HAS_FACTS = FACTS.length > 0;
+  FEEDBACK_DAILY = mergeNamedDaily(raw.daily || {}, 'feedback');
   WINDOW = raw.window || { byObject: {}, byZone: {}, byEmployee: {}, byTeam: {}, feedbackTasks: [] };
   WINDOW.feedbackTasks = WINDOW.feedbackTasks || [];
   CATEGORIES = raw.categories || { total: {}, feedback: {}, planned: {} };
@@ -527,7 +608,7 @@ async function loadAndMap() {
   } else {
     YEARS = [CUR_YEAR]; DATA_MIN = new Date(CUR_YEAR, 0, 1); DATA_MAX = new Date(CUR_YEAR, 11, 31);
   }
-  console.log('mapped:', { objects: OBJECTS.length, zones: ZONES.length, users: USERS.length, teams: TEAMS.length, workTypes: WORK_TYPES.length, dailyDays: DAILY.length, plannedDays: PLANNED_DAILY.length, fbTasks: WINDOW.feedbackTasks.length, years: YEARS });
+  console.log('mapped:', { hasFacts: HAS_FACTS, facts: FACTS.length, objects: OBJECTS.length, zones: ZONES.length, users: USERS.length, teams: TEAMS.length, workTypes: WORK_TYPES.length, dailyDays: DAILY.length, plannedDays: PLANNED_DAILY.length, fbTasks: WINDOW.feedbackTasks.length, years: YEARS });
 }
 
 function showStatus(msg) { let el = document.getElementById('load-status'); if (!el) { el = document.createElement('div'); el.id = 'load-status'; el.style.cssText = 'position:fixed;top:0;left:0;right:0;padding:14px;background:#002882;color:#fff;font-family:sans-serif;font-size:14px;z-index:10000;text-align:center;'; document.body.appendChild(el); } el.textContent = msg; }
@@ -540,9 +621,10 @@ function showError(msg) { let el = document.getElementById('load-status'); if (!
 const state = {
   role: 'admin',
   period: { mode: 'custom', year: null, month: null, from: null, to: null },
+  taskType: 'all',            // 'all' | 'feedback' | 'planned' (правка 7)
   objects: new Set(),
   assignees: new Set(),
-  drill: { b1level: 'months', b1ym: null, b2aObj: null, b4cat: 'team', b4metric: 'completed', b4detail: false, b4sel: null },
+  drill: { b1level: 'months', b1ym: null, b2aObj: null, b2aFrom: null, b4cat: 'team', b4metric: 'completed', b4detail: false, b4sel: null, b4group: null, b4groupMore: false },
 };
 
 /* ==============================================================
@@ -587,12 +669,40 @@ function periodLabelShort() {
   if (p.from && p.to) return p.from.toLocaleDateString('ru-RU') + ' — ' + p.to.toLocaleDateString('ru-RU');
   return '';
 }
+/* ===== FACTS-движок: единый источник, все фильтры → все блоки (правки 1,7) ===== */
+function objSelActive() { return state.objects.size > 0 && state.objects.size < OBJECTS.length; }
+function asgSelActive() { return state.assignees.size > 0 && state.assignees.size < ASSIGNEES.length; }
+function _objMatch(f) { return !objSelActive() || state.objects.has(f.o); }
+function _asgMatch(f) { return !asgSelActive() || state.assignees.has(f.e) || state.assignees.has(f.t); }
+function _typeMatch(f) { return state.taskType === 'all' || (state.taskType === 'feedback' && f.k === 'fb') || (state.taskType === 'planned' && f.k === 'pl'); }
+function factClass(s) { s = String(s).toUpperCase(); return s === 'COMPLETED' ? 'completed' : s === 'MISSED' ? 'missed' : 'other'; }
+function filteredFacts() { return FACTS.filter(f => inPeriod(f.d) && _objMatch(f) && _asgMatch(f) && _typeMatch(f)); }
+function filteredFactsNoType() { return FACTS.filter(f => inPeriod(f.d) && _objMatch(f) && _asgMatch(f)); }
+function factsDaily(facts) {
+  const m = {};
+  facts.forEach(f => { const b = m[f.ds] || (m[f.ds] = { all: 0, completed: 0, missed: 0 }); b.all++; const c = factClass(f.s); if (c === 'completed') b.completed++; else if (c === 'missed') b.missed++; });
+  return Object.entries(m).map(([ds, v]) => ({ d: new Date(ds + 'T00:00:00'), ds, ...v })).filter(r => !isNaN(r.d.getTime())).sort((a, b) => a.d - b.d);
+}
+function aggFactsBy(facts, keyf) {
+  const m = {};
+  facts.forEach(f => { const k = keyf(f); if (!k) return; const a = m[k] || (m[k] = { c: 0, m: 0, w: 0 }); const c = factClass(f.s); if (c === 'completed') a.c++; else if (c === 'missed') a.m++; else a.w++; });
+  return m;
+}
+function activeDaily() {
+  if (HAS_FACTS) return factsDaily(filteredFacts());
+  const base = dailyFiltered();
+  if (state.taskType === 'all') return base;
+  const pmap = plannedByDs();
+  return base.map(r => { const p = pmap[r.ds] || { all: 0, completed: 0, missed: 0 };
+    if (state.taskType === 'planned') return { d: r.d, ds: r.ds, all: p.all, completed: p.completed, missed: p.missed };
+    return { d: r.d, ds: r.ds, all: Math.max(0, r.all - p.all), completed: Math.max(0, r.completed - p.completed), missed: Math.max(0, r.missed - p.missed) }; });
+}
 function firstOfThisMonth() { return new Date(TODAY.getFullYear(), TODAY.getMonth(), 1); }
 function endOfToday() { return new Date(TODAY.getFullYear(), TODAY.getMonth(), TODAY.getDate(), 23, 59, 59); }
 
 // Помесячные / посуточные корзины из DAILY по текущему периоду
 function b1Buckets() {
-  const rows = dailyFiltered();
+  const rows = activeDaily();
   if (!rows.length) return [];
   // явный drill по месяцу (клик на столбик месяца)
   if (state.drill.b1level === 'days' && state.drill.b1ym) {
@@ -608,8 +718,8 @@ function b1Buckets() {
     return buckets;
   }
   const spanDays = (rows[rows.length - 1].d - rows[0].d) / 86400000 + 1;
-  // короткий период (≤ ~1.5 мес.) — по дням; от 2 месяцев — помесячно (динамика прогресса)
-  if (spanDays <= 45) {
+  // короткий период (≤ ~квартала) — сразу по дням
+  if (spanDays <= 92) {
     return rows.map(r => ({ key: r.ds, label: dLabel(r.d), completed: r.completed, missed: r.missed, other: Math.max(0, r.all - r.completed - r.missed), all: r.all }));
   }
   // помесячно
@@ -628,13 +738,13 @@ function b1Buckets() {
   });
 }
 function b1IsMonthlyDrillable() {
-  const rows = dailyFiltered();
+  const rows = activeDaily();
   if (!rows.length) return false;
   const spanDays = (rows[rows.length - 1].d - rows[0].d) / 86400000 + 1;
-  return spanDays > 45;
+  return spanDays > 92;
 }
 function b1Kpi() {
-  const rows = dailyFiltered();
+  const rows = activeDaily();
   const all = rows.reduce((a, r) => a + r.all, 0);
   const completed = rows.reduce((a, r) => a + r.completed, 0);
   const missed = rows.reduce((a, r) => a + r.missed, 0);
@@ -645,22 +755,21 @@ function b1Sparks() {
   return { all: b.map(x => x.all), completed: b.map(x => x.completed), missed: b.map(x => x.missed), eff: b.map(x => Math.round(effCM(x.completed, x.missed) * 100)) };
 }
 function b1BucketsMonthlyRaw() {
-  const rows = dailyFiltered();
+  const rows = activeDaily();
   const map = new Map();
   rows.forEach(r => { const ym = r.d.getFullYear() + '-' + String(r.d.getMonth() + 1).padStart(2, '0'); if (!map.has(ym)) map.set(ym, { completed: 0, missed: 0, all: 0 }); const b = map.get(ym); b.completed += r.completed; b.missed += r.missed; b.all += r.all; });
   return [...map.keys()].sort().map(k => map.get(k));
 }
-// Прогресс «месяц к месяцу»: последний полный месяц периода против предыдущего
-function b1MoM() {
-  const b = b1BucketsMonthlyRaw();
-  if (b.length < 2) return null;
-  const last = b[b.length - 1], prev = b[b.length - 2];
-  const rel = (a, p) => p > 0 ? (a - p) / p : null;
-  return { all: rel(last.all, prev.all), completed: rel(last.completed, prev.completed), missed: rel(last.missed, prev.missed), effPP: effCM(last.completed, last.missed) - effCM(prev.completed, prev.missed) };
-}
 
 // окно: структура по объектам (с учётом фильтра объектов — dim)
 function structureByObject() {
+  if (HAS_FACTS) {
+    const src = FACTS.filter(f => inPeriod(f.d) && _typeMatch(f) && _asgMatch(f));
+    const agg = aggFactsBy(src, f => f.o);
+    return OBJECTS.map(o => { const v = agg[o.id] || { c: 0, m: 0, w: 0 }; const cnt = v.c + v.m + v.w;
+      return { id: o.id, name: o.name, count: cnt, eff: effCM(v.c, v.m), c: v.c, m: v.m, w: v.w, isDim: !state.objects.has(o.id) };
+    }).filter(r => r.count > 0).sort((a, b) => b.count - a.count);
+  }
   const bo = WINDOW.byObject || {};
   return OBJECTS.map(o => {
     const v = bo[o.id] || { c: 0, m: 0, w: 0 };
@@ -692,6 +801,13 @@ function mergeSmallObjects(rows) {
   return [...keep, other].sort((a, b) => b.count - a.count);
 }
 function topZonesOfObject(objectID, limit = 12) {
+  if (HAS_FACTS) {
+    const src = FACTS.filter(f => f.o === objectID && inPeriod(f.d) && _typeMatch(f) && _asgMatch(f));
+    const agg = aggFactsBy(src, f => f.z);
+    return ZONES.filter(z => z.objectID === objectID).map(z => { const v = agg[z.id] || { c: 0, m: 0, w: 0 };
+      return { id: z.id, name: z.name, count: v.c + v.m + v.w, eff: effCM(v.c, v.m) };
+    }).filter(r => r.count > 0).sort((a, b) => b.count - a.count).slice(0, limit);
+  }
   const bz = WINDOW.byZone || {};
   return ZONES.filter(z => z.objectID === objectID).map(z => {
     const v = bz[z.id] || { c: 0, m: 0, w: 0 };
@@ -699,8 +815,24 @@ function topZonesOfObject(objectID, limit = 12) {
   }).filter(r => r.count > 0).sort((a, b) => b.count - a.count).slice(0, limit);
 }
 // категории окна
-function categoryCompare() { return periodAgg(); }  // категории считаются по выбранному периоду (правка 3)
+function categoryCompare() {  // категории по периоду (правки 3,7)
+  if (HAS_FACTS) {
+    const facts = filteredFactsNoType();
+    const z = () => ({ all: 0, completed: 0, missed: 0 });
+    const acc = { total: z(), planned: z(), feedback: z() };
+    facts.forEach(f => { const c = factClass(f.s); const b = f.k === 'pl' ? 'planned' : 'feedback'; [b, 'total'].forEach(k => { acc[k].all++; if (c === 'completed') acc[k].completed++; else if (c === 'missed') acc[k].missed++; }); });
+    return acc;
+  }
+  return periodAgg();
+}
 function feedbackFunnel() {
+  if (HAS_FACTS) {
+    const ftf = filteredFactsNoType().filter(f => f.k === 'fb');
+    const byf = { NEW: 0, WAITING: 0, COMPLETING: 0, COMPLETED: 0, MISSED: 0 };
+    ftf.forEach(t => { const st = String(t.s).toUpperCase(); if (byf[st] != null) byf[st]++; });
+    const totalf = ftf.length, startedf = byf.COMPLETING + byf.COMPLETED;
+    return { total: totalf, waiting: byf.NEW + byf.WAITING, started: startedf, completed: byf.COMPLETED, missed: byf.MISSED, by: byf, factsMode: true };
+  }
   const ft = (WINDOW.feedbackTasks || []).filter(t => { const d = new Date(t.d + 'T00:00:00'); return !isNaN(d.getTime()) && inPeriod(d); });
   const by = { NEW: 0, WAITING: 0, COMPLETING: 0, COMPLETED: 0, MISSED: 0 };
   ft.forEach(t => { if (by[t.s] != null) by[t.s]++; });
@@ -708,9 +840,17 @@ function feedbackFunnel() {
   const started = by.COMPLETING + by.COMPLETED;
   return { total, waiting: by.NEW + by.WAITING, started, completed: by.COMPLETED, missed: by.MISSED, by };
 }
-// план–факт по регулярным (плановым) задачам за выбранный период
+// план–факт по регулярным (плановым) задачам за выбранный период (учитывает фильтры)
+function b3PlanRows() {
+  if (state.taskType === 'feedback') return [];   // план–факт только по плановым
+  if (HAS_FACTS) {
+    const pf = FACTS.filter(f => f.k === 'pl' && inPeriod(f.d) && _objMatch(f) && _asgMatch(f));
+    return factsDaily(pf);
+  }
+  return PLANNED_DAILY.filter(r => inPeriod(r.d));
+}
 function b3Buckets() {
-  const rows = PLANNED_DAILY.filter(r => inPeriod(r.d));
+  const rows = b3PlanRows();
   if (!rows.length) return [];
   const spanDays = (rows[rows.length - 1].d - rows[0].d) / 86400000 + 1;
   if (spanDays <= 92) {
@@ -724,19 +864,25 @@ function b3Buckets() {
 }
 // персонал окна
 function staffGroups(metric) {
-  const build = (entities, src) => {
+  const build = (entities, src, effFn) => {
     const rows = entities.map(e => {
       const v = (src[e.id]) || { c: 0, m: 0, w: 0 };
-      return { id: e.id, name: e.name, completed: v.c, total: v.c + v.m + v.w, eff: effCMW(v.c, v.m, v.w), c: v.c, m: v.m, w: v.w };
+      return { id: e.id, name: e.name, completed: v.c, total: v.c + v.m + v.w, eff: effFn(v.c, v.m, v.w), c: v.c, m: v.m, w: v.w };
     }).filter(r => r.total > 0);
     const vals = rows.map(r => metric === 'completed' ? r.completed : r.eff);
     const avg = vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : 0;
     rows.sort((a, b) => metric === 'completed' ? b.completed - a.completed : b.eff - a.eff);
     return { avg, rows };
   };
+  if (HAS_FACTS) {
+    const src = FACTS.filter(f => inPeriod(f.d) && _typeMatch(f) && _objMatch(f));
+    const teamAgg = aggFactsBy(src, f => f.t), workAgg = aggFactsBy(src, f => f.e);
+    const effF = (c, m, w) => effCM(c, m);
+    return { team: build(TEAMS, teamAgg, effF), worker: build(WORKERS, workAgg, effF) };
+  }
   return {
-    team: build(TEAMS, WINDOW.byTeam || {}),
-    worker: build(WORKERS, WINDOW.byEmployee || {}),
+    team: build(TEAMS, WINDOW.byTeam || {}, effCMW),
+    worker: build(WORKERS, WINDOW.byEmployee || {}, effCMW),
   };
 }
 
@@ -752,6 +898,19 @@ function svg(tag, attrs, children) {
 }
 function svgText(x, y, str, cls, extra) { const t = svg('text', Object.assign({ x, y, class: cls || 'tick-lbl' }, extra || {})); t.textContent = str; return t; }
 function niceMax(v) { if (v <= 0) return 10; const pow = Math.pow(10, Math.floor(Math.log10(v))); const n = v / pow; const step = n <= 1 ? 1 : n <= 2 ? 2 : n <= 5 ? 5 : 10; return step * pow; }
+// Авто-подбор оси Y как в Excel: min=0, «круглый» шаг и максимум (правка 5)
+function niceScale(maxV, targetTicks) {
+  targetTicks = targetTicks || 4;
+  if (!(maxV > 0)) return { max: 10, step: 5, ticks: [0, 5, 10] };
+  const rawStep = maxV / targetTicks;
+  const pow = Math.pow(10, Math.floor(Math.log10(rawStep)));
+  const nn = rawStep / pow;
+  const niceN = nn <= 1 ? 1 : nn <= 2 ? 2 : nn <= 2.5 ? 2.5 : nn <= 5 ? 5 : 10;
+  const step = niceN * pow;
+  const max = Math.max(step, Math.ceil(maxV / step) * step);
+  const ticks = []; for (let v = 0; v <= max + step * 0.5; v += step) ticks.push(Math.round(v * 1e6) / 1e6);
+  return { max, step, ticks };
+}
 const TT = document.getElementById('tooltip');
 function showTip(html, evt) { TT.innerHTML = html; TT.style.opacity = '1'; moveTip(evt); }
 function moveTip(evt) { const pad = 14; let x = evt.clientX + pad, y = evt.clientY + pad; const r = TT.getBoundingClientRect(); if (x + r.width > window.innerWidth) x = evt.clientX - r.width - pad; if (y + r.height > window.innerHeight) y = evt.clientY - r.height - pad; TT.style.left = x + 'px'; TT.style.top = y + 'px'; }
@@ -774,14 +933,15 @@ function renderStackedBars(host, buckets, series, opts) {
   const H = parseInt(host.dataset.h || '210', 10);
   const L = 40, R = 8, T = 10, B = 26;
   const pw = W - L - R, ph = H - T - B;
-  const maxV = niceMax(Math.max(1, ...buckets.map(b => series.reduce((a, s) => a + (b[s.key] || 0), 0))));
+  const dataMax = Math.max(1, ...buckets.map(b => series.reduce((a, s) => a + (b[s.key] || 0), 0)));
+  const sc = niceScale(dataMax, 4); const maxV = sc.max;
   const yOf = v => T + ph - (v / maxV) * ph;
   const n = buckets.length || 1;
   const step = pw / n, bw = Math.min(46, step * 0.7);
   const s = svg('svg', { class: 'chart-svg', viewBox: `0 0 ${W} ${H}`, height: H });
-  // сетка + оси Y
-  for (let i = 0; i <= 2; i++) { const v = maxV * i / 2; const y = yOf(v); s.appendChild(svg('line', { class: i === 0 ? 'axis-line' : 'grid-line', x1: L, y1: y, x2: W - R, y2: y })); s.appendChild(svgText(L - 5, y + 3, fmt(v), 'tick-lbl', { 'text-anchor': 'end' })); }
-  const skip = Math.ceil(n / (opts.maxLabels || 16));
+  // сетка + оси Y (авто-шаг, правка 5)
+  sc.ticks.forEach(v => { const y = yOf(v); s.appendChild(svg('line', { class: v === 0 ? 'axis-line' : 'grid-line', x1: L, y1: y, x2: W - R, y2: y })); s.appendChild(svgText(L - 5, y + 3, fmt(v), 'tick-lbl', { 'text-anchor': 'end' })); });
+  const skip = opts.everyLabel ? 1 : Math.ceil(n / (opts.maxLabels || 16));
   buckets.forEach((b, i) => {
     const cx = L + step * i + (step - bw) / 2;
     let acc = 0;
@@ -801,7 +961,6 @@ function renderStackedBars(host, buckets, series, opts) {
     if (opts.onClick) { hit.style.cursor = 'pointer'; hit.addEventListener('click', () => { hideTip(); opts.onClick(b, i); }); }
     s.appendChild(hit);
     if (i % skip === 0) s.appendChild(svgText(L + step * i + step / 2, H - 8, b.label, 'tick-lbl', { 'text-anchor': 'middle' }));
-    if (n <= 6) { const tot = b.all != null ? b.all : series.reduce((a, se) => a + (b[se.key] || 0), 0); if (tot > 0) s.appendChild(svgText(cx + bw / 2, yOf(tot) - 6, fmt(tot), 'bar-val', { 'text-anchor': 'middle' })); }
   });
   host.innerHTML = ''; host.appendChild(s);
 }
@@ -851,12 +1010,12 @@ function renderVBars(host, items, opts) {
   const H = parseInt(host.dataset.h || '260', 10);
   const L = 44, R = 10, T = 12, B = 64;
   const pw = W - L - R, ph = H - T - B;
-  const maxV = niceMax(Math.max(1, ...items.map(it => it.value), opts.avg || 0));
+  const sc = niceScale(Math.max(1, ...items.map(it => it.value), opts.avg || 0), 4); const maxV = sc.max;
   const yOf = v => T + ph - (v / maxV) * ph;
   const n = items.length || 1;
   const step = pw / n, bw = Math.min(46, step * 0.66);
   const s = svg('svg', { class: 'chart-svg', viewBox: `0 0 ${W} ${H}`, width: W, height: H });
-  for (let i = 0; i <= 2; i++) { const v = maxV * i / 2; const y = yOf(v); s.appendChild(svg('line', { class: i === 0 ? 'axis-line' : 'grid-line', x1: L, y1: y, x2: W - R, y2: y })); s.appendChild(svgText(L - 5, y + 3, opts.fmtY ? opts.fmtY(v) : fmt(v), 'tick-lbl', { 'text-anchor': 'end' })); }
+  sc.ticks.forEach(v => { const y = yOf(v); s.appendChild(svg('line', { class: v === 0 ? 'axis-line' : 'grid-line', x1: L, y1: y, x2: W - R, y2: y })); s.appendChild(svgText(L - 5, y + 3, opts.fmtY ? opts.fmtY(v) : fmt(v), 'tick-lbl', { 'text-anchor': 'end' })); });
   items.forEach((it, i) => {
     const cx = L + step * i + (step - bw) / 2;
     const h = (it.value / maxV) * ph; const y = yOf(it.value);
@@ -950,20 +1109,16 @@ function renderB1() {
       else if (explicitDrill) { state.drill.b1level = 'months'; state.drill.b1ym = null; renderB1(); }
     },
     tipTitle: (b) => b.label,
+    everyLabel: explicitDrill,   // в режиме дней месяца — подпись под каждым столбиком (правка 5)
   });
 
   // KPI + спарклайны
-  const kpi = b1Kpi(), sp = b1Sparks(), mom = b1MoM();
-  const arr = v => (v >= 0 ? '▲ ' : '▼ ');
-  const momTxt = v => v == null ? '' : arr(v) + Math.abs(v * 100).toFixed(0) + '% к пред. мес.';
-  const ppTxt = v => v == null ? '' : arr(v) + Math.abs(v * 100).toFixed(1) + ' п.п. к пред. мес.';
-  const cUp = v => v == null ? 'neutral' : v > 0.005 ? 'ok' : v < -0.005 ? 'bad' : 'neutral';   // рост = хорошо
-  const cDown = v => v == null ? 'neutral' : v > 0.005 ? 'bad' : v < -0.005 ? 'ok' : 'neutral';  // рост = плохо (пропущено)
+  const kpi = b1Kpi(), sp = b1Sparks();
   const tiles = [
-    { lbl: 'Задач всего', val: fmt(kpi.all), delta: mom ? momTxt(mom.all) : '', cls: mom ? cUp(mom.all) : 'neutral', spark: sp.all, col: '#002882' },
-    { lbl: 'Выполнено', val: fmt(kpi.completed), delta: mom ? momTxt(mom.completed) : (kpi.all > 0 ? pct(kpi.completed / kpi.all) + ' от всех' : '—'), cls: mom ? cUp(mom.completed) : 'ok', spark: sp.completed, col: '#00AAFF' },
-    { lbl: 'Пропущено', val: fmt(kpi.missed), delta: mom ? momTxt(mom.missed) : (kpi.all > 0 ? pct(kpi.missed / kpi.all, 1) + ' от всех' : '—'), cls: mom ? cDown(mom.missed) : 'bad', spark: sp.missed, col: '#E62632' },
-    { lbl: 'Эффективность', val: pct(kpi.eff, 1), delta: mom ? ppTxt(mom.effPP) : 'вып. / (вып.+проп.)', cls: mom ? cUp(mom.effPP) : 'neutral', spark: sp.eff, col: '#23A75B' },
+    { lbl: 'Задач всего', val: fmt(kpi.all), delta: '', cls: 'neutral', spark: sp.all, col: '#002882' },
+    { lbl: 'Выполнено', val: fmt(kpi.completed), delta: kpi.all > 0 ? pct(kpi.completed / kpi.all) + ' от всех' : '—', cls: 'ok', spark: sp.completed, col: '#00AAFF' },
+    { lbl: 'Пропущено', val: fmt(kpi.missed), delta: kpi.all > 0 ? pct(kpi.missed / kpi.all, 1) + ' от всех' : '—', cls: 'bad', spark: sp.missed, col: '#E62632' },
+    { lbl: 'Эффективность', val: pct(kpi.eff, 1), delta: 'вып. / (вып.+проп.)', cls: 'neutral', spark: sp.eff, col: '#23A75B' },
   ];
   const wrap = document.getElementById('b1-kpi'); wrap.innerHTML = '';
   tiles.forEach((t, i) => {
@@ -979,16 +1134,21 @@ function renderB1() {
   const fbEff = effCM(cc.feedback.completed, cc.feedback.missed);
   const plEff = effCM(cc.planned.completed, cc.planned.missed);
   const fbPct = sumC ? fbAll / sumC * 100 : 50, plPct = sumC ? plAll / sumC * 100 : 50;
+  const tt = state.taskType;
+  const segCls = (t) => 'split-seg clk' + (tt !== 'all' && tt !== t ? ' tt-dim' : '');
+  const seCls = (t) => 'se clk' + (t === 'planned' ? ' pl' : '') + (tt === t ? ' tt-active' : (tt !== 'all' ? ' tt-dim' : ''));
   const catHost = document.getElementById('b1-cat');
   catHost.innerHTML = sumC ? `
     <div class="split-bar" role="img" aria-label="Обращения ${fmt(fbAll)}, Плановые ${fmt(plAll)}">
-      <div class="split-seg" style="background:#00AAFF;width:${fbPct}%">${fbPct > 16 ? 'Обращения ' + fmt(fbAll) : ''}</div>
-      <div class="split-seg" style="background:#002882;width:${plPct}%">${plPct > 16 ? 'Плановые ' + fmt(plAll) : ''}</div>
+      <div class="${segCls('feedback')}" data-tt="feedback" style="background:#00AAFF;width:${fbPct}%">${fbPct > 16 ? 'Обращения ' + fmt(fbAll) : ''}</div>
+      <div class="${segCls('planned')}" data-tt="planned" style="background:#002882;width:${plPct}%">${plPct > 16 ? 'Плановые ' + fmt(plAll) : ''}</div>
     </div>
     <div class="split-eff">
-      <div class="se"><div class="k"><span class="sw" style="background:#00AAFF"></span>из Обращений</div><div class="v">${fmt(fbAll)} <small style="font-size:11px;color:var(--text-muted)">· ${pct(sumC ? fbAll / sumC : 0)}</small></div><div class="sub">эффективность ${pct(fbEff)}</div></div>
-      <div class="se pl"><div class="k"><span class="sw" style="background:#002882"></span>Плановые (регулярные)</div><div class="v">${fmt(plAll)} <small style="font-size:11px;color:var(--text-muted)">· ${pct(sumC ? plAll / sumC : 0)}</small></div><div class="sub">эффективность ${pct(plEff)}</div></div>
+      <div class="${seCls('feedback')}" data-tt="feedback"><div class="k"><span class="sw" style="background:#00AAFF"></span>Обращения (заявки жильцов)</div><div class="v">${fmt(fbAll)} <small style="font-size:11px;color:var(--text-muted)">· ${pct(sumC ? fbAll / sumC : 0)}</small></div><div class="sub">эффективность ${pct(fbEff)}</div></div>
+      <div class="${seCls('planned')}" data-tt="planned"><div class="k"><span class="sw" style="background:#002882"></span>Плановые (регулярные)</div><div class="v">${fmt(plAll)} <small style="font-size:11px;color:var(--text-muted)">· ${pct(sumC ? plAll / sumC : 0)}</small></div><div class="sub">эффективность ${pct(plEff)}</div></div>
     </div>` : '<p class="note">Нет задач в выбранном периоде.</p>';
+  catHost.querySelectorAll('[data-tt]').forEach(el => el.onclick = () => setTaskType(el.dataset.tt));
+  const catHint = document.getElementById('b1-cat-hint'); if (catHint) catHint.textContent = 'клик по сегменту — фильтр по типу';
 
   // воронка обращений
   const f = feedbackFunnel();
@@ -1001,54 +1161,84 @@ function renderB1() {
   document.getElementById('b1-funnel').innerHTML = steps.map(s => `<div class="funnel-item"><div class="fh"><span>${s.name}</span><span>${fmt(s.val)}${s.conv != null ? ` <span class="conv">${pct(s.conv)}</span>` : ''}</span></div><div class="funnel-bar" style="background:${s.bg};color:#fff;width:${Math.max(8, s.w)}%">${Math.round(s.w)}%</div></div>`).join('');
   const conv = f.total ? f.completed / f.total : 0;
   const wd = (META && META.windowDays) || 30;
-  const fh = document.getElementById('b1-funnel-hint'); if (fh) fh.textContent = 'детальные статусы — за окно ' + wd + ' дн.';
+  const prange = periodLabelShort() || 'выбранный период';
+  const fh = document.getElementById('b1-funnel-hint'); if (fh) fh.textContent = prange;   // диапазон дат вместо «детальные статусы» (правка 6)
   document.getElementById('b1-note').textContent = f.total
-    ? `Итоговая конверсия обращений в завершённые: ${pct(conv, 1)}. Пропущено обращений: ${fmt(f.missed)}. Воронка строится по обращениям с детальным статусом (окно ${wd} дн.), пересекая выбранный период.`
-    : `Нет обращений с детальным статусом в пересечении периода и окна ${wd} дн.`;
+    ? (f.factsMode
+        ? `Итоговая конверсия обращений в завершённые: ${pct(conv, 1)}. Пропущено обращений: ${fmt(f.missed)}. Воронка — по обращениям за выбранный период.`
+        : `Итоговая конверсия обращений в завершённые: ${pct(conv, 1)}. Пропущено обращений: ${fmt(f.missed)}. Воронка строится по обращениям с детальным статусом (окно ${wd} дн.), пересекая выбранный период.`)
+    : (f.factsMode ? 'Нет обращений в выбранном периоде.' : `Нет обращений с детальным статусом в пересечении периода и окна ${wd} дн.`);
 }
 
 function renderB2a() {
   const rows = mergeSmallObjects(structureByObject());
   const cont = document.getElementById('b2a-treemap');
   Array.from(cont.querySelectorAll('.tm-cell')).forEach(el => el.remove());
-  const zoomID = state.drill.b2aObj;
-  const rect = cont.getBoundingClientRect();
-  const W = (zoomID ? rect.width * 0.56 : rect.width) || 500, H = rect.height || 340;
-  if (!rows.length) { cont.querySelector('.zones-panel').classList.remove('on'); const e = document.createElement('div'); e.className = 'note parked'; e.style.margin = '8px'; e.textContent = 'Нет данных по объектам в окне 30 дней.'; e.classList.add('tm-cell'); return; }
-  const cells = squarify(rows.map(r => ({ ...r, value: r.count })), W, H);
-  cells.forEach(c => {
-    const col = effColor(c.eff);
-    const isOther = c.id === '__other__';
-    const el = document.createElement('div');
-    el.className = 'tm-cell' + (c.isDim ? ' dim' : '') + (isOther ? ' other' : '') + (c.w * c.h < 3200 ? ' tiny' : '');
-    el.style.cssText = `background:${col.bg};color:${col.fg};left:${c.x}px;top:${c.y}px;width:${c.w - 3}px;height:${c.h - 3}px;`;
-    el.innerHTML = `<div><div class="tm-name">${c.name}</div><div class="tm-val">${fmt(c.count)} задач</div></div><div class="tm-eff">${pct(c.eff)}</div>`;
-    if (isOther) {
-      el.onclick = () => { state.drill.b2aObj = '__other__'; renderB2a(); };
-      el.addEventListener('mousemove', (e) => showTip(`<div class="tt-title">${c.name}</div><div class="tt-row"><span class="k">Доля</span><span>${pct(c._share || 0, 1)}</span></div><div class="tt-row"><span class="k">Задач</span><span>${fmt(c.count)}</span></div><div class="tt-row"><span class="k">Эффективность</span><span>${pct(c.eff)}</span></div><div class="tt-row" style="margin-top:3px;border-top:1px solid rgba(255,255,255,.2);padding-top:3px"><span class="k">Объединено объектов</span><span>${(c._merged || []).length}</span></div>`, e));
-    } else {
-      el.onclick = () => { state.drill.b2aObj = c.id; renderB2a(); };
-      el.addEventListener('mousemove', (e) => showTip(`<div class="tt-title">${c.name}</div><div class="tt-row"><span class="k">Задач</span><span>${fmt(c.count)}</span></div><div class="tt-row"><span class="k">Выполнено</span><span>${fmt(c.c)}</span></div><div class="tt-row"><span class="k">Пропущено</span><span>${fmt(c.m)}</span></div><div class="tt-row"><span class="k">Эффективность</span><span>${pct(c.eff)}</span></div>`, e));
-    }
-    el.addEventListener('mouseleave', hideTip);
-    cont.appendChild(el);
-  });
   const panel = document.getElementById('b2a-zones');
+  const zoomID = state.drill.b2aObj;
+  const total = rows.reduce((a, r) => a + r.count, 0) || 1;
+
+  // При проваливании прячем сам treemap, оставляем только детализацию (правка 3)
+  if (zoomID) {
+    cont.classList.add('drilled');
+    cont.style.height = 'auto';
+    panel.style.cssText = 'position:static;width:100%;height:auto;max-height:none;border-left:0;border-top:0;';
+  } else {
+    cont.classList.remove('drilled');
+    cont.style.height = '';
+    panel.style.cssText = '';
+  }
+
+  if (!rows.length) { panel.classList.remove('on'); const e = document.createElement('div'); e.className = 'note parked tm-cell'; e.style.margin = '8px'; e.textContent = 'Нет данных по объектам в выбранном периоде.'; cont.appendChild(e); return; }
+
+  if (!zoomID) {
+    const rect = cont.getBoundingClientRect();
+    const W = rect.width || 500, H = rect.height || 340;
+    const cells = squarify(rows.map(r => ({ ...r, value: r.count })), W, H);
+    cells.forEach(c => {
+      const col = effColor(c.eff);
+      const isOther = c.id === '__other__';
+      const share = c.count / total;
+      const el = document.createElement('div');
+      el.className = 'tm-cell' + (c.isDim ? ' dim' : '') + (isOther ? ' other' : '') + (c.w * c.h < 3400 ? ' tiny' : '');
+      el.style.cssText = `background:${col.bg};color:${col.fg};left:${c.x}px;top:${c.y}px;width:${c.w - 3}px;height:${c.h - 3}px;`;
+      el.innerHTML = `<div><div class="tm-name">${c.name}</div><div class="tm-val">${fmt(c.count)} задач · ${pct(share, share < 0.1 ? 1 : 0)}</div></div><div class="tm-eff">${pct(c.eff)}</div>`;
+      if (isOther) {
+        el.onclick = () => { state.drill.b2aObj = '__other__'; state.drill.b2aFrom = null; renderB2a(); };
+        el.addEventListener('mousemove', (e) => showTip(`<div class="tt-title">${c.name}</div><div class="tt-row"><span class="k">Доля</span><span>${pct(share, 1)}</span></div><div class="tt-row"><span class="k">Задач</span><span>${fmt(c.count)}</span></div><div class="tt-row"><span class="k">Эффективность</span><span>${pct(c.eff)}</span></div><div class="tt-row" style="margin-top:3px;border-top:1px solid rgba(255,255,255,.2);padding-top:3px"><span class="k">Объединено объектов</span><span>${(c._merged || []).length}</span></div>`, e));
+      } else {
+        el.onclick = () => { state.drill.b2aObj = c.id; state.drill.b2aFrom = null; renderB2a(); };
+        el.addEventListener('mousemove', (e) => showTip(`<div class="tt-title">${c.name}</div><div class="tt-row"><span class="k">Доля</span><span>${pct(share, 1)}</span></div><div class="tt-row"><span class="k">Задач</span><span>${fmt(c.count)}</span></div><div class="tt-row"><span class="k">Выполнено</span><span>${fmt(c.c)}</span></div><div class="tt-row"><span class="k">Пропущено</span><span>${fmt(c.m)}</span></div><div class="tt-row"><span class="k">Эффективность</span><span>${pct(c.eff)}</span></div>`, e));
+      }
+      el.addEventListener('mouseleave', hideTip);
+      cont.appendChild(el);
+    });
+    panel.classList.remove('on');
+    return;
+  }
+
+  // ==== Режим детализации (treemap скрыт) ====
+  panel.classList.add('on');
+  const closeBtn = document.getElementById('b2a-zones-close');
+  const fromOther = state.drill.b2aFrom === '__other__';
+  if (closeBtn) closeBtn.textContent = fromOther ? '← к «Прочим»' : '✕';
+
   if (zoomID === '__other__') {
-    // список объединённых объектов
     const other = rows.find(r => r.id === '__other__');
-    panel.classList.add('on');
-    document.getElementById('b2a-zones-title').textContent = 'Объединённые объекты (Прочие)';
+    document.getElementById('b2a-zones-title').textContent = 'Объединённые объекты (Прочие) — клик по объекту раскрывает зоны';
     const merged = (other && other._merged) || [];
     const maxC = Math.max(1, ...merged.map(z => z.count));
-    document.getElementById('b2a-zones-list').innerHTML = merged.length ? merged.map(z => { const col = effColor(z.eff); return `<div class="zone-row"><div class="zone-bar-wrap"><span class="zone-name">${z.name}</span><div class="zone-bar" style="width:${z.count / maxC * 100}%;background:${col.bg}"></div></div><span class="mini-num">${fmt(z.count)}</span></div>`; }).join('') : '<p class="note">Нет объектов.</p>';
-  } else if (zoomID) {
-    panel.classList.add('on');
+    const host = document.getElementById('b2a-zones-list');
+    host.innerHTML = merged.length ? merged.map(z => { const col = effColor(z.eff); return `<div class="zone-row" data-obj="${z.id}" style="cursor:pointer"><div class="zone-bar-wrap"><span class="zone-name">${z.name}</span><div class="zone-bar" style="width:${z.count / maxC * 100}%;background:${col.bg}"></div></div><span class="mini-num">${fmt(z.count)} · ${pct(z.count / total, 1)}</span></div>`; }).join('') : '<p class="note">Нет объектов.</p>';
+    // вложенный drill: клик по объекту внутри «Прочих» (правка 3)
+    host.querySelectorAll('[data-obj]').forEach(el => el.onclick = () => { state.drill.b2aObj = el.dataset.obj; state.drill.b2aFrom = '__other__'; renderB2a(); });
+  } else {
     document.getElementById('b2a-zones-title').textContent = 'Топ зон · ' + (objById[zoomID] ? objById[zoomID].name : '');
     const zones = topZonesOfObject(zoomID);
     const maxC = Math.max(1, ...zones.map(z => z.count));
-    document.getElementById('b2a-zones-list').innerHTML = zones.length ? zones.map(z => { const col = effColor(z.eff); return `<div class="zone-row"><div class="zone-bar-wrap"><span class="zone-name">${z.name}</span><div class="zone-bar" style="width:${z.count / maxC * 100}%;background:${col.bg}"></div></div><span class="mini-num">${fmt(z.count)}</span></div>`; }).join('') : '<p class="note">Нет зон с задачами в окне.</p>';
-  } else panel.classList.remove('on');
+    const zTotal = zones.reduce((a, z) => a + z.count, 0) || 1;
+    document.getElementById('b2a-zones-list').innerHTML = zones.length ? zones.map(z => { const col = effColor(z.eff); return `<div class="zone-row"><div class="zone-bar-wrap"><span class="zone-name">${z.name}</span><div class="zone-bar" style="width:${z.count / maxC * 100}%;background:${col.bg}"></div></div><span class="mini-num">${fmt(z.count)} · ${pct(z.count / zTotal, 1)}</span></div>`; }).join('') : '<p class="note">Нет зон с задачами в выбранном периоде.</p>';
+  }
 }
 
 function renderB2b() {
@@ -1073,11 +1263,11 @@ function renderPlanFactArea(host, buckets) {
   const n = buckets.length;
   let cp = 0, cf = 0, cm = 0;
   const pts = buckets.map(b => { cp += b.plan; cf += b.fact; cm += b.missed; return { cp, cf, cm, label: b.label, plan: b.plan, fact: b.fact, missed: b.missed }; });
-  const maxV = niceMax(Math.max(1, cp, cf + cm));
+  const sc = niceScale(Math.max(1, cp, cf + cm), 4); const maxV = sc.max;
   const xOf = i => n === 1 ? L + pw / 2 : L + pw * i / (n - 1);
   const yOf = v => T + ph - (v / maxV) * ph;
   const sv = svg('svg', { class: 'chart-svg', viewBox: `0 0 ${W} ${H}`, height: H });
-  for (let i = 0; i <= 2; i++) { const v = maxV * i / 2; const y = yOf(v); sv.appendChild(svg('line', { class: i === 0 ? 'axis-line' : 'grid-line', x1: L, y1: y, x2: W - R, y2: y })); sv.appendChild(svgText(L - 5, y + 3, fmt(v), 'tick-lbl', { 'text-anchor': 'end' })); }
+  sc.ticks.forEach(v => { const y = yOf(v); sv.appendChild(svg('line', { class: v === 0 ? 'axis-line' : 'grid-line', x1: L, y1: y, x2: W - R, y2: y })); sv.appendChild(svgText(L - 5, y + 3, fmt(v), 'tick-lbl', { 'text-anchor': 'end' })); });
   if (n === 1) {
     // один бакет — рисуем как узкий столбик накопления
     const bx = xOf(0);
@@ -1113,7 +1303,7 @@ function renderPlanFactArea(host, buckets) {
 
 // Лучший / худший под-период внутри выбранного (правка 7)
 function subPeriodStats() {
-  const rows = PLANNED_DAILY.filter(r => inPeriod(r.d));
+  const rows = b3PlanRows();
   if (!rows.length) return null;
   const span = (rows[rows.length - 1].d - rows[0].d) / 86400000 + 1;
   let gran, keyf, labf;
@@ -1125,8 +1315,8 @@ function subPeriodStats() {
   rows.forEach(r => { const k = keyf(r); if (!map.has(k)) map.set(k, { plan: 0, fact: 0, missed: 0, label: labf(r) }); const b = map.get(k); b.plan += r.all; b.fact += r.completed; b.missed += r.missed; });
   const arr = [...map.values()].filter(b => b.plan > 0).map(b => ({ ...b, exec: b.fact / b.plan }));
   if (!arr.length) return null;
-  const best = arr.reduce((a, b) => b.exec > a.exec ? b : a);
-  const worst = arr.reduce((a, b) => b.exec < a.exec ? b : a);
+  const best = arr.reduce((a, b) => b.fact > a.fact ? b : a);   // по абсолюту выполненных (правка 8)
+  const worst = arr.reduce((a, b) => b.fact < a.fact ? b : a);
   return { gran, best, worst, count: arr.length };
 }
 
@@ -1150,7 +1340,7 @@ function renderB3() {
   const exec = plan ? fact / plan : 0;
   const sp = subPeriodStats();
   const statHint = document.getElementById('b3-stat-hint');
-  if (statHint) statHint.textContent = sp ? 'лучший/худший — ' + sp.gran : '';
+  if (statHint) statHint.textContent = sp ? 'лучший/худший по объёму — ' + sp.gran : '';
   const tiles = [
     { lbl: 'План за период', val: fmt(plan), sub: 'запланировано задач', cls: 'neutral' },
     { lbl: 'Выполнено в срок', val: fmt(fact), sub: 'исполнение ' + pct(exec, 1), cls: 'ok' },
@@ -1158,8 +1348,8 @@ function renderB3() {
     { lbl: 'Исполнение плана', val: pct(exec, 1), sub: 'факт / план', cls: exec >= 0.9 ? 'ok' : exec >= 0.75 ? 'neutral' : 'bad' },
   ];
   if (sp) {
-    tiles.push({ lbl: 'Лучший период · ' + sp.best.label, val: pct(sp.best.exec, 1), sub: 'исполнение · ' + fmt(sp.best.fact) + ' из ' + fmt(sp.best.plan), cls: 'ok' });
-    tiles.push({ lbl: 'Худший период · ' + sp.worst.label, val: pct(sp.worst.exec, 1), sub: 'исполнение · ' + fmt(sp.worst.fact) + ' из ' + fmt(sp.worst.plan), cls: 'bad' });
+    tiles.push({ lbl: 'Лучший период · ' + sp.best.label, val: fmt(sp.best.fact), sub: 'выполнено в срок · из ' + fmt(sp.best.plan) + ' плана (' + pct(sp.best.exec, 0) + ')', cls: 'ok' });
+    tiles.push({ lbl: 'Худший период · ' + sp.worst.label, val: fmt(sp.worst.fact), sub: 'выполнено в срок · из ' + fmt(sp.worst.plan) + ' плана (' + pct(sp.worst.exec, 0) + ')', cls: 'bad' });
   }
   kpiWrap.innerHTML = '';
   tiles.forEach(t => { const el = document.createElement('div'); el.className = 'kpi-tile solo'; el.innerHTML = `<div><p class="lbl">${t.lbl}</p><p class="val">${t.val}</p><p class="delta ${t.cls}">${t.sub}</p></div>`; kpiWrap.appendChild(el); });
@@ -1167,44 +1357,93 @@ function renderB3() {
 
 const CAT_META = { team: { lbl: 'Команды', unit: 'команду', one: 'Команда' }, worker: { lbl: 'Работники', unit: 'работника', one: 'Работник' } };
 const STAFF_CATS = ['team', 'worker'];
+function sigmaGroups(rows, valOf) {
+  const n = rows.length;
+  if (n < 6) return null;                       // группировка только для больших списков
+  const vals = rows.map(valOf);
+  const mean = vals.reduce((a, b) => a + b, 0) / n;
+  const sd = Math.sqrt(vals.reduce((a, b) => a + (b - mean) * (b - mean), 0) / n) || 0;
+  const hi = mean + 0.5 * sd, lo = mean - 0.5 * sd;
+  let top = [], mid = [], low = [];
+  rows.forEach((r, i) => { const v = vals[i]; if (v >= hi) top.push(r); else if (v <= lo) low.push(r); else mid.push(r); });
+  // гарантируем минимум 2 в топах и лузерах (первые/последние 2 всегда группа)
+  while (top.length < 2 && mid.length) top.push(mid.shift());
+  while (low.length < 2 && mid.length) low.push(mid.pop());
+  // всегда 3 непустые группы
+  if (!mid.length) { if (top.length > low.length && top.length > 2) mid.push(top.pop()); else if (low.length > 2) mid.unshift(low.shift()); }
+  if (!top.length || !low.length || !mid.length) return null;
+  return { top, mid, low };
+}
+const GRP_DEF = [
+  { key: 'top', lbl: 'Топы', color: '#23A75B' },
+  { key: 'mid', lbl: 'Околосредние', color: '#33539B' },
+  { key: 'low', lbl: 'Лузеры', color: '#E62632' },
+];
 function renderB4() {
   const metric = state.drill.b4metric, isEff = metric === 'efficiency';
+  const cat = state.drill.b4cat;
   const groups = staffGroups(metric);
   const catBox = document.getElementById('b4-cat');
-  catBox.innerHTML = STAFF_CATS.map(k => `<button data-cat="${k}" class="${state.drill.b4cat === k ? 'active' : ''}">${CAT_META[k].lbl}<span class="cnt">${groups[k].rows.length}</span></button>`).join('');
-  catBox.querySelectorAll('button').forEach(b => b.onclick = () => { state.drill.b4cat = b.dataset.cat; renderB4(); });
+  catBox.innerHTML = STAFF_CATS.map(k => `<button data-cat="${k}" class="${cat === k ? 'active' : ''}">${CAT_META[k].lbl}<span class="cnt">${groups[k].rows.length}</span></button>`).join('');
+  catBox.querySelectorAll('button').forEach(b => b.onclick = () => { state.drill.b4cat = b.dataset.cat; state.drill.b4group = null; state.drill.b4groupMore = false; state.drill.b4sel = null; renderB4(); });
 
-  const g = groups[state.drill.b4cat];
+  const g = groups[cat];
   const anon = state.role !== 'admin';
   const dimSet = state.assignees;
-  let rows = g.rows.filter(r => dimSet.size === 0 || dimSet.has(r.id));
-  if (dimSet.size === 0) rows = g.rows;
+  let rows = asgSelActive() ? g.rows.filter(r => dimSet.has(r.id)) : g.rows;
+  rows.forEach((r, i) => r._rank = i + 1);       // ранг в общем рейтинге категории
   const avgNote = document.getElementById('b4-avg-note');
   const chartHost = document.getElementById('b4-chart');
-  if (!rows.length) {
-    chartHost.innerHTML = '';
-    avgNote.innerHTML = 'Нет данных для этой группы в окне 30 дней.';
-  } else {
-    const items = rows.map((r, i) => ({
-      id: r.id,
-      label: anon ? `${CAT_META[state.drill.b4cat].one} ${i + 1}` : (r.name.length > 14 ? r.name.slice(0, 13) + '…' : r.name),
-      full: anon ? `${CAT_META[state.drill.b4cat].one} ${i + 1}` : r.name,
-      value: isEff ? r.eff * 100 : r.completed,
-      color: '#002882',
-      tip: [['Выполнено', fmt(r.completed)], ['Всего', fmt(r.total)], ['Пропущено', fmt(r.m)], ['Эффективность', pct(r.eff)]],
-    }));
-    items.forEach((it, i) => { const v = isEff ? rows[i].eff : rows[i].completed; it.color = v >= g.avg ? '#002882' : '#00AAFF'; });
-    renderVBars(chartHost, items, {
-      avg: isEff ? g.avg * 100 : g.avg,
-      avgLabel: isEff ? (g.avg * 100).toFixed(0) + '%' : fmt(g.avg),
-      fmtY: (v) => isEff ? v.toFixed(0) + '%' : fmt(v),
-      selId: (state.drill.b4sel && state.drill.b4sel.cat === state.drill.b4cat) ? state.drill.b4sel.id : null,
-      onBar: (it) => { const cur = state.drill.b4sel; state.drill.b4sel = (cur && cur.cat === state.drill.b4cat && cur.id === it.id) ? null : { cat: state.drill.b4cat, id: it.id }; renderB4(); },
-    });
-    avgNote.innerHTML = `Среднее по группе «${CAT_META[state.drill.b4cat].lbl.toLowerCase()}»: <b>${isEff ? (g.avg * 100).toFixed(1) + '%' : fmt(g.avg)}</b> ${isEff ? 'эффективность' : 'вып. задач на ' + CAT_META[state.drill.b4cat].unit}`;
-  }
+  const grpList = document.getElementById('b4-grouplist');
+  const selPanel = document.getElementById('b4-sel'); selPanel.classList.remove('on'); selPanel.innerHTML = '';
 
-  renderB4Sel(groups);
+  if (!rows.length) {
+    chartHost.innerHTML = ''; grpList.classList.remove('on'); grpList.innerHTML = '';
+    avgNote.innerHTML = 'Нет данных для этой группы в выбранном периоде.';
+  } else {
+    const grouped = sigmaGroups(rows, r => isEff ? r.eff : r.completed);
+    if (grouped) {
+      // === 3 группы (топы / околосредние / лузеры) ===
+      const items = GRP_DEF.map((gd, gi) => {
+        const arr = grouped[gd.key];
+        const vals = arr.map(r => isEff ? r.eff : r.completed);
+        const avg = vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : 0;
+        const mn = Math.min(...vals), mx = Math.max(...vals);
+        return { id: 'g' + gi, gi, label: `${gd.lbl} (${arr.length})`, full: `${gd.lbl} · ${arr.length} ${CAT_META[cat].lbl.toLowerCase()}`,
+          value: isEff ? avg * 100 : avg, color: gd.color,
+          tip: [['Среднее по группе', isEff ? pct(avg) : fmt(Math.round(avg))], ['В группе', fmt(arr.length)], ['Разброс', isEff ? `${pct(mn)}–${pct(mx)}` : `${fmt(mn)}–${fmt(mx)}`]] };
+      });
+      renderVBars(chartHost, items, {
+        avg: isEff ? g.avg * 100 : g.avg,
+        avgLabel: isEff ? (g.avg * 100).toFixed(0) + '%' : fmt(g.avg),
+        fmtY: (v) => isEff ? v.toFixed(0) + '%' : fmt(v),
+        selId: state.drill.b4group != null ? 'g' + state.drill.b4group : null,
+        onBar: (it) => { state.drill.b4group = (state.drill.b4group === it.gi) ? null : it.gi; state.drill.b4groupMore = false; renderB4(); },
+      });
+      avgNote.innerHTML = `3 группы по отклонению от среднего (σ). Среднее по «${CAT_META[cat].lbl.toLowerCase()}»: <b>${isEff ? (g.avg * 100).toFixed(1) + '%' : fmt(g.avg)}</b> · клик по столбцу — состав группы`;
+      renderB4GroupList(grouped, rows, { isEff, anon, cat });
+    } else {
+      // === мало сущностей: индивидуальные столбики (старое поведение) ===
+      grpList.classList.remove('on'); grpList.innerHTML = ''; state.drill.b4group = null;
+      const items = rows.map((r, i) => ({
+        id: r.id,
+        label: anon ? `${CAT_META[cat].one} ${i + 1}` : (r.name.length > 14 ? r.name.slice(0, 13) + '…' : r.name),
+        full: anon ? `${CAT_META[cat].one} ${i + 1}` : r.name,
+        value: isEff ? r.eff * 100 : r.completed, color: '#002882',
+        tip: [['Выполнено', fmt(r.completed)], ['Всего', fmt(r.total)], ['Пропущено', fmt(r.m)], ['Эффективность', pct(r.eff)]],
+      }));
+      items.forEach((it, i) => { const v = isEff ? rows[i].eff : rows[i].completed; it.color = v >= g.avg ? '#002882' : '#00AAFF'; });
+      renderVBars(chartHost, items, {
+        avg: isEff ? g.avg * 100 : g.avg,
+        avgLabel: isEff ? (g.avg * 100).toFixed(0) + '%' : fmt(g.avg),
+        fmtY: (v) => isEff ? v.toFixed(0) + '%' : fmt(v),
+        selId: (state.drill.b4sel && state.drill.b4sel.cat === cat) ? state.drill.b4sel.id : null,
+        onBar: (it) => { const cur = state.drill.b4sel; state.drill.b4sel = (cur && cur.cat === cat && cur.id === it.id) ? null : { cat: cat, id: it.id }; renderB4(); },
+      });
+      avgNote.innerHTML = `Среднее по группе «${CAT_META[cat].lbl.toLowerCase()}»: <b>${isEff ? (g.avg * 100).toFixed(1) + '%' : fmt(g.avg)}</b> ${isEff ? 'эффективность' : 'вып. задач на ' + CAT_META[cat].unit}`;
+      renderB4Sel(groups);
+    }
+  }
 
   const btn = document.getElementById('b4-detail-btn');
   btn.classList.toggle('on', state.drill.b4detail);
@@ -1227,8 +1466,44 @@ function renderB4() {
   }).join('');
 }
 
+// Раскрытие состава группы: ≤5 строк + «показать ещё» (правка 9)
+function renderB4GroupList(grouped, rows, o) {
+  const host = document.getElementById('b4-grouplist');
+  const gi = state.drill.b4group;
+  if (gi == null) { host.classList.remove('on'); host.innerHTML = ''; return; }
+  const gd = GRP_DEF[gi], arr = grouped[gd.key];
+  const { isEff, anon, cat } = o;
+  const LIMIT = 5, showAll = state.drill.b4groupMore;
+  const shown = showAll ? arr : arr.slice(0, LIMIT);
+  host.classList.add('on');
+  host.innerHTML = `
+    <div class="grp-list-head">
+      <h5>${gd.lbl}</h5>
+      <span class="badge">${fmt(arr.length)} ${CAT_META[cat].lbl.toLowerCase()} · сортировка по ${isEff ? 'эффективности' : 'объёму'}</span>
+      <button class="close" id="b4-grp-close">Закрыть ✕</button>
+    </div>
+    ${shown.map(r => { const name = anon ? `${CAT_META[cat].one} ${r._rank}` : r.name; const col = effColor(r.eff);
+      return `<div class="grp-row">
+        <div class="rk">${r._rank}</div>
+        <div class="nm${anon ? ' anon' : ''}">${name}</div>
+        <div class="vol">вып. <b>${fmt(r.completed)}</b> / ${fmt(r.total)}</div>
+        <div class="effc" style="color:${col.bg}">${pct(r.eff)}</div>
+        <div class="mini" id="b4-mini-${gi}-${r._rank}"></div>
+      </div>`; }).join('')}
+    ${arr.length > LIMIT ? `<button class="grp-more" id="b4-grp-more">${showAll ? 'Свернуть' : 'Показать ещё ' + (arr.length - LIMIT)}</button>` : ''}`;
+  document.getElementById('b4-grp-close').onclick = () => { state.drill.b4group = null; state.drill.b4groupMore = false; renderB4(); };
+  const moreBtn = document.getElementById('b4-grp-more'); if (moreBtn) moreBtn.onclick = () => { state.drill.b4groupMore = !state.drill.b4groupMore; renderB4(); };
+  shown.forEach(r => { const dyn = entityDyn(cat, r.id); const el = document.getElementById(`b4-mini-${gi}-${r._rank}`); if (el) renderSpark(el, dyn.data.length ? dyn.data : [0, 0], '#00AAFF'); });
+}
+
 function entityDyn(catType, id) {
   const key = catType === 'team' ? 't' : 'e';
+  if (HAS_FACTS) {
+    const src = FACTS.filter(f => f[key] === id && inPeriod(f.d) && _typeMatch(f) && _objMatch(f));
+    if (!src.length) return { data: [], total: 0 };
+    const daily = factsDaily(src);
+    return { data: daily.map(r => r.all), total: src.length };
+  }
   const ft = (WINDOW.feedbackTasks || []).filter(x => x[key] === id);
   if (!ft.length) return { data: [], total: 0 };
   const from = META.windowFrom ? new Date(META.windowFrom + 'T00:00:00') : new Date(ft[0].d + 'T00:00:00');
@@ -1280,6 +1555,14 @@ function renderB4Sel(groups) {
   document.getElementById('b4-sel-close').onclick = () => { state.drill.b4sel = null; renderB4(); };
   if (dyn.data.length) renderSpark(document.getElementById('b4-dyn-host'), dyn.data, '#00AAFF');
 }
+function syncTtypeControl() {
+  document.querySelectorAll('#flt-ttype .ttype-seg').forEach(el => el.classList.toggle('active', el.dataset.tt === state.taskType));
+}
+function setTaskType(tt) {
+  state.taskType = (state.taskType === tt && tt !== 'all') ? 'all' : tt;
+  syncTtypeControl();
+  renderAll();
+}
 function renderAll() { renderB1(); renderB2a(); renderB2b(); renderB3(); renderB4(); }
 
 /* ==============================================================
@@ -1313,15 +1596,6 @@ function applyAll() {
   state.drill.b1level = 'months'; state.drill.b1ym = null;
   document.getElementById('flt-period-lbl').textContent = 'весь период';
 }
-function applyLast3Months() {
-  // три ПОЛНЫХ последних месяца (текущий незакрытый не берём — чтобы динамика была честной)
-  const anchor = DATA_MAX ? new Date(DATA_MAX) : TODAY;
-  const end = new Date(anchor.getFullYear(), anchor.getMonth(), 0, 23, 59, 59); // последний день прошлого месяца
-  const start = new Date(end.getFullYear(), end.getMonth() - 2, 1);
-  state.period = { mode: 'custom', year: null, month: null, from: start, to: end };
-  state.drill.b1level = 'months'; state.drill.b1ym = null;
-  document.getElementById('flt-period-lbl').textContent = 'последние 3 месяца';
-}
 function setupPeriodMenu() {
   const menu = document.getElementById('menu-period');
   const minISO = DATA_MIN ? fmtISO(DATA_MIN) : (CUR_YEAR + '-01-01');
@@ -1332,7 +1606,6 @@ function setupPeriodMenu() {
     <div class="grp">Период — календарь</div>
     <div class="custom">с <input type="date" id="dt-from" min="${minISO}" max="${maxISO}" value="${curFrom}"> по <input type="date" id="dt-to" min="${minISO}" max="${maxISO}" value="${curTo}"> <button id="dt-apply">Применить</button></div>
     <div class="presets">
-      <button class="preset" data-preset="q3m">Последние 3 месяца</button>
       <button class="preset" data-preset="ytd">С начала года</button>
       <button class="preset" data-preset="this-month">Текущий месяц</button>
       <button class="preset" data-preset="quarter">Последний квартал</button>
@@ -1352,24 +1625,36 @@ function setupPeriodMenu() {
   menu.querySelectorAll('.preset').forEach(btn => btn.onclick = e => {
     e.stopPropagation();
     const p = btn.dataset.preset;
-    if (p === 'q3m') applyLast3Months(); else if (p === 'ytd') applyYTD(); else if (p === 'this-month') applyThisMonth(); else if (p === 'quarter') applyLastQuarter(); else applyAll();
+    if (p === 'ytd') applyYTD(); else if (p === 'this-month') applyThisMonth(); else if (p === 'quarter') applyLastQuarter(); else applyAll();
     setupPeriodMenu(); renderAll();
   });
   menu.querySelectorAll('.custom input, .custom button, .preset').forEach(el => el.addEventListener('click', e => e.stopPropagation()));
 }
 function setupMultiMenu(id, items, stateSet, labelID, onChange) {
   const menu = document.getElementById(id);
-  menu.innerHTML = `<label style="border-bottom:1px solid var(--border);margin-bottom:4px;padding-bottom:6px;"><input type="checkbox" id="${id}-all" checked>Все</label>
-    ${items.map(it => `<label><input type="checkbox" value="${it.id}" checked>${it.name}${it.type ? ` <span style="color:var(--text-muted);font-size:10px;margin-left:auto;">${it.type === 'team' ? 'ком.' : 'инд.'}</span>` : ''}</label>`).join('')}`;
+  menu.innerHTML = `<div class="flt-search"><input type="text" id="${id}-search" placeholder="Поиск по названию…" autocomplete="off"></div>
+    <label style="padding-bottom:6px;"><input type="checkbox" id="${id}-all" checked>Все</label>
+    ${items.map(it => `<label><input type="checkbox" value="${it.id}" checked>${it.name}${it.type ? ` <span style="color:var(--text-muted);font-size:10px;margin-left:auto;">${it.type === 'team' ? 'ком.' : 'инд.'}</span>` : ''}</label>`).join('')}
+    <div class="flt-empty" id="${id}-empty" style="display:none">Ничего не найдено</div>`;
   const allInp = menu.querySelector(`#${id}-all`), inps = menu.querySelectorAll('input[value]');
   const upd = () => { stateSet.clear(); inps.forEach(i => { if (i.checked) stateSet.add(i.value); }); document.getElementById(labelID).textContent = fltLabel(stateSet, items.length); onChange(); };
   allInp.onchange = () => { inps.forEach(i => i.checked = allInp.checked); upd(); };
   inps.forEach(i => i.onchange = () => { allInp.checked = [...inps].every(x => x.checked); upd(); });
+  // поиск по названию (правка 2)
+  const search = menu.querySelector(`#${id}-search`);
+  const labels = Array.from(menu.querySelectorAll('label')).filter(l => l.querySelector('input[value]'));
+  const emptyEl = menu.querySelector(`#${id}-empty`);
+  search.addEventListener('input', () => {
+    const q = search.value.trim().toLowerCase(); let vis = 0;
+    labels.forEach(l => { const show = !q || l.textContent.toLowerCase().includes(q); l.classList.toggle('hide', !show); if (show) vis++; });
+    if (emptyEl) emptyEl.style.display = vis ? 'none' : 'block';
+  });
+  ['click', 'keydown', 'keyup'].forEach(ev => search.addEventListener(ev, e => e.stopPropagation()));
 }
 function setupFilters() {
   setupPeriodMenu();
-  setupMultiMenu('menu-object', OBJECTS, state.objects, 'flt-object-lbl', () => renderB2a());
-  setupMultiMenu('menu-assignee', ASSIGNEES, state.assignees, 'flt-assignee-lbl', () => renderB4());
+  setupMultiMenu('menu-object', OBJECTS, state.objects, 'flt-object-lbl', () => renderAll());
+  setupMultiMenu('menu-assignee', ASSIGNEES, state.assignees, 'flt-assignee-lbl', () => renderAll());
   // вид работ — недоступен
   const wtFlt = document.getElementById('flt-workType');
   wtFlt.classList.add('disabled');
@@ -1386,51 +1671,132 @@ function setupFilters() {
   document.getElementById('btn-reset').onclick = e => {
     e.stopPropagation();
     applyYTD();
+    state.taskType = 'all';
     state.objects = new Set(OBJECTS.map(o => o.id));
     state.assignees = new Set(ASSIGNEES.map(a => a.id));
-    state.drill = { b1level: 'months', b1ym: null, b2aObj: null, b4cat: 'team', b4metric: 'completed', b4detail: false, b4sel: null };
+    state.drill = { b1level: 'months', b1ym: null, b2aObj: null, b2aFrom: null, b4cat: 'team', b4metric: 'completed', b4detail: false, b4sel: null, b4group: null, b4groupMore: false };
     setupPeriodMenu();
-    ['object', 'assignee'].forEach(k => { document.querySelectorAll(`#menu-${k} input[type=checkbox]`).forEach(i => i.checked = true); document.getElementById(`flt-${k}-lbl`).textContent = 'все'; });
+    ['object', 'assignee'].forEach(k => { const se = document.getElementById(`menu-${k}-search`); if (se) se.value = ''; document.querySelectorAll(`#menu-${k} label`).forEach(l => l.classList.remove('hide')); document.querySelectorAll(`#menu-${k} input[type=checkbox]`).forEach(i => i.checked = true); document.getElementById(`flt-${k}-lbl`).textContent = 'все'; });
     document.querySelectorAll('#b4-toggle button').forEach(x => x.classList.toggle('active', x.dataset.metric === 'completed'));
+    syncTtypeControl();
     renderAll();
   };
 }
 document.getElementById('b1-back').onclick = () => { state.drill.b1level = 'months'; state.drill.b1ym = null; renderB1(); };
-document.getElementById('b2a-zones-close').onclick = () => { state.drill.b2aObj = null; renderB2a(); };
+document.getElementById('b2a-zones-close').onclick = () => {
+  if (state.drill.b2aFrom === '__other__' && state.drill.b2aObj !== '__other__') { state.drill.b2aObj = '__other__'; state.drill.b2aFrom = null; }
+  else { state.drill.b2aObj = null; state.drill.b2aFrom = null; }
+  renderB2a();
+};
 document.querySelectorAll('#b4-toggle button').forEach(b => b.onclick = () => { document.querySelectorAll('#b4-toggle button').forEach(x => x.classList.remove('active')); b.classList.add('active'); state.drill.b4metric = b.dataset.metric; renderB4(); });
 document.getElementById('b4-detail-btn').onclick = () => { state.drill.b4detail = !state.drill.b4detail; renderB4(); };
 document.querySelectorAll('#role-switch button').forEach(b => b.onclick = () => { document.querySelectorAll('#role-switch button').forEach(x => x.classList.remove('active')); b.classList.add('active'); state.role = b.dataset.role; renderB4(); });
+document.querySelectorAll('#flt-ttype .ttype-seg').forEach(el => el.onclick = (e) => { e.stopPropagation(); setTaskType(el.dataset.tt); });
+
+/* ==============================================================
+   ЭКСПОРТ ГРАФИКОВ: PNG + копирование (правка 4)
+   ============================================================== */
+const ICON_SAVE = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>';
+const ICON_COPY = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>';
+const ICON_OK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>';
+
+function inlineStyles(src, dst) {
+  const cs = getComputedStyle(src);
+  let str = '';
+  for (let i = 0; i < cs.length; i++) { const prop = cs[i]; str += prop + ':' + cs.getPropertyValue(prop) + ';'; }
+  dst.setAttribute('style', str);
+  const sc = src.children, dc = dst.children;
+  for (let i = 0; i < sc.length; i++) if (dc[i]) inlineStyles(sc[i], dc[i]);
+}
+async function nodeToCanvas(node, scale) {
+  scale = scale || 2;
+  const rect = node.getBoundingClientRect();
+  const w = Math.ceil(rect.width), h = Math.ceil(rect.height);
+  const clone = node.cloneNode(true);
+  clone.querySelectorAll('.card-export').forEach(e => e.remove());
+  inlineStyles(node, clone);
+  clone.style.margin = '0';
+  const xml = new XMLSerializer().serializeToString(clone);
+  const svgStr = '<svg xmlns="http://www.w3.org/2000/svg" width="' + w + '" height="' + h + '"><foreignObject width="100%" height="100%"><div xmlns="http://www.w3.org/1999/xhtml">' + xml + '</div></foreignObject></svg>';
+  const url = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svgStr);
+  const img = new Image();
+  await new Promise((res, rej) => { img.onload = res; img.onerror = () => rej(new Error('render')); img.src = url; });
+  const canvas = document.createElement('canvas');
+  canvas.width = w * scale; canvas.height = h * scale;
+  const ctx = canvas.getContext('2d');
+  ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.scale(scale, scale);
+  ctx.drawImage(img, 0, 0);
+  return canvas;
+}
+function exportFileName(title) {
+  const p = periodLabelShort() || 'период';
+  return ('ВТБ_' + title + '_' + p).replace(/[^0-9A-Za-zА-Яа-яЁё]+/g, '_').replace(/^_+|_+$/g, '').slice(0, 90) + '.png';
+}
+function downloadBlob(blob, name) {
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name;
+  document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+}
+async function cardToPng(card, title, mode, toolbar) {
+  toolbar.classList.add('busy');
+  try {
+    const canvas = await nodeToCanvas(card, 2);
+    const blob = await new Promise((res) => canvas.toBlob(res, 'image/png'));
+    if (!blob) throw new Error('empty');
+    if (mode === 'copy') {
+      try { await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]); }
+      catch (e) { downloadBlob(blob, exportFileName(title)); }   // fallback — скачивание
+    } else { downloadBlob(blob, exportFileName(title)); }
+    return true;
+  } catch (e) { console.error('export failed', e); alert('Не удалось сохранить изображение (' + (e.message || e) + '). Возможно, браузер блокирует экспорт этого блока.'); return false; }
+  finally { toolbar.classList.remove('busy'); }
+}
+function markDone(btn, iconBack) {
+  btn.innerHTML = ICON_OK; btn.classList.add('done');
+  setTimeout(() => { btn.innerHTML = iconBack; btn.classList.remove('done'); }, 1400);
+}
+function injectExportButtons() {
+  document.querySelectorAll('.app .card').forEach(card => {
+    if (card.querySelector('.card-export')) return;
+    const titleEl = card.querySelector('.card-title');
+    const title = titleEl ? titleEl.textContent.replace(/\s+/g, ' ').trim().slice(0, 40) : 'график';
+    const bar = document.createElement('div'); bar.className = 'card-export';
+    const bSave = document.createElement('button'); bSave.title = 'Сохранить как PNG'; bSave.innerHTML = ICON_SAVE;
+    const bCopy = document.createElement('button'); bCopy.title = 'Копировать изображение'; bCopy.innerHTML = ICON_COPY;
+    bSave.onclick = async (e) => { e.stopPropagation(); const ok = await cardToPng(card, title, 'save', bar); if (ok) markDone(bSave, ICON_SAVE); };
+    bCopy.onclick = async (e) => { e.stopPropagation(); const ok = await cardToPng(card, title, 'copy', bar); if (ok) markDone(bCopy, ICON_COPY); };
+    bar.appendChild(bSave); bar.appendChild(bCopy);
+    card.appendChild(bar);
+  });
+}
 
 /* === СТАРТ === */
-let APP_STARTED = false;
-async function startApp() {
-  if (APP_STARTED) return; APP_STARTED = true;
+(async () => {
   try {
     await loadAndMap();
-    if (!OBJECTS.length && !DAILY.length) {
-      showError('Данные загружены, но пусты: 0 объектов и 0 дней. Скорее всего робот build-data.yml отработал без валидного BRUNO_TOKEN (или вернул ошибки API) и закоммитил пустой data.json.gz. Проверьте секрет BRUNO_TOKEN и лог робота.');
-      return;
-    }
     applyYTD();                                        // дефолт — с начала текущего года (правка 2)
     state.objects = new Set(OBJECTS.map(o => o.id));
     state.assignees = new Set(ASSIGNEES.map(a => a.id));
     document.getElementById('sub-lbl').textContent = `Система Bruno · ${OBJECTS.length} объектов · окно ${META.windowDays || 30} дн.`;
     const _wd = META.windowDays || 30;
-    const _wh = document.getElementById('win-days-hint'); if (_wh) _wh.textContent = _wd;
-    const _b2h = document.getElementById('b2-sec-hint'); if (_b2h) _b2h.textContent = 'окно ' + _wd + ' дн. · клик по объекту — топ зон';
+    const _sh = document.getElementById('scope-hint');
+    if (_sh) _sh.innerHTML = HAS_FACTS
+      ? 'Все фильтры (период, объекты, тип задач, исполнители) применяются ко всем блокам — структура и персонал реагируют так же, как динамика.'
+      : 'Период, тип задач и деривация категорий — по всем блокам динамики/план-факта. Структура и персонал пока считаются по окну <b>' + _wd + ' дн.</b> — полное кросс-фильтрование включится после обновления робота (facts-схема).';
+    const _b2h = document.getElementById('b2-sec-hint'); if (_b2h) _b2h.textContent = HAS_FACTS ? 'клик по объекту — топ зон' : ('окно ' + _wd + ' дн. · клик по объекту — топ зон');
     setupFilters();
+    syncTtypeControl();
     renderAll();
+    injectExportButtons();
     hideStatus();
     const el = document.getElementById('updated-lbl');
     if (META && META.extractedAt) { const d = new Date(META.extractedAt); if (!isNaN(d.getTime())) el.textContent = 'данные на ' + d.toLocaleDateString('ru-RU'); }
   } catch (err) { console.error(err); showError(err.message); }
-}
+})();
 let _rt = null;
-window.addEventListener('resize', () => { if (!APP_STARTED) return; clearTimeout(_rt); _rt = setTimeout(renderAll, 180); });
+window.addEventListener('resize', () => { clearTimeout(_rt); _rt = setTimeout(renderAll, 180); });
 const filtersEl = document.getElementById('filters');
 window.addEventListener('scroll', () => filtersEl.classList.toggle('stuck', window.scrollY > 8));
-
-startApp();  // авторизация отключена — сразу дашборд
 </script>
 </body>
 </html>
