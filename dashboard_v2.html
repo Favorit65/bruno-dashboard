@@ -139,6 +139,27 @@
   #tooltip .tt-row .k { color: #A9C4EA; }
   #tooltip .tt-sw { display: inline-block; width: 8px; height: 8px; border-radius: 2px; margin-right: 5px; }
 
+  /* Treemap объектов (блок 02) */
+  #b2a-treemap { position: relative; width: 100%; height: 340px; }
+  .tm-cell { position: absolute; border-radius: 4px; padding: 6px 8px; overflow: hidden; cursor: pointer; transition: filter 0.15s; display: flex; flex-direction: column; justify-content: space-between; }
+  .tm-cell:hover { filter: brightness(1.06); z-index: 5; }
+  .tm-cell .tm-name { font-size: 12px; font-weight: 600; line-height: 1.1; }
+  .tm-cell .tm-val { font-size: 11px; opacity: 0.9; line-height: 1.2; }
+  .tm-cell .tm-eff { font-size: 11px; font-weight: 600; align-self: flex-start; padding: 1px 5px; background: rgba(255,255,255,0.4); border-radius: 3px; }
+  .tm-cell.tiny .tm-val, .tm-cell.tiny .tm-eff { display: none; }
+  .tm-cell.tiny .tm-name { font-size: 10px; }
+  .tm-cell.other { border: 1.5px dashed rgba(255,255,255,0.65); }
+  .zones-panel { position: absolute; right: 0; top: 0; width: 44%; height: 100%; background: var(--surface-2); border-left: 1px solid var(--border); padding: 10px 12px; display: none; overflow-y: auto; }
+  .zones-panel.on { display: block; }
+  .zones-panel h4 { font-size: 12px; margin: 0 0 8px; font-weight: 600; color: var(--vtb-navy); display: flex; align-items: center; gap: 6px; }
+  .zones-panel h4 .close { margin-left: auto; cursor: pointer; color: var(--text-muted); background: none; border: 0; padding: 2px 6px; font-size: 14px; border-radius: 4px; }
+  .zone-row { display: grid; grid-template-columns: 1fr 44px; align-items: center; gap: 8px; font-size: 12px; padding: 4px 0; border-bottom: 1px solid var(--border); }
+  .zone-row:last-child { border-bottom: 0; }
+  .zone-bar-wrap { display: flex; align-items: center; gap: 8px; }
+  .zone-name { min-width: 120px; }
+  .zone-bar { height: 6px; border-radius: 2px; flex: 1; }
+  .mini-num { font-size: 11px; color: var(--text-secondary); text-align: right; }
+
   .stub-card { padding: 22px 16px; text-align: center; color: var(--text-muted); font-size: 12px; background: repeating-linear-gradient(135deg, var(--surface-1), var(--surface-1) 10px, var(--surface-0) 10px, var(--surface-0) 20px); border: 1px dashed var(--border-strong); border-radius: var(--card-radius); }
   .stub-card b { color: var(--vtb-navy); display: block; margin-bottom: 4px; font-family: var(--font-head); }
 
@@ -154,6 +175,8 @@
     .section-title .hint { display: block; margin-left: 0; margin-top: 2px; }
     #b1-kpi { grid-template-columns: repeat(2, 1fr) !important; }
     .cat-branch-wrap { flex-direction: column; align-items: center; gap: 14px; }
+    .zones-panel { position: static; width: 100%; height: auto; border-left: 0; border-top: 1px solid var(--border); margin-top: 8px; max-height: 300px; }
+    #b2a-treemap { height: auto; min-height: 300px; }
   }
   @media (max-width: 560px) {
     html, body { font-size: 13px; }
@@ -221,7 +244,7 @@
     </div>
     <button class="flt-reset" id="btn-reset">Сбросить всё</button>
   </div>
-  <p class="scope-hint">Период и объекты пересчитывают блоки 01 и 03. Тумблер «Все/Плановые/Неплановые» переключает состав блока 01 (динамика и категории); план–факт (блок 03) всегда считается только по плановым (регулярным) задачам.</p>
+  <p class="scope-hint">Период и объекты пересчитывают блоки 01, 02 и 03. Тумблер «Все/Плановые/Неплановые» переключает состав блока 01 (динамика и категории); план–факт (блок 03) всегда считается только по плановым (регулярным) задачам.</p>
 
   <!-- BLOCK 01 -->
   <div class="section-wrap">
@@ -254,10 +277,24 @@
   </div>
   </div>
 
-  <!-- BLOCK 02 (заглушка — следующий проход) -->
+  <!-- BLOCK 02 -->
   <div class="section-wrap">
-  <div class="section-title"><span class="snum">02</span>Структура<span class="hint">объекты · зоны</span></div>
-  <div class="card stub-card"><b>В разработке</b>Блок «Структура» (treemap по объектам) — следующий проход. Данные (byZoneDay) в model.json.gz уже готовы.</div>
+  <div class="section-title"><span class="snum">02</span>Структура<span class="hint" id="b2-sec-hint">клик по объекту — топ зон</span></div>
+  <div class="row" style="grid-template-columns: 1.35fr 1fr;">
+    <div class="card">
+      <p class="card-title" id="b2a-title">Объекты <span class="hint">площадь = объём задач, цвет = эффективность</span></p>
+      <div id="b2a-treemap">
+        <div class="zones-panel" id="b2a-zones">
+          <h4><span id="b2a-zones-title">Топ зон объекта</span><button class="close" id="b2a-zones-close">✕</button></h4>
+          <div id="b2a-zones-list"></div>
+        </div>
+      </div>
+    </div>
+    <div class="card">
+      <p class="card-title">Виды работ</p>
+      <p class="note parked"><b>Нет данных по видам работ.</b> Каталог <code>workType</code> пуст, у задач нет <code>workTypeID</code> — нужны права <code>workType.read</code> и наполнение справочника у Bruno. При появлении данных здесь будет heatmap «вид работ × объект».</p>
+    </div>
+  </div>
   </div>
 
   <!-- BLOCK 03 -->
@@ -344,8 +381,9 @@ function showError(msg) { let el = document.getElementById('load-status'); if (!
 /* ==============================================================
    МОДЕЛЬ ДАННЫХ
    ============================================================== */
-let META = {}, OBJECTS = [], objById = {};
+let META = {}, OBJECTS = [], objById = {}, ZONES = [], zoneById = {};
 let ROWS_BY_DATE = new Map();   // date -> [{objId, planned, unplanned}]
+let ZONE_ROWS_BY_DATE = new Map(); // date -> [{zoneId, objectID, completed, missed}]
 let ARCHIVE_FROM = null, ARCHIVE_TO = null;
 let ALL_DATES = [];             // полный список дат архива, по порядку
 
@@ -375,6 +413,8 @@ async function loadAndMap() {
   const dir = raw.directories || {};
   OBJECTS = Object.entries(dir.objects || {}).map(([id, name]) => ({ id, name: name || '(без имени)' }));
   OBJECTS.forEach(o => objById[o.id] = o);
+  ZONES = Object.entries(dir.zones || {}).map(([id, z]) => ({ id, name: (z && z.name) || '(без имени)', objectID: String((z && z.objectID) || '') }));
+  ZONES.forEach(z => zoneById[z.id] = z);
 
   ARCHIVE_FROM = META.archiveFrom; ARCHIVE_TO = META.archiveTo;
   ALL_DATES = (ARCHIVE_FROM && ARCHIVE_TO) ? dateRange(ARCHIVE_FROM, ARCHIVE_TO) : [];
@@ -386,7 +426,14 @@ async function loadAndMap() {
     if (!ROWS_BY_DATE.has(date)) ROWS_BY_DATE.set(date, []);
     ROWS_BY_DATE.get(date).push({ objId, planned: v.planned || emptyBucket(), unplanned: v.unplanned || emptyBucket() });
   }
-  console.log('mapped:', { objects: OBJECTS.length, dates: ALL_DATES.length, rowsDates: ROWS_BY_DATE.size });
+  const bzd = (raw.daily || {}).byZoneDay || {};
+  for (const [key, v] of Object.entries(bzd)) {
+    const sep = key.indexOf('|');
+    const date = key.slice(0, sep), zoneId = key.slice(sep + 1);
+    if (!ZONE_ROWS_BY_DATE.has(date)) ZONE_ROWS_BY_DATE.set(date, []);
+    ZONE_ROWS_BY_DATE.get(date).push({ zoneId, objectID: String(v.objectID || ''), completed: v.completed || 0, missed: v.missed || 0 });
+  }
+  console.log('mapped:', { objects: OBJECTS.length, zones: ZONES.length, dates: ALL_DATES.length, rowsDates: ROWS_BY_DATE.size, zoneRowsDates: ZONE_ROWS_BY_DATE.size });
 }
 
 /* ==============================================================
@@ -396,7 +443,7 @@ const state = {
   period: { from: null, to: null },
   objects: new Set(),
   scope: 'all',   // all | planned | unplanned — влияет на блок 01
-  drill: { b1level: 'months', b1ym: null },
+  drill: { b1level: 'months', b1ym: null, b2aObj: null },
 };
 
 function inPeriod(date) { return (!state.period.from || date >= state.period.from) && (!state.period.to || date <= state.period.to); }
@@ -612,6 +659,7 @@ function renderB1() {
     { key: 'missed', label: 'Пропущено', color: '#E62632' },
   ];
   renderStackedBars(document.getElementById('b1-chart'), buckets, series, {
+    maxLabels: explicitDrill ? buckets.length : 16,
     onClick: (b) => {
       if (!explicitDrill && b1IsMonthlyDrillable() && /^\d{4}-\d{2}$/.test(b.key)) { state.drill.b1level = 'days'; state.drill.b1ym = b.key; renderB1(); }
       else if (explicitDrill) { state.drill.b1level = 'months'; state.drill.b1ym = null; renderB1(); }
@@ -758,17 +806,151 @@ function renderB3() {
   const tiles = [
     { lbl: 'План за период', val: fmt(plan), sub: 'запланировано задач', cls: 'neutral' },
     { lbl: 'Выполнено вовремя', val: fmt(onTime), sub: plan ? pct(onTime / plan, 1) + ' от плана' : '—', cls: 'ok' },
-    { lbl: 'Выполнено с опозданием', val: fmt(late), sub: plan ? pct(late / plan, 1) + ' от плана' : '—', cls: 'neutral' },
+    { lbl: 'Выполнено с опозданием', val: fmt(late), sub: completedTotal ? pct(pctLateOfCompleted, 1) + ' от выполненных' : '—', cls: pctLateOfCompleted > 0.2 ? 'bad' : 'neutral' },
     { lbl: 'Пропущено', val: fmt(missed), sub: plan ? pct(missed / plan, 1) + ' от плана' : '—', cls: 'bad' },
     { lbl: 'Исполнение плана', val: pct(exec, 1), sub: 'вовремя+опоздание / план', cls: exec >= 0.9 ? 'ok' : exec >= 0.75 ? 'neutral' : 'bad' },
-    { lbl: '% просроченных, но выполненных', val: pct(pctLateOfCompleted, 1), sub: 'доля с опозданием среди выполненных', cls: pctLateOfCompleted > 0.2 ? 'bad' : 'neutral' },
     { lbl: 'Среднее время просрочки', val: delayN ? fmt1(avgDelayH) + ' ч' : '—', sub: delayN ? 'по ' + fmt(delayN) + ' просроченным задачам' : 'нет просроченных', cls: 'neutral' },
   ];
   const kpiWrap = document.getElementById('b3-kpi'); kpiWrap.innerHTML = '';
   tiles.forEach(t => { const el = document.createElement('div'); el.className = 'kpi-tile solo'; el.innerHTML = `<div><p class="lbl">${t.lbl}</p><p class="val">${t.val}</p><p class="delta ${t.cls}">${t.sub}</p></div>`; kpiWrap.appendChild(el); });
 }
 
-function renderAll() { renderB1(); renderB3(); }
+/* ==============================================================
+   БЛОК 02 — Структура (треймап объектов, топ зон)
+   ============================================================== */
+function effColor(eff) {
+  if (eff >= 0.80) return { bg: '#23A75B', fg: '#FFFFFF' };
+  if (eff >= 0.60) return { bg: '#F5A623', fg: '#4A3306' };
+  return { bg: '#E62632', fg: '#FFFFFF' };
+}
+
+function b2StructureByObject() {
+  const map = new Map();
+  const allSel = state.objects.size === 0 || state.objects.size === OBJECTS.length;
+  periodDates().forEach(date => {
+    const rows = ROWS_BY_DATE.get(date) || [];
+    rows.forEach(r => {
+      if (!allSel && !state.objects.has(r.objId)) return;
+      if (!map.has(r.objId)) map.set(r.objId, { completed: 0, missed: 0, count: 0 });
+      const m = map.get(r.objId);
+      m.completed += r.planned.COMPLETED + r.unplanned.COMPLETED;
+      m.missed += r.planned.MISSED + r.unplanned.MISSED;
+      m.count += bucketAll(r.planned) + bucketAll(r.unplanned);
+    });
+  });
+  return OBJECTS.map(o => {
+    const m = map.get(o.id) || { completed: 0, missed: 0, count: 0 };
+    return { id: o.id, name: o.name, count: m.count, completed: m.completed, missed: m.missed, eff: effCM(m.completed, m.missed) };
+  }).filter(r => r.count > 0).sort((a, b) => b.count - a.count);
+}
+
+// объединение мелких объектов в «Прочие»: сворачиваем самые мелкие, пока их
+// суммарная доля не превысит 20% — крупные остаются отдельными ячейками.
+function mergeSmallObjects(rows) {
+  const total = rows.reduce((a, r) => a + r.count, 0);
+  if (total <= 0 || rows.length <= 2) return rows;
+  const asc = [...rows].sort((a, b) => a.count - b.count);
+  const merged = []; let accum = 0;
+  for (const r of asc) { if ((accum + r.count) / total <= 0.20) { merged.push(r); accum += r.count; } else break; }
+  if (merged.length <= 1) return rows;
+  const mergedIds = new Set(merged.map(r => r.id));
+  const keep = rows.filter(r => !mergedIds.has(r.id));
+  const completed = merged.reduce((a, r) => a + r.completed, 0), missed = merged.reduce((a, r) => a + r.missed, 0);
+  const other = { id: '__other__', name: 'Прочие · ' + merged.length + ' об.', count: accum, eff: effCM(completed, missed), completed, missed, _merged: merged.slice().sort((a, b) => b.count - a.count), _share: accum / total };
+  return [...keep, other].sort((a, b) => b.count - a.count);
+}
+
+function b2TopZonesOfObject(objectID, limit = 12) {
+  const map = new Map();
+  periodDates().forEach(date => {
+    const rows = ZONE_ROWS_BY_DATE.get(date) || [];
+    rows.forEach(r => {
+      if (r.objectID !== objectID) return;
+      if (!map.has(r.zoneId)) map.set(r.zoneId, { completed: 0, missed: 0 });
+      const m = map.get(r.zoneId); m.completed += r.completed; m.missed += r.missed;
+    });
+  });
+  return [...map.entries()].map(([zid, m]) => {
+    const z = zoneById[zid];
+    return { id: zid, name: z ? z.name : '(без имени)', count: m.completed + m.missed, eff: effCM(m.completed, m.missed) };
+  }).filter(r => r.count > 0).sort((a, b) => b.count - a.count).slice(0, limit);
+}
+
+// squarified treemap
+function squarify(items, W, H) {
+  const total = items.reduce((a, b) => a + b.value, 0);
+  if (total === 0) return [];
+  const scale = (W * H) / total;
+  const scaled = items.map(it => ({ ...it, area: it.value * scale }));
+  const rects = [];
+  const rec = (list, x, y, w, h) => {
+    if (list.length === 0) return;
+    if (list.length === 1) { rects.push({ ...list[0], x, y, w, h }); return; }
+    const short = Math.min(w, h);
+    let bestRatio = Infinity, bestIdx = 0, sum = 0;
+    for (let i = 0; i < list.length; i++) {
+      sum += list[i].area;
+      const maxA = list[0].area, minA = list[i].area;
+      const worst = Math.max((short * short * maxA) / (sum * sum), (sum * sum) / (short * short * minA));
+      if (worst < bestRatio) { bestRatio = worst; bestIdx = i; } else { sum -= list[i].area; break; }
+    }
+    const strip = list.slice(0, bestIdx + 1), rest = list.slice(bestIdx + 1);
+    const stripArea = strip.reduce((a, b) => a + b.area, 0), stripLen = stripArea / short;
+    if (w <= h) { let cx = x; strip.forEach(el => { const eh = stripLen, ew = el.area / eh; rects.push({ ...el, x: cx, y, w: ew, h: eh }); cx += ew; }); rec(rest, x, y + stripLen, w, h - stripLen); }
+    else { let cy = y; strip.forEach(el => { const ew = stripLen, eh = el.area / ew; rects.push({ ...el, x, y: cy, w: ew, h: eh }); cy += eh; }); rec(rest, x + stripLen, y, w - stripLen, h); }
+  };
+  rec(scaled.sort((a, b) => b.area - a.area), 0, 0, W, H);
+  return rects;
+}
+
+function renderB2a() {
+  const rows = mergeSmallObjects(b2StructureByObject());
+  const cont = document.getElementById('b2a-treemap');
+  Array.from(cont.querySelectorAll('.tm-cell')).forEach(el => el.remove());
+  const zoomID = state.drill.b2aObj;
+  const rect = cont.getBoundingClientRect();
+  const W = (zoomID ? rect.width * 0.56 : rect.width) || 500, H = rect.height || 340;
+  if (!rows.length) {
+    cont.querySelector('.zones-panel').classList.remove('on');
+    const e = document.createElement('div'); e.className = 'note parked tm-cell'; e.style.cssText = 'position:static;margin:8px;'; e.textContent = 'Нет данных по объектам в выбранном периоде.'; cont.appendChild(e);
+    return;
+  }
+  const cells = squarify(rows.map(r => ({ ...r, value: r.count })), W, H);
+  cells.forEach(c => {
+    const col = effColor(c.eff);
+    const isOther = c.id === '__other__';
+    const el = document.createElement('div');
+    el.className = 'tm-cell' + (isOther ? ' other' : '') + (c.w * c.h < 3200 ? ' tiny' : '');
+    el.style.cssText = `background:${col.bg};color:${col.fg};left:${c.x}px;top:${c.y}px;width:${Math.max(0, c.w - 3)}px;height:${Math.max(0, c.h - 3)}px;`;
+    el.innerHTML = `<div><div class="tm-name">${c.name}</div><div class="tm-val">${fmt(c.count)} задач</div></div><div class="tm-eff">${pct(c.eff)}</div>`;
+    if (isOther) {
+      el.onclick = () => { state.drill.b2aObj = '__other__'; renderB2a(); };
+      el.addEventListener('mousemove', (e) => showTip(`<div class="tt-title">${c.name}</div><div class="tt-row"><span class="k">Доля</span><span>${pct(c._share || 0, 1)}</span></div><div class="tt-row"><span class="k">Задач</span><span>${fmt(c.count)}</span></div><div class="tt-row"><span class="k">Эффективность</span><span>${pct(c.eff)}</span></div><div class="tt-row" style="margin-top:3px;border-top:1px solid rgba(255,255,255,.2);padding-top:3px"><span class="k">Объединено объектов</span><span>${(c._merged || []).length}</span></div>`, e));
+    } else {
+      el.onclick = () => { state.drill.b2aObj = c.id; renderB2a(); };
+      el.addEventListener('mousemove', (e) => showTip(`<div class="tt-title">${c.name}</div><div class="tt-row"><span class="k">Задач</span><span>${fmt(c.count)}</span></div><div class="tt-row"><span class="k">Выполнено</span><span>${fmt(c.completed)}</span></div><div class="tt-row"><span class="k">Пропущено</span><span>${fmt(c.missed)}</span></div><div class="tt-row"><span class="k">Эффективность</span><span>${pct(c.eff)}</span></div>`, e));
+    }
+    el.addEventListener('mouseleave', hideTip);
+    cont.appendChild(el);
+  });
+  const panel = document.getElementById('b2a-zones');
+  if (zoomID === '__other__') {
+    const other = rows.find(r => r.id === '__other__');
+    panel.classList.add('on');
+    document.getElementById('b2a-zones-title').textContent = 'Объединённые объекты (Прочие)';
+    const merged = (other && other._merged) || [];
+    const maxC = Math.max(1, ...merged.map(z => z.count));
+    document.getElementById('b2a-zones-list').innerHTML = merged.length ? merged.map(z => { const col = effColor(z.eff); return `<div class="zone-row"><div class="zone-bar-wrap"><span class="zone-name">${z.name}</span><div class="zone-bar" style="width:${z.count / maxC * 100}%;background:${col.bg}"></div></div><span class="mini-num">${fmt(z.count)}</span></div>`; }).join('') : '<p class="note">Нет объектов.</p>';
+  } else if (zoomID) {
+    panel.classList.add('on');
+    document.getElementById('b2a-zones-title').textContent = 'Топ зон · ' + (objById[zoomID] ? objById[zoomID].name : '');
+    const zones = b2TopZonesOfObject(zoomID);
+    const maxC = Math.max(1, ...zones.map(z => z.count));
+    document.getElementById('b2a-zones-list').innerHTML = zones.length ? zones.map(z => { const col = effColor(z.eff); return `<div class="zone-row"><div class="zone-bar-wrap"><span class="zone-name">${z.name}</span><div class="zone-bar" style="width:${z.count / maxC * 100}%;background:${col.bg}"></div></div><span class="mini-num">${fmt(z.count)}</span></div>`; }).join('') : '<p class="note">Нет зон с задачами в периоде.</p>';
+  } else panel.classList.remove('on');
+}
+
+function renderAll() { renderB1(); renderB2a(); renderB3(); }
 
 /* ==============================================================
    ФИЛЬТРЫ (UI)
@@ -791,7 +973,10 @@ function applyLastMonth() {
   const endD = new Date(ARCHIVE_TO + 'T00:00:00');
   const startD = new Date(endD.getFullYear(), endD.getMonth(), 1);
   state.period = { from: fmtISO(startD), to: ARCHIVE_TO };
-  state.drill.b1level = 'months'; state.drill.b1ym = null;
+  // блок 01 показываем тем же путём, что и обычный клик-drill в месяц (с крошками
+  // и нумерацией всех дней) — а не отдельной веткой «короткий период», чтобы не
+  // было двух разных визуальных состояний для одного и того же «по дням».
+  state.drill.b1level = 'days'; state.drill.b1ym = ARCHIVE_TO.slice(0, 7);
   document.getElementById('flt-period-lbl').textContent = 'текущий месяц архива';
 }
 function setupPeriodMenu() {
@@ -846,7 +1031,7 @@ function setupFilters() {
     applyYTD();
     state.objects = new Set(OBJECTS.map(o => o.id));
     state.scope = 'all';
-    state.drill = { b1level: 'months', b1ym: null };
+    state.drill = { b1level: 'months', b1ym: null, b2aObj: null };
     setupPeriodMenu();
     document.querySelectorAll('#menu-object input[type=checkbox]').forEach(i => i.checked = true);
     document.getElementById('flt-object-lbl').textContent = 'все';
@@ -856,6 +1041,7 @@ function setupFilters() {
   document.querySelectorAll('#b1-scope-toggle button').forEach(b => b.onclick = () => { document.querySelectorAll('#b1-scope-toggle button').forEach(x => x.classList.remove('active')); b.classList.add('active'); state.scope = b.dataset.scope; renderB1(); });
 }
 document.getElementById('b1-back').onclick = () => { state.drill.b1level = 'months'; state.drill.b1ym = null; renderB1(); };
+document.getElementById('b2a-zones-close').onclick = () => { state.drill.b2aObj = null; renderB2a(); };
 
 /* === СТАРТ === */
 let APP_STARTED = false;
