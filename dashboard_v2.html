@@ -90,6 +90,16 @@
   .spark { height: 30px; }
   .ok { color: var(--text-success); } .bad { color: var(--text-danger); } .neutral { color: var(--text-muted); }
 
+  /* Тайлы ролей (ряд 2, блок 01) */
+  .role-tiles { display: flex; flex-direction: column; gap: 7px; margin-top: 2px; }
+  .role-tile { background: var(--surface-1); border-radius: var(--radius); padding: 8px 10px; border-left: 3px solid var(--vtb-blue-3); }
+  .role-tile .rt-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+  .role-tile .rt-name { font-size: 11.5px; font-weight: 500; color: var(--text-primary); }
+  .role-tile .rt-eff { font-family: var(--font-head); font-size: 13px; font-weight: 600; color: var(--vtb-navy); }
+  .role-tile .rt-sub { font-size: 10.5px; color: var(--text-secondary); margin-top: 2px; }
+  .role-tile .rt-bar { height: 4px; border-radius: 2px; background: var(--border); margin-top: 6px; overflow: hidden; }
+  .role-tile .rt-bar-fill { height: 100%; background: var(--vtb-navy); border-radius: 2px; }
+
   /* Дерево категорий (правка 2.0) */
   .cat-tree { display: flex; flex-direction: column; align-items: center; gap: 0; margin: 6px 0 4px; }
   .cat-node { border-radius: 8px; padding: 8px 16px; text-align: center; min-width: 140px; }
@@ -275,6 +285,19 @@
       <p class="note" id="b1-note"></p>
     </div>
   </div>
+  <div class="row" style="grid-template-columns: 1fr 1.7fr;">
+    <div class="card">
+      <p class="card-title">Статистика по ролям <span class="hint">за выбранный период</span></p>
+      <div id="b1-roles"></div>
+    </div>
+    <div class="card">
+      <p class="card-title">Обращения по объектам <span class="hint">по неделям, стек по объектам</span></p>
+      <div class="kpi-grid" style="grid-template-columns: repeat(3, 1fr);" id="b1-fb-kpi"></div>
+      <div id="b1-fb-chart" data-h="200"></div>
+      <div class="legend" id="b1-fb-legend"></div>
+      <p class="note info" id="b1-fb-note"></p>
+    </div>
+  </div>
   </div>
 
   <!-- BLOCK 02 -->
@@ -384,6 +407,8 @@ function showError(msg) { let el = document.getElementById('load-status'); if (!
 let META = {}, OBJECTS = [], objById = {}, ZONES = [], zoneById = {};
 let ROWS_BY_DATE = new Map();   // date -> [{objId, planned, unplanned}]
 let ZONE_ROWS_BY_DATE = new Map(); // date -> [{zoneId, objectID, completed, missed}]
+let EMPLOYEES = {}, ROLE_OF = {};  // empId -> {name, roleName, teamIDs}; empId -> roleName (trimmed)
+let EMP_ROWS_BY_DATE = new Map();  // date -> [{empId, ai, ci, at, ct}]
 let ARCHIVE_FROM = null, ARCHIVE_TO = null;
 let ALL_DATES = [];             // полный список дат архива, по порядку
 
@@ -433,7 +458,17 @@ async function loadAndMap() {
     if (!ZONE_ROWS_BY_DATE.has(date)) ZONE_ROWS_BY_DATE.set(date, []);
     ZONE_ROWS_BY_DATE.get(date).push({ zoneId, objectID: String(v.objectID || ''), completed: v.completed || 0, missed: v.missed || 0 });
   }
-  console.log('mapped:', { objects: OBJECTS.length, zones: ZONES.length, dates: ALL_DATES.length, rowsDates: ROWS_BY_DATE.size, zoneRowsDates: ZONE_ROWS_BY_DATE.size });
+
+  EMPLOYEES = dir.employees || {};
+  for (const [id, e] of Object.entries(EMPLOYEES)) { ROLE_OF[id] = ((e && e.roleName) || 'Без роли').trim() || 'Без роли'; }
+  const bed = (raw.daily || {}).byEmployeeDay || {};
+  for (const [key, v] of Object.entries(bed)) {
+    const sep = key.indexOf('|');
+    const date = key.slice(0, sep), empId = key.slice(sep + 1);
+    if (!EMP_ROWS_BY_DATE.has(date)) EMP_ROWS_BY_DATE.set(date, []);
+    EMP_ROWS_BY_DATE.get(date).push({ empId, ai: v.ai || 0, ci: v.ci || 0, at: v.at || 0, ct: v.ct || 0 });
+  }
+  console.log('mapped:', { objects: OBJECTS.length, zones: ZONES.length, employees: Object.keys(EMPLOYEES).length, dates: ALL_DATES.length, rowsDates: ROWS_BY_DATE.size, zoneRowsDates: ZONE_ROWS_BY_DATE.size, empRowsDates: EMP_ROWS_BY_DATE.size });
 }
 
 /* ==============================================================
@@ -688,6 +723,8 @@ function renderB1() {
 
   renderB1Tree();
   renderB1Funnel();
+  renderB1Roles();
+  renderB1Feedback();
 }
 
 function renderB1Tree() {
@@ -765,6 +802,138 @@ function renderB1Funnel() {
   legend.innerHTML = steps.map(s => `<span><span class="sw" style="background:${s.bg}"></span>${s.name}: <b>${fmt(s.val)}</b> (${pct(s.val / total, 1)})</span>`).join('');
   const conv = total ? u.COMPLETED / total : 0;
   note.textContent = `Конверсия обращений в завершённые: ${pct(conv, 1)} · всего обращений за период: ${fmt(total)}.`;
+}
+
+/* ==============================================================
+   РЯД 2 (блок 01) — Статистика по ролям, обращения по объектам
+   ============================================================== */
+function rolesAgg() {
+  const map = new Map(); // role -> {assigned, completed}
+  periodDates().forEach(date => {
+    const rows = EMP_ROWS_BY_DATE.get(date) || [];
+    rows.forEach(r => {
+      const role = ROLE_OF[r.empId] || 'Без роли';
+      if (!map.has(role)) map.set(role, { assigned: 0, completed: 0 });
+      const m = map.get(role);
+      m.assigned += r.ai + r.at;
+      m.completed += r.ci + r.ct;
+    });
+  });
+  return [...map.entries()]
+    .map(([role, m]) => ({ role, assigned: m.assigned, completed: m.completed, eff: m.assigned ? m.completed / m.assigned : 0 }))
+    .filter(r => r.assigned > 0 || r.completed > 0)
+    .sort((a, b) => b.completed - a.completed);
+}
+
+function renderB1Roles() {
+  const roles = rolesAgg();
+  const host = document.getElementById('b1-roles');
+  if (!roles.length) { host.innerHTML = '<p class="note">Нет данных по ролям в выбранном периоде.</p>'; return; }
+  const maxCompleted = Math.max(1, ...roles.map(r => r.completed));
+  host.innerHTML = `<div class="role-tiles">${roles.map(r => `
+    <div class="role-tile">
+      <div class="rt-head"><span class="rt-name">${r.role}</span><span class="rt-eff">${pct(r.eff, 1)}</span></div>
+      <div class="rt-sub">выполнено ${fmt(r.completed)} из ${fmt(r.assigned)}</div>
+      <div class="rt-bar"><div class="rt-bar-fill" style="width:${r.completed / maxCompleted * 100}%"></div></div>
+    </div>`).join('')}</div>`;
+}
+
+function weekStartISO(dateStr) { const d = new Date(dateStr + 'T00:00:00'); const off = (d.getDay() + 6) % 7; d.setDate(d.getDate() - off); return fmtISO(d); }
+
+const FB_PALETTE = ['#002882', '#00AAFF', '#23A75B', '#F5A623', '#667EB4', '#E62632'];
+function b1FeedbackWeekly(topN = 5) {
+  const dates = periodDates();
+  if (!dates.length) return { weeks: [], series: [], totalAll: 0, maxWeek: 0, objectsWithFb: 0 };
+  const allSel = state.objects.size === 0 || state.objects.size === OBJECTS.length;
+  const perWeekObj = new Map();   // weekKey -> Map(objId -> count)
+  const objTotals = new Map();
+  dates.forEach(date => {
+    const wk = weekStartISO(date);
+    const rows = ROWS_BY_DATE.get(date) || [];
+    rows.forEach(r => {
+      if (!allSel && !state.objects.has(r.objId)) return;
+      const v = bucketAll(r.unplanned);
+      if (v <= 0) return;
+      if (!perWeekObj.has(wk)) perWeekObj.set(wk, new Map());
+      const m = perWeekObj.get(wk);
+      m.set(r.objId, (m.get(r.objId) || 0) + v);
+      objTotals.set(r.objId, (objTotals.get(r.objId) || 0) + v);
+    });
+  });
+  const weekKeys = [...perWeekObj.keys()].sort();
+  const totalAll = [...objTotals.values()].reduce((a, b) => a + b, 0);
+  const objectsWithFb = objTotals.size;
+  const sortedObjs = [...objTotals.entries()].sort((a, b) => b[1] - a[1]);
+  const topIds = sortedObjs.slice(0, topN).map(x => x[0]);
+  const hasOther = sortedObjs.length > topN;
+  const series = topIds.map((id, i) => ({ key: id, label: objById[id] ? objById[id].name : '—', color: FB_PALETTE[i % FB_PALETTE.length] }));
+  if (hasOther) series.push({ key: '__other__', label: 'Прочие объекты', color: '#A3B0D4' });
+  const weeks = weekKeys.map(wk => {
+    const m = perWeekObj.get(wk);
+    const row = { label: dLabel(wk) };
+    let otherSum = 0;
+    for (const [objId, v] of m.entries()) { if (topIds.includes(objId)) row[objId] = (row[objId] || 0) + v; else otherSum += v; }
+    if (hasOther) row.__other__ = otherSum;
+    return row;
+  });
+  let maxWeek = 0;
+  weeks.forEach(w => { const tot = series.reduce((a, se) => a + (w[se.key] || 0), 0); if (tot > maxWeek) maxWeek = tot; });
+  return { weeks, series, totalAll, maxWeek, objectsWithFb };
+}
+
+// Стековый area-график (N слоёв, накопление по объектам внутри недели)
+function renderStackedArea(host, buckets, series) {
+  const W = Math.max(320, host.clientWidth || 560);
+  const H = parseInt(host.dataset.h || '200', 10);
+  const L = 44, R = 10, T = 12, B = 26;
+  const pw = W - L - R, ph = H - T - B;
+  const n = buckets.length;
+  const totals = buckets.map(b => series.reduce((a, s) => a + (b[s.key] || 0), 0));
+  const maxV = niceMax(Math.max(1, ...totals));
+  const xOf = i => n === 1 ? L + pw / 2 : L + pw * i / (n - 1);
+  const yOf = v => T + ph - (v / maxV) * ph;
+  const s = svg('svg', { class: 'chart-svg', viewBox: `0 0 ${W} ${H}`, height: H });
+  for (let i = 0; i <= 2; i++) { const v = maxV * i / 2; const y = yOf(v); s.appendChild(svg('line', { class: i === 0 ? 'axis-line' : 'grid-line', x1: L, y1: y, x2: W - R, y2: y })); s.appendChild(svgText(L - 5, y + 3, fmt(v), 'tick-lbl', { 'text-anchor': 'end' })); }
+  let cumPrev = buckets.map(() => 0);
+  series.forEach(se => {
+    const cumCur = buckets.map((b, i) => cumPrev[i] + (b[se.key] || 0));
+    const top = cumCur.map((v, i) => `${xOf(i)},${yOf(v)}`).join(' ');
+    const bottom = cumPrev.map((v, i) => `${xOf(i)},${yOf(v)}`).reverse().join(' ');
+    s.appendChild(svg('polygon', { points: `${top} ${bottom}`, fill: se.color, opacity: 0.88 }));
+    cumPrev = cumCur;
+  });
+  const skip = Math.max(1, Math.ceil(n / 12));
+  buckets.forEach((b, i) => { if (i % skip === 0 || i === n - 1) s.appendChild(svgText(xOf(i), H - 8, b.label, 'tick-lbl', { 'text-anchor': 'middle' })); });
+  buckets.forEach((b, i) => {
+    const hw = Math.max(8, pw / n);
+    const hit = svg('rect', { class: 'bar-hit', x: xOf(i) - hw / 2, y: T, width: hw, height: ph });
+    hit.addEventListener('mousemove', e => showTip(
+      `<div class="tt-title">Неделя с ${b.label}</div>` +
+      series.map(se => `<div class="tt-row"><span class="k"><span class="tt-sw" style="background:${se.color}"></span>${se.label}</span><span>${fmt(b[se.key] || 0)}</span></div>`).join('') +
+      `<div class="tt-row" style="margin-top:3px;border-top:1px solid rgba(255,255,255,.2);padding-top:3px"><span class="k">Всего</span><span>${fmt(totals[i])}</span></div>`, e));
+    hit.addEventListener('mouseleave', hideTip);
+    s.appendChild(hit);
+  });
+  host.innerHTML = ''; host.appendChild(s);
+}
+
+function renderB1Feedback() {
+  const { weeks, series, totalAll, maxWeek, objectsWithFb } = b1FeedbackWeekly();
+  const kpiWrap = document.getElementById('b1-fb-kpi');
+  const chartHost = document.getElementById('b1-fb-chart');
+  const legend = document.getElementById('b1-fb-legend');
+  const note = document.getElementById('b1-fb-note');
+  const tiles = [
+    { lbl: 'Обращений всего', val: fmt(totalAll) },
+    { lbl: 'Макс. в неделю', val: fmt(maxWeek) },
+    { lbl: 'Объектов с обращениями', val: fmt(objectsWithFb) },
+  ];
+  kpiWrap.innerHTML = '';
+  tiles.forEach(t => { const el = document.createElement('div'); el.className = 'kpi-tile solo'; el.innerHTML = `<div><p class="lbl">${t.lbl}</p><p class="val">${t.val}</p></div>`; kpiWrap.appendChild(el); });
+  if (!weeks.length || !totalAll) { chartHost.innerHTML = '<p class="note info">Нет обращений (неплановых задач) в выбранном периоде.</p>'; legend.innerHTML = ''; note.textContent = ''; return; }
+  renderStackedArea(chartHost, weeks, series);
+  legend.innerHTML = series.map(s => `<span><span class="sw" style="background:${s.color}"></span>${s.label}</span>`).join('');
+  note.textContent = 'Резкие скачки по неделям стоит сверять с внешними причинами (кампании, инструктаж, сезонность), а не сразу трактовать как ухудшение качества обслуживания — текст можно отредактировать под конкретный период.';
 }
 
 /* ==============================================================
@@ -1025,7 +1194,7 @@ function setupFilters() {
     document.querySelectorAll('.flt-menu.open').forEach(m => { if (m !== menu) m.classList.remove('open'); });
     menu.classList.toggle('open'); e.stopPropagation();
   });
-  document.addEventListener('click', () => document.querySelectorAll('.flt-menu.open').forEach(m => m.classList.remove('open')));
+  document.addEventListener('click', (e) => { if (e.target.closest('.flt')) return; document.querySelectorAll('.flt-menu.open').forEach(m => m.classList.remove('open')); });
   document.getElementById('btn-reset').onclick = e => {
     e.stopPropagation();
     applyYTD();
