@@ -20,3 +20,5 @@ Thumbs.db
 # Локальные пробные выгрузки (рабочий data.json коммитит робот GitHub Actions).
 # Если хочешь коммитить и локальный data.json вручную — убери строку ниже.
 /data.local.json
+
+/archive/
