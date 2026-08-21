@@ -4,8 +4,8 @@ name: Публикация дашборда (GitHub Pages)
 #   main         -> index.html, dashboard_v2.html и прочая статика
 #   data-model   -> свежий model.json.gz (кладёт робот update-model.yml)
 #   main         -> data.json.gz для старого дашборда v3 (пока он жив)
-# Запускается: при правке HTML в main, после успешного обновления данных
-# и вручную кнопкой Run workflow.
+# Запускается: при правке HTML в main, вручную кнопкой Run workflow и
+# как подпрограмма (workflow_call) из «Обновление данных (архив + модель)».
 
 on:
   push:
@@ -14,9 +14,9 @@ on:
       - '**.html'
       - '.nojekyll'
       - '.github/workflows/deploy-pages.yml'
-  workflow_run:
-    workflows: ["Обновление данных (архив + модель)"]
-    types: [ completed ]
+  # Вызывается напрямую как подпрограмма из update-model.yml
+  # (раньше здесь был workflow_run — он ни разу не сработал, см. README).
+  workflow_call:
   workflow_dispatch:
 
 permissions:
@@ -30,8 +30,6 @@ concurrency:
 
 jobs:
   deploy:
-    # после робота публикуем только если он отработал успешно
-    if: ${{ github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success' }}
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
