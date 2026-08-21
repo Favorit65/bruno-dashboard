@@ -3879,7 +3879,7 @@
   },
   "2026-08-17": {
    "complete": true,
-   "fetchedAt": "2026-08-21T14:45:55.454144+00:00",
+   "fetchedAt": "2026-08-21T20:27:15.094745+00:00",
    "fields": "slim",
    "counts": {
     "taskPlan": 18152,
@@ -3888,7 +3888,7 @@
     "statByTeam": 4938
    },
    "bytes": {
-    "taskPlan": 1825629,
+    "taskPlan": 1825734,
     "statByZone": 189175,
     "statByEmployee": 101389,
     "statByTeam": 317035
@@ -3896,7 +3896,7 @@
   },
   "2026-08-18": {
    "complete": true,
-   "fetchedAt": "2026-08-21T14:46:53.433372+00:00",
+   "fetchedAt": "2026-08-21T20:28:11.926421+00:00",
    "fields": "slim",
    "counts": {
     "taskPlan": 14011,
@@ -3913,7 +3913,7 @@
   },
   "2026-08-19": {
    "complete": true,
-   "fetchedAt": "2026-08-21T14:47:23.131551+00:00",
+   "fetchedAt": "2026-08-21T20:28:40.421689+00:00",
    "fields": "slim",
    "counts": {
     "taskPlan": 13933,
@@ -3930,39 +3930,39 @@
   },
   "2026-08-20": {
    "complete": true,
-   "fetchedAt": "2026-08-21T14:48:09.803790+00:00",
+   "fetchedAt": "2026-08-21T20:29:33.788201+00:00",
    "fields": "slim",
    "counts": {
     "taskPlan": 13946,
-    "statByZone": 1372,
-    "statByEmployee": 1092,
-    "statByTeam": 1416
+    "statByZone": 3243,
+    "statByEmployee": 1607,
+    "statByTeam": 4937
    },
    "bytes": {
-    "taskPlan": 1463723,
-    "statByZone": 80365,
-    "statByEmployee": 64580,
-    "statByTeam": 88204
+    "taskPlan": 1465837,
+    "statByZone": 188296,
+    "statByEmployee": 93935,
+    "statByTeam": 315528
    }
   },
   "2026-08-21": {
    "complete": true,
-   "fetchedAt": "2026-08-21T14:48:58.683288+00:00",
+   "fetchedAt": "2026-08-21T20:30:19.166360+00:00",
    "fields": "slim",
    "counts": {
-    "taskPlan": 13934,
-    "statByZone": 0,
-    "statByEmployee": 0,
+    "taskPlan": 13937,
+    "statByZone": 1,
+    "statByEmployee": 1,
     "statByTeam": 0
    },
    "bytes": {
-    "taskPlan": 1174794,
-    "statByZone": 52,
-    "statByEmployee": 56,
+    "taskPlan": 1415962,
+    "statByZone": 324,
+    "statByEmployee": 359,
     "statByTeam": 52
    }
   }
  },
  "dirs": {},
- "updatedAt": "2026-08-21T14:48:58.683304+00:00"
+ "updatedAt": "2026-08-21T20:30:19.166381+00:00"
 }
