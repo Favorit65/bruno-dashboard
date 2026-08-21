@@ -1,0 +1,129 @@
+name: Отчёт-презентация (PPTX)
+
+# Кнопка «собрать отчёт»: Actions -> этот workflow -> Run workflow ->
+# выбрать период -> через пару минут скачать .pptx из раздела Artifacts.
+# Данные берутся из готовой модели (ветка data-model), в Bruno API не ходим —
+# поэтому сборка быстрая и не грузит систему.
+
+on:
+  workflow_dispatch:
+    inputs:
+      preset:
+        description: 'Период отчёта'
+        type: choice
+        default: 'last-month'
+        options:
+          - last-month
+          - last-30
+          - last-90
+          - ytd
+          - all
+          - custom
+      date_from:
+        description: 'Только для custom: начало, ГГГГ-ММ-ДД'
+        required: false
+        type: string
+      date_to:
+        description: 'Только для custom: конец, ГГГГ-ММ-ДД'
+        required: false
+        type: string
+      title:
+        description: 'Заголовок на титульном слайде'
+        required: false
+        default: 'Отчёт по эксплуатации объектов'
+        type: string
+      pdf:
+        description: 'Дополнительно сделать PDF'
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: bruno-report-${{ github.actor }}
+  cancel-in-progress: false
+
+jobs:
+  report:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Код проекта (main)
+        uses: actions/checkout@v4
+
+      - name: Модель данных (ветка data-model)
+        uses: actions/checkout@v4
+        with:
+          ref: data-model
+          path: _model
+          fetch-depth: 1
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+
+      - name: Зависимости
+        run: pip install -r requirements-report.txt
+
+      - name: Собрать презентацию
+        id: build
+        env:
+          IN_PRESET: ${{ inputs.preset }}
+          IN_FROM: ${{ inputs.date_from }}
+          IN_TO: ${{ inputs.date_to }}
+          IN_TITLE: ${{ inputs.title }}
+        run: |
+          set -e
+          if [ "$IN_PRESET" = "custom" ]; then
+            if [ -z "$IN_FROM" ] || [ -z "$IN_TO" ]; then
+              echo "::error::Выбран период custom, но даты не заполнены — укажите date_from и date_to."
+              exit 1
+            fi
+            ARGS="--from $IN_FROM --to $IN_TO"
+            NAME="${IN_FROM}_${IN_TO}"
+          else
+            ARGS="--preset $IN_PRESET"
+            NAME="$IN_PRESET"
+          fi
+          OUT="Bruno_report_${NAME}.pptx"
+          python build_report.py \
+            --model _model/model.json.gz \
+            $ARGS \
+            --title "$IN_TITLE" \
+            --out "$OUT" | tee build.log
+          echo "out=$OUT" >> "$GITHUB_OUTPUT"
+          echo "name=$NAME" >> "$GITHUB_OUTPUT"
+
+      - name: Конвертировать в PDF
+        if: ${{ inputs.pdf }}
+        run: |
+          if ! command -v soffice >/dev/null; then
+            echo "::warning::LibreOffice не найден на раннере — PDF не будет создан."
+            exit 0
+          fi
+          soffice --headless --convert-to pdf "${{ steps.build.outputs.out }}" --outdir . || \
+            echo "::warning::Конвертация в PDF не удалась, PPTX всё равно готов."
+
+      - name: Выложить файлы
+        uses: actions/upload-artifact@v4
+        with:
+          name: bruno-report-${{ steps.build.outputs.name }}
+          path: |
+            Bruno_report_*.pptx
+            Bruno_report_*.pdf
+          retention-days: 30
+          if-no-files-found: error
+
+      - name: Итог
+        run: |
+          {
+            echo "### Отчёт готов"
+            echo ""
+            echo '```'
+            tail -4 build.log
+            echo '```'
+            echo ""
+            echo "Скачать файл — в разделе **Artifacts** внизу этой страницы."
+          } >> "$GITHUB_STEP_SUMMARY"
