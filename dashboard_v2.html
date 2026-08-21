@@ -77,11 +77,29 @@
   .card-title { font-family: var(--font-head); font-size: 12.5px; color: var(--vtb-navy); margin: 0 0 8px; font-weight: 600; display: flex; align-items: center; gap: 6px; }
   .card-title .hint { color: var(--text-muted); font-size: 11px; font-weight: 400; margin-left: auto; font-family: var(--font-sans); }
 
-  .crumbs { display: none; align-items: center; gap: 6px; padding: 6px 10px; background: var(--bg-accent); border-radius: var(--radius); font-size: 12px; margin-bottom: 8px; }
-  .crumbs.on { display: flex; }
-  .crumbs .cur { color: var(--text-primary); font-weight: 500; }
-  .crumbs .back { margin-left: auto; display: inline-flex; align-items: center; gap: 4px; padding: 3px 8px; border: 1px solid var(--border-strong); border-radius: 6px; cursor: pointer; color: var(--text-secondary); background: var(--surface-2); font-size: 11px; font-family: inherit; }
-  .crumbs .back:hover { border-color: var(--vtb-blue); }
+  /* Навигатор времени на карточке ряда динамики: [←] окно [→] + путь + «вверх».
+     Все экземпляры (блоки 01, 03, «Обращения») читают ОДНО состояние state.time,
+     поэтому нажатие на любой карточке двигает все ряды сразу. */
+  .tnav { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin: 2px 0 8px; font-size: 11.5px; }
+  .tnav .arrow { display: inline-flex; align-items: center; justify-content: center; width: 26px; height: 26px; border: 1px solid var(--border-strong); background: var(--surface-2); border-radius: 6px; cursor: pointer; color: var(--text-secondary); font-family: inherit; font-size: 13px; line-height: 1; padding: 0; }
+  .tnav .arrow:hover:not(:disabled) { border-color: var(--vtb-blue); color: var(--vtb-navy); }
+  .tnav .arrow:disabled { opacity: 0.32; cursor: default; }
+  .tnav .win { font-weight: 500; color: var(--text-primary); white-space: nowrap; }
+  .tnav .gran { color: var(--text-muted); }
+  .tnav .path { display: inline-flex; align-items: center; gap: 3px; margin-left: auto; color: var(--text-muted); flex-wrap: wrap; }
+  .tnav .path .crumb { background: none; border: 0; padding: 2px 5px; border-radius: 5px; font-family: inherit; font-size: 11.5px; color: var(--vtb-navy); cursor: pointer; }
+  .tnav .path .crumb:hover { background: var(--bg-accent); }
+  .tnav .path .crumb.cur { color: var(--text-primary); font-weight: 500; cursor: default; }
+  .tnav .path .crumb.cur:hover { background: none; }
+  .tnav .path .sep { color: var(--text-muted); font-size: 10px; }
+  /* Кликабельный узел дерева категорий (П1) и легенда-фильтр (П4) */
+  .cat-node.clickable { cursor: pointer; }
+  .cat-node.clickable:hover { box-shadow: 0 0 0 2px var(--vtb-blue-3) inset; }
+  .cat-node.sel { box-shadow: 0 0 0 2px var(--vtb-navy) inset; }
+  .legend.pick span { cursor: pointer; padding: 2px 7px; border-radius: 999px; border: 1px solid transparent; }
+  .legend.pick span:hover { border-color: var(--border-strong); }
+  .legend.pick span.off { opacity: 0.42; }
+  .legend.pick span.off .sw { filter: grayscale(1); }
 
   .legend { display: flex; flex-wrap: wrap; gap: 8px 12px; font-size: 11px; color: var(--text-secondary); margin: 4px 0 6px; }
   .legend span { display: inline-flex; align-items: center; gap: 4px; }
@@ -327,6 +345,12 @@
       <button data-scope="planned">Плановые</button>
       <button data-scope="unplanned">Неплановые</button>
     </div>
+    <div class="toggle" id="gran-toggle" title="Детализация столбцов во всех рядах динамики (блоки 01, 03 и «Обращения по объектам»)">
+      <button data-gran="auto" class="active">Авто</button>
+      <button data-gran="month">Месяц</button>
+      <button data-gran="week">Неделя</button>
+      <button data-gran="day">День</button>
+    </div>
     <button class="flt-reset" id="btn-reset">Сбросить всё</button>
   </div>
   <details class="howto">
@@ -343,10 +367,7 @@
   <!-- BLOCK 01 -->
   <div class="section-wrap">
   <div class="section-title"><span class="snum">01</span>Динамика и категории<span class="hint" id="b1-hint">клик по столбику — детализация во времени</span></div>
-  <div class="crumbs" id="b1-crumbs">
-    <span class="cur" id="b1-cur">—</span>
-    <button class="back" id="b1-back">← к месяцам</button>
-  </div>
+  <div class="tnav" id="tnav-b1"></div>
   <div class="row" style="grid-template-columns: 1.7fr 1fr;">
     <div class="card">
       <p class="card-title">Задачи по статусам во времени <span class="hint" id="b1-chart-hint"></span></p>
@@ -379,10 +400,7 @@
         <p class="card-title" style="margin:0;">Обращения по объектам <span class="hint" id="b1-fb-hint">по дням, стек по объектам · клик по дню — часы (на месте)</span></p>
         <button class="btn-detail" id="b1-fb-detail-btn" type="button">Детализация по объектам</button>
       </div>
-      <div class="crumbs" id="b1-fb-crumbs">
-        <span class="cur" id="b1-fb-cur">—</span>
-        <button class="back" id="b1-fb-back">← назад к дням</button>
-      </div>
+      <div class="tnav" id="tnav-fb"></div>
       <div class="kpi-grid" style="grid-template-columns: repeat(3, 1fr);" id="b1-fb-kpi"></div>
       <div id="b1-fb-chart" data-h="200"></div>
       <div class="legend" id="b1-fb-legend"></div>
@@ -422,10 +440,7 @@
   <!-- BLOCK 03 -->
   <div class="section-wrap">
   <div class="section-title"><span class="snum">03</span>План–факт<span class="hint">только плановые (регулярные) задачи</span></div>
-  <div class="crumbs" id="b3-crumbs">
-    <span class="cur" id="b3-cur">—</span>
-    <button class="back" id="b3-back">← назад к дням</button>
-  </div>
+  <div class="tnav" id="tnav-b3"></div>
   <div class="row" style="grid-template-columns: 1.5fr 1fr;">
     <div class="card">
       <p class="card-title">Вовремя / с опозданием / пропущено <span class="hint" id="b3-period-lbl"></span></p>
@@ -966,20 +981,25 @@ function mapLegacy(raw) {
    ============================================================== */
 const state = {
   period: { from: null, to: null },
-  periodStack: [],   // снимки периода перед сужением кликом по столбику — для кнопки «назад»
   objects: new Set(),
   roles: new Set(),   // пусто = все роли; фильтрует ВЕСЬ дашборд (см. objectRowsForDate)
   scope: 'all',   // all | planned | unplanned — влияет на блоки 01 и 02 (блок 03 — всегда план; блок 04 — только в режиме «Счёт по задачам»)
   b4src: 'bruno', // bruno | task — источник блока 04, см. empRowsForDate()
   drill: { b2aObj: null },
-  // Локальный "день -> часы" переход для блоков с посуточной динамикой —
-  // работает ТАК ЖЕ, как переход "год -> месяц" (в графике на месте, со
-  // своей хлебной крошкой и кнопкой "назад"), а НЕ отдельным модальным
-  // окном. В отличие от periodStack (глобальный фильтр периода, до дня),
-  // это чисто локальное состояние графика — час не может быть выражен через
-  // общий фильтр периода (тот оперирует датами), поэтому у каждого блока
-  // свой независимый флаг "выбранный день для часового разреза".
-  hourDrill: { b1: null, b3: null, fb: null },
+  /* ЕДИНАЯ МАШИНА ВРЕМЕНИ (правка П2, 21.08.2026).
+     Раньше время было размазано по трём независимым состояниям: state.period
+     (глобальный фильтр), state.periodStack (история сужений кликом) и
+     state.hourDrill {b1,b3,fb} — у каждого блока свой день для часового
+     разреза. Из-за этого соседние графики показывали РАЗНЫЕ отрезки времени,
+     а «назад» у каждого блока вело в своё место.
+     Теперь одно состояние на весь дашборд:
+       gran  — детализация столбцов, выбирается пользователем в панели фильтров
+               ('auto' — вывести из ширины окна);
+       hour  — если задана дата, ВСЕ ряды динамики показывают часы этого дня;
+       stack — история переходов вверх (кнопка «↑» и крошка пути).
+     Окно времени по-прежнему живёт в state.period — оно же фильтр всего
+     дашборда, поэтому провал по столбцу пересчитывает и блоки 02/04. */
+  time: { gran: 'auto', hour: null, stack: [] },
 };
 
 function inPeriod(date) { return (!state.period.from || date >= state.period.from) && (!state.period.to || date <= state.period.to); }
@@ -1005,6 +1025,207 @@ function periodDates() {
 }
 
 function roleFilterAllSel() { return state.roles.size === 0 || state.roles.size === ROLES.length; }
+
+/* ==============================================================
+   ЕДИНАЯ МАШИНА ВРЕМЕНИ (П2)
+   Один уровень столбцов, одна группировка дат и один навигатор на все ряды
+   динамики: блок 01 «Задачи по статусам», блок 01 «Обращения по объектам»,
+   блок 03 «План–факт». Раньше каждый из них сам решал, показывать дни или
+   месяцы (у блока 01 порог был 45 дней, у блока 03 — 92), и держал свой
+   отдельный день для часового разреза — соседние графики показывали разные
+   отрезки времени. Теперь уровень один, группы одни, «назад» одно.
+   ============================================================== */
+const GRAN_WORD = { year: 'по годам', month: 'по месяцам', week: 'по неделям', day: 'по дням', hour: 'по часам' };
+
+function dISO(iso) { return new Date(iso + 'T00:00:00'); }
+function clampDate(iso) { return iso < ARCHIVE_FROM ? ARCHIVE_FROM : iso > ARCHIVE_TO ? ARCHIVE_TO : iso; }
+function addDaysISO(iso, k) { const d = dISO(iso); d.setDate(d.getDate() + k); return fmtISO(d); }
+// Понедельник ISO-недели, к которой относится дата
+function weekMonday(iso) { const d = dISO(iso); const wd = (d.getDay() + 6) % 7; d.setDate(d.getDate() - wd); return fmtISO(d); }
+function weekLabel(mondayIso) {
+  const a = dISO(mondayIso), b = dISO(addDaysISO(mondayIso, 6));
+  const mA = MONTH_GEN[a.getMonth()].replace('.', ''), mB = MONTH_GEN[b.getMonth()].replace('.', '');
+  return a.getMonth() === b.getMonth()
+    ? a.getDate() + '–' + b.getDate() + ' ' + mB
+    : a.getDate() + ' ' + mA + ' – ' + b.getDate() + ' ' + mB;
+}
+function monthLabelFull(ym) { const [y, m] = ym.split('-').map(Number); return MONTH_NAMES[m - 1] + ' ' + y; }
+
+function periodSpanDays() {
+  const p = state.period;
+  if (!p.from || !p.to) return 1e9;
+  return (dISO(p.to) - dISO(p.from)) / 86400000 + 1;
+}
+// Что именно рисуем по оси X — общее решение для всех рядов динамики.
+function timeLevel() {
+  if (state.time.hour) return 'hour';
+  const g = state.time.gran;
+  if (g === 'month' || g === 'week' || g === 'day') return g;
+  const span = periodSpanDays();
+  if (span > 800) return 'year';
+  if (span > 120) return 'month';
+  if (span > 45) return 'week';
+  return 'day';
+}
+// Форма графика (правило пользователя): на дневной детализации длинный ряд
+// рисуем площадью, месяц и короче — столбцами. Одинаково во всех блоках.
+function seriesShape(n) { return (timeLevel() === 'day' && n > 31) ? 'area' : 'bars'; }
+
+/* Группы столбцов: [{key, label, dates:[ISO], date?, hour?}].
+   Каждый блок сам суммирует по group.dates свои поля — данные разные,
+   раскладка по времени общая. Кэш живёт до смены фильтров/уровня. */
+let _grpKey = null, _grpVal = null;
+function timeGroups() {
+  const level = timeLevel();
+  const key = _cacheKey + '~' + level + '~' + (state.time.hour || '');
+  if (key === _grpKey) return _grpVal;
+  _grpKey = key;
+  if (level === 'hour') {
+    _grpVal = Array.from({ length: 24 }, (_, h) => {
+      const hh = String(h).padStart(2, '0');
+      return { key: hh, label: hh + ':00', hour: hh, date: state.time.hour, dates: [state.time.hour] };
+    });
+    return _grpVal;
+  }
+  const dates = periodDates();
+  if (!dates.length) { _grpVal = []; return _grpVal; }
+  if (level === 'day') {
+    _grpVal = dates.map(d => ({ key: d, label: dLabel(d), date: d, dates: [d] }));
+    return _grpVal;
+  }
+  const map = new Map();
+  dates.forEach(d => {
+    const k = level === 'year' ? d.slice(0, 4) : level === 'month' ? d.slice(0, 7) : weekMonday(d);
+    if (!map.has(k)) map.set(k, []);
+    map.get(k).push(d);
+  });
+  const multiYear = new Set(dates.map(d => d.slice(0, 4))).size > 1;
+  _grpVal = [...map.keys()].sort().map(k => ({
+    key: k,
+    label: level === 'year' ? k : level === 'month' ? (MONTH_NAMES[Number(k.slice(5, 7)) - 1] + (multiYear ? ' ' + k.slice(2, 4) : '')) : weekLabel(k),
+    dates: map.get(k),
+  }));
+  return _grpVal;
+}
+
+/* -- Навигация во времени -------------------------------------------------- */
+function timeSnapshot() { return { period: { from: state.period.from, to: state.period.to }, gran: state.time.gran, hour: state.time.hour, label: windowLabel() }; }
+function timeApply() {
+  _grpKey = null;
+  document.getElementById('flt-period-lbl').textContent = periodLabelFor(state.period);
+  setupPeriodMenu();
+  renderAll();
+}
+// Клик по столбцу: год → месяц → день → час. Неделя в эту цепочку не входит
+// (она только режим переключателя), но клик по недельному столбцу логично
+// сужает окно до этой недели и показывает её по дням.
+function timeDrillDown(g) {
+  const level = timeLevel();
+  if (level === 'hour') return;
+  if (level === 'day') {
+    // Провал в час — это ещё и сужение периода до этого дня: иначе плашки,
+    // дерево категорий и блоки 02/04 продолжали бы считать весь месяц, пока
+    // график показывает один день (так было до правки П2 — цифры рядом с
+    // графиком относились к разным отрезкам времени).
+    withCubes(() => {
+      state.time.stack.push(timeSnapshot());
+      state.period = { from: g.date, to: g.date };
+      state.time.hour = g.date;
+      timeApply();
+    });
+    return;
+  }
+  const from = g.dates[0], to = g.dates[g.dates.length - 1];
+  state.time.stack.push(timeSnapshot());
+  state.period = { from, to };
+  state.time.gran = 'auto';
+  state.time.hour = null;
+  timeApply();
+}
+function timeUp(toIndex) {
+  // toIndex — на какой шаг пути возвращаемся (клик по крошке); по умолчанию на один вверх
+  const idx = (toIndex == null) ? state.time.stack.length - 1 : toIndex;
+  const snap = state.time.stack[idx];
+  if (!snap) return;
+  state.time.stack = state.time.stack.slice(0, idx);
+  state.period = { from: snap.period.from, to: snap.period.to };
+  state.time.gran = snap.gran;
+  state.time.hour = snap.hour;
+  timeApply();
+}
+// Каким «шагом» двигать окно стрелками ← →: календарным месяцем/годом/неделей,
+// если окно ровно им и является (с поправкой на обрезку по краю архива), иначе
+// собственной длиной окна.
+function windowKind() {
+  const { from, to } = state.period;
+  if (!from || !to) return 'all';
+  if (from === ARCHIVE_FROM && to === ARCHIVE_TO) return 'all';
+  const f = dISO(from);
+  const monthEnd = clampDate(fmtISO(new Date(f.getFullYear(), f.getMonth() + 1, 0)));
+  const yearEnd = clampDate(fmtISO(new Date(f.getFullYear(), 11, 31)));
+  if (f.getDate() === 1 && f.getMonth() === 0 && to === yearEnd && from === clampDate(fmtISO(new Date(f.getFullYear(), 0, 1)))) return 'year';
+  if (from === clampDate(fmtISO(new Date(f.getFullYear(), f.getMonth(), 1))) && to === monthEnd) return 'month';
+  if (from === weekMonday(from) && to === clampDate(addDaysISO(from, 6))) return 'week';
+  return 'custom';
+}
+// Куда уедет окно при нажатии стрелки; null — двигаться некуда (край архива).
+function shiftedWindow(dir) {
+  if (state.time.hour) {
+    const d = addDaysISO(state.time.hour, dir);
+    if (d < ARCHIVE_FROM || d > ARCHIVE_TO) return null;
+    return { hour: d, period: { from: d, to: d } };
+  }
+  const kind = windowKind();
+  if (kind === 'all') return null;
+  const f = dISO(state.period.from);
+  let from, to;
+  if (kind === 'year') { from = fmtISO(new Date(f.getFullYear() + dir, 0, 1)); to = fmtISO(new Date(f.getFullYear() + dir, 11, 31)); }
+  else if (kind === 'month') { from = fmtISO(new Date(f.getFullYear(), f.getMonth() + dir, 1)); to = fmtISO(new Date(f.getFullYear(), f.getMonth() + dir + 1, 0)); }
+  else if (kind === 'week') { from = addDaysISO(state.period.from, 7 * dir); to = addDaysISO(from, 6); }
+  else { const len = periodSpanDays(); from = addDaysISO(state.period.from, len * dir); to = addDaysISO(state.period.to, len * dir); }
+  if (to < ARCHIVE_FROM || from > ARCHIVE_TO) return null;   // окно целиком за краем архива
+  return { period: { from: clampDate(from), to: clampDate(to) } };
+}
+function timeShift(dir) {
+  const nxt = shiftedWindow(dir);
+  if (!nxt) return;
+  state.period = nxt.period;
+  state.time.hour = nxt.hour || null;
+  timeApply();
+}
+function windowLabel() {
+  if (state.time.hour) { const d = dISO(state.time.hour); return d.getDate() + ' ' + MONTH_GEN[d.getMonth()] + ' ' + d.getFullYear(); }
+  const { from, to } = state.period;
+  if (!from || !to) return 'весь период';
+  const kind = windowKind();
+  if (kind === 'all') return 'весь период';
+  if (kind === 'year') return from.slice(0, 4) + ' год';
+  if (kind === 'month') return monthLabelFull(from.slice(0, 7));
+  if (kind === 'week') return weekLabel(from) + ' ' + from.slice(0, 4);
+  return dLabel(from) + ' — ' + dLabel(to) + '.' + to.slice(0, 4);
+}
+/* Навигатор рисуется одинаково на всех карточках динамики и всегда отражает
+   ОДНО состояние: нажатие стрелки на любой карточке двигает все ряды. */
+function timeNavHtml() {
+  const lvl = timeLevel();
+  const back = shiftedWindow(-1), fwd = shiftedWindow(1);
+  const path = state.time.stack.map((s, i) => `<button class="crumb" data-up="${i}">${esc(s.label)}</button><span class="sep">›</span>`).join('')
+    + `<span class="crumb cur">${esc(windowLabel())}</span>`;
+  return `<button class="arrow" data-shift="-1"${back ? '' : ' disabled'} title="Предыдущий период (для всех графиков)">‹</button>`
+    + `<span class="win">${esc(windowLabel())}</span><span class="gran">· ${GRAN_WORD[lvl]}</span>`
+    + `<button class="arrow" data-shift="1"${fwd ? '' : ' disabled'} title="Следующий период (для всех графиков)">›</button>`
+    + `<span class="path">${path}</span>`;
+}
+function renderTimeNav() {
+  const html = timeNavHtml();
+  ['tnav-b1', 'tnav-b3', 'tnav-fb'].forEach(id => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.innerHTML = html;
+    el.querySelectorAll('[data-shift]').forEach(b => b.onclick = () => timeShift(Number(b.dataset.shift)));
+    el.querySelectorAll('[data-up]').forEach(b => b.onclick = () => timeUp(Number(b.dataset.up)));
+  });
+}
 
 // Построчные данные объектов за день с учётом фильтра РОЛИ (не объектов — тот
 // применяется отдельно у каждого вызывающего). Без фильтра роли — точные целые
@@ -1077,82 +1298,85 @@ function showTip(html, evt) { TT.innerHTML = html; TT.style.opacity = '1'; moveT
 function moveTip(evt) { const pad = 14; let x = evt.clientX + pad, y = evt.clientY + pad; const r = TT.getBoundingClientRect(); if (x + r.width > window.innerWidth) x = evt.clientX - r.width - pad; if (y + r.height > window.innerHeight) y = evt.clientY - r.height - pad; TT.style.left = x + 'px'; TT.style.top = y + 'px'; }
 function hideTip() { TT.style.opacity = '0'; }
 
-function renderStackedBars(host, buckets, series, opts) {
+/* ЕДИНЫЙ рендерер ряда динамики (П2/П3).
+   Раньше было три почти одинаковых функции: renderStackedBars (блок 01),
+   renderPlanFact3 (блок 03) и renderStackedArea («Обращения по объектам») —
+   у каждой свои поля, свои подписи осей и своё поведение при клике, поэтому
+   графики выглядели и вели себя по-разному. Теперь одна функция: ось, сетка,
+   подписи, зоны наведения, тултип и клик общие, а различаются только форма
+   марок (столбцы или площадь) и контур плана.
+     opts.shape — 'bars' | 'area'
+     opts.plan  — рисовать контур/линию плана (блок 03)
+     opts.tip   — своя разметка тултипа
+     opts.onClick(group, i) — провал во времени */
+function renderSeries(host, buckets, series, opts) {
   opts = opts || {};
+  const shape = opts.shape || 'bars';
   const W = Math.max(320, host.clientWidth || 560);
   const H = parseInt(host.dataset.h || '210', 10);
-  const L = 40, R = 8, T = 10, B = 26;
+  const L = 42, R = 10, T = 12, B = 26;
   const pw = W - L - R, ph = H - T - B;
-  const maxV = niceMax(Math.max(1, ...buckets.map(b => series.reduce((a, s) => a + (b[s.key] || 0), 0))));
-  const yOf = v => T + ph - (v / maxV) * ph;
   const n = buckets.length || 1;
-  const step = pw / n, bw = Math.min(46, step * 0.7);
-  const skip = opts.maxLabels ? Math.max(1, Math.ceil(n / opts.maxLabels)) : labelSkip(n, 16);
+  const totals = buckets.map(b => series.reduce((a, s) => a + (b[s.key] || 0), 0));
+  const maxV = niceMax(Math.max(1, ...totals, ...(opts.plan ? buckets.map(b => b.plan || 0) : [])));
+  const yOf = v => T + ph - (v / maxV) * ph;
+  const step = pw / n;
+  const xCenter = i => shape === 'area' ? (n === 1 ? L + pw / 2 : L + pw * i / (n - 1)) : L + step * i + step / 2;
+  const skip = labelSkip(n, opts.maxLabels || 16);
   const s = svg('svg', { class: 'chart-svg' + (n / skip > 18 ? ' dense' : ''), viewBox: `0 0 ${W} ${H}`, height: H });
-  for (let i = 0; i <= 2; i++) { const v = maxV * i / 2; const y = yOf(v); s.appendChild(svg('line', { class: i === 0 ? 'axis-line' : 'grid-line', x1: L, y1: y, x2: W - R, y2: y })); s.appendChild(svgText(L - 5, y + 3, fmt(v), 'tick-lbl', { 'text-anchor': 'end' })); }
-  buckets.forEach((b, i) => {
-    const cx = L + step * i + (step - bw) / 2;
-    let acc = 0;
+  for (let i = 0; i <= 2; i++) {
+    const v = maxV * i / 2, y = yOf(v);
+    s.appendChild(svg('line', { class: i === 0 ? 'axis-line' : 'grid-line', x1: L, y1: y, x2: W - R, y2: y }));
+    s.appendChild(svgText(L - 5, y + 3, fmt(v), 'tick-lbl', { 'text-anchor': 'end' }));
+  }
+
+  if (shape === 'area') {
+    // План — тонкой серой линией поверх стека (в столбцах это серый контур)
+    let cumPrev = buckets.map(() => 0);
     series.forEach(se => {
-      const v = b[se.key] || 0; if (v <= 0) return;
-      const h = (v / maxV) * ph; const y = yOf(acc + v);
-      s.appendChild(svg('rect', { class: 'svg-bar', x: cx, y, width: bw, height: Math.max(0.5, h), rx: 2, fill: se.color }));
-      acc += v;
+      const cumCur = buckets.map((b, i) => cumPrev[i] + (b[se.key] || 0));
+      const top = cumCur.map((v, i) => `${xCenter(i)},${yOf(v)}`).join(' ');
+      const bottom = cumPrev.map((v, i) => `${xCenter(i)},${yOf(v)}`).reverse().join(' ');
+      s.appendChild(svg('polygon', { points: `${top} ${bottom}`, fill: se.color, opacity: 0.88 }));
+      cumPrev = cumCur;
     });
-    const hit = svg('rect', { class: 'bar-hit', x: L + step * i, y: T, width: step, height: ph });
-    hit.addEventListener('mousemove', (e) => {
-      const rows = series.map(se => `<div class="tt-row"><span class="k"><span class="tt-sw" style="background:${se.color}"></span>${se.label}</span><span>${fmt(b[se.key] || 0)}</span></div>`).join('');
-      showTip(`<div class="tt-title">${b.label}</div>${rows}<div class="tt-row" style="margin-top:3px;border-top:1px solid rgba(255,255,255,.2);padding-top:3px"><span class="k">Всего</span><span>${fmt(b.all != null ? b.all : series.reduce((a, se) => a + (b[se.key] || 0), 0))}</span></div>`, e);
+    if (opts.plan) {
+      s.appendChild(svg('polyline', { points: buckets.map((b, i) => `${xCenter(i)},${yOf(b.plan || 0)}`).join(' '), fill: 'none', stroke: '#8FA0BE', 'stroke-width': 1.4, 'stroke-dasharray': '4 3' }));
+    }
+  } else {
+    const bw = Math.min(46, step * 0.7);
+    const inner = opts.plan ? Math.max(4, bw * 0.5) : bw;
+    buckets.forEach((b, i) => {
+      const cx = L + step * i + (step - bw) / 2;
+      if (opts.plan && b.plan > 0) s.appendChild(svg('rect', { x: cx, y: yOf(b.plan), width: bw, height: Math.max(0.5, (b.plan / maxV) * ph), rx: 2, fill: '#E4E8F0', stroke: '#C9D3E4', 'stroke-width': 1 }));
+      const icx = cx + (bw - inner) / 2;
+      let acc = 0;
+      series.forEach(se => {
+        const v = b[se.key] || 0; if (v <= 0) return;
+        const h = (v / maxV) * ph;
+        s.appendChild(svg('rect', { class: 'svg-bar', x: icx, y: yOf(acc + v), width: inner, height: Math.max(0.5, h), rx: opts.plan ? 1.5 : 2, fill: se.color }));
+        acc += v;
+      });
+      if (!opts.plan && n <= 6 && totals[i] > 0) s.appendChild(svgText(cx + bw / 2, yOf(totals[i]) - 6, fmt(totals[i]), 'bar-val', { 'text-anchor': 'middle' }));
     });
+  }
+
+  buckets.forEach((b, i) => {
+    const hw = shape === 'area' ? Math.max(8, pw / n) : step;
+    const hx = shape === 'area' ? xCenter(i) - hw / 2 : L + step * i;
+    const hit = svg('rect', { class: 'bar-hit', x: hx, y: T, width: hw, height: ph });
+    hit.addEventListener('mousemove', e => showTip(opts.tip ? opts.tip(b, i) : defaultTip(b, i, series, totals), e));
     hit.addEventListener('mouseleave', hideTip);
     if (opts.onClick) { hit.style.cursor = 'pointer'; hit.addEventListener('click', () => { hideTip(); opts.onClick(b, i); }); }
     s.appendChild(hit);
-    if (i % skip === 0) s.appendChild(svgText(L + step * i + step / 2, H - 8, b.label, 'tick-lbl', { 'text-anchor': 'middle' }));
-    if (n <= 6) { const tot = b.all != null ? b.all : series.reduce((a, se) => a + (b[se.key] || 0), 0); if (tot > 0) s.appendChild(svgText(cx + bw / 2, yOf(tot) - 6, fmt(tot), 'bar-val', { 'text-anchor': 'middle' })); }
+    if (i % skip === 0 || (shape === 'area' && i === n - 1)) s.appendChild(svgText(xCenter(i), H - 8, b.label, 'tick-lbl', { 'text-anchor': 'middle' }));
   });
   host.innerHTML = ''; host.appendChild(s);
 }
-
-// План–факт: контур плана (серый) + вложенные вовремя/опоздание/пропущено
-function renderPlanFact3(host, buckets, opts) {
-  opts = opts || {};
-  const W = Math.max(320, host.clientWidth || 560);
-  const H = parseInt(host.dataset.h || '210', 10);
-  const L = 40, R = 8, T = 12, B = 26;
-  const pw = W - L - R, ph = H - T - B;
-  const maxV = niceMax(Math.max(1, ...buckets.map(b => Math.max(b.plan, b.onTime + b.late + b.missed))));
-  const yOf = v => T + ph - (v / maxV) * ph;
-  const n = buckets.length || 1;
-  const step = pw / n, bw = Math.min(46, step * 0.72), inner = Math.max(4, bw * 0.5);
-  const skip = labelSkip(n, 16);
-  const s = svg('svg', { class: 'chart-svg' + (n / skip > 18 ? ' dense' : ''), viewBox: `0 0 ${W} ${H}`, height: H });
-  for (let i = 0; i <= 2; i++) { const v = maxV * i / 2; const y = yOf(v); s.appendChild(svg('line', { class: i === 0 ? 'axis-line' : 'grid-line', x1: L, y1: y, x2: W - R, y2: y })); s.appendChild(svgText(L - 5, y + 3, fmt(v), 'tick-lbl', { 'text-anchor': 'end' })); }
-  buckets.forEach((b, i) => {
-    const cx = L + step * i + (step - bw) / 2;
-    if (b.plan > 0) s.appendChild(svg('rect', { x: cx, y: yOf(b.plan), width: bw, height: Math.max(0.5, (b.plan / maxV) * ph), rx: 2, fill: '#E4E8F0', stroke: '#C9D3E4', 'stroke-width': 1 }));
-    const icx = cx + (bw - inner) / 2;
-    let acc = 0;
-    [['onTime', '#002882'], ['late', '#F5A623'], ['missed', '#E62632']].forEach(([k, col]) => {
-      const v = b[k] || 0; if (v <= 0) return;
-      const h = (v / maxV) * ph; const y = yOf(acc + v);
-      s.appendChild(svg('rect', { x: icx, y, width: inner, height: Math.max(0.5, h), rx: 1.5, fill: col }));
-      acc += v;
-    });
-    const hit = svg('rect', { class: 'bar-hit', x: L + step * i, y: T, width: step, height: ph });
-    const exec = b.plan ? (b.onTime + b.late) / b.plan : 0;
-    hit.addEventListener('mousemove', (e) => showTip(
-      `<div class="tt-title">${b.label}</div>` +
-      `<div class="tt-row"><span class="k"><span class="tt-sw" style="background:#E4E8F0"></span>План</span><span>${fmt(b.plan)}</span></div>` +
-      `<div class="tt-row"><span class="k"><span class="tt-sw" style="background:#002882"></span>Вовремя</span><span>${fmt(b.onTime)}</span></div>` +
-      `<div class="tt-row"><span class="k"><span class="tt-sw" style="background:#F5A623"></span>С опозданием</span><span>${fmt(b.late)}</span></div>` +
-      `<div class="tt-row"><span class="k"><span class="tt-sw" style="background:#E62632"></span>Пропущено</span><span>${fmt(b.missed)}</span></div>` +
-      `<div class="tt-row" style="margin-top:3px;border-top:1px solid rgba(255,255,255,.2);padding-top:3px"><span class="k">Исполнение</span><span>${pct(exec)}</span></div>`, e));
-    hit.addEventListener('mouseleave', hideTip);
-    if (opts.onClick && b.date) { hit.style.cursor = 'pointer'; hit.addEventListener('click', () => { hideTip(); opts.onClick(b); }); }
-    s.appendChild(hit);
-    if (i % skip === 0) s.appendChild(svgText(L + step * i + step / 2, H - 8, b.label, 'tick-lbl', { 'text-anchor': 'middle' }));
-  });
-  host.innerHTML = ''; host.appendChild(s);
+function ttRow(color, label, val) { return `<div class="tt-row"><span class="k"><span class="tt-sw" style="background:${color}"></span>${label}</span><span>${val}</span></div>`; }
+function ttTotal(label, val) { return `<div class="tt-row" style="margin-top:3px;border-top:1px solid rgba(255,255,255,.2);padding-top:3px"><span class="k">${label}</span><span>${val}</span></div>`; }
+function defaultTip(b, i, series, totals) {
+  return `<div class="tt-title">${esc(b.label)}</div>` + series.map(se => ttRow(se.color, se.label, fmt(b[se.key] || 0))).join('') + ttTotal('Всего', fmt(totals[i]));
 }
 
 function renderSpark(host, data, color) {
@@ -1182,29 +1406,17 @@ function combinedDay(d) {
 function b1DailyRows() {
   return periodDates().map(date => { const d = dayAgg(date); const b = combinedDay(d); const all = bucketAll(b); return { date, all, completed: b.COMPLETED, missed: b.MISSED, other: Math.max(0, all - b.COMPLETED - b.MISSED) }; });
 }
-// Гранулярность вытекает НАПРЯМУЮ из текущего периода фильтра (span<=45 дней —
-// показываем дни, иначе — месяцы), без отдельного «состояния детализации».
-// Раньше был отдельный drill-стейт (b1level/b1ym) с собственной кнопкой «назад» —
-// он приводил к багу, когда клик по столбику в режиме «по дням» откатывал на
-// другую раскладку тех же данных. Теперь клик по столбику меняет РЕАЛЬНЫЙ
-// фильтр периода (см. renderB1 onClick) — весь дашборд пересчитывается
-// синхронно с тем, что видно на графике, а не только этот график.
-function b1Granularity() {
-  if (state.hourDrill.b1) return 'hours';
-  const rows = b1DailyRows(); if (!rows.length) return 'days';
-  const span = (new Date(rows[rows.length - 1].date) - new Date(rows[0].date)) / 86400000 + 1;
-  return span > 45 ? 'months' : 'days';
-}
+// Столбцы блока 01 — из ОБЩИХ групп времени (timeGroups): что бы ни было
+// выбрано — годы, месяцы, недели, дни или часы — блоки 01, 03 и «Обращения»
+// раскладываются по одной и той же сетке.
 function b1Buckets() {
-  if (state.hourDrill.b1) return hourBuckets(state.hourDrill.b1);
-  const rows = b1DailyRows();
-  if (!rows.length) return [];
-  if (b1Granularity() === 'days') return rows.map(r => ({ key: r.date, date: r.date, label: dLabel(r.date), completed: r.completed, missed: r.missed, other: r.other, all: r.all }));
-  const map = new Map();
-  rows.forEach(r => { const ym = r.date.slice(0, 7); if (!map.has(ym)) map.set(ym, { completed: 0, missed: 0, other: 0, all: 0 }); const b = map.get(ym); b.completed += r.completed; b.missed += r.missed; b.other += r.other; b.all += r.all; });
-  const keys = [...map.keys()].sort();
-  const multiYear = new Set(keys.map(k => k.split('-')[0])).size > 1;
-  return keys.map(ym => { const [yy, mm] = ym.split('-').map(Number); const b = map.get(ym); return { key: ym, label: MONTH_NAMES[mm - 1] + (multiYear ? ' ' + String(yy).slice(2) : ''), completed: b.completed, missed: b.missed, other: b.other, all: b.all }; });
+  const lvl = timeLevel();
+  if (lvl === 'hour') return hourBuckets(state.time.hour);
+  return timeGroups().map(g => {
+    let completed = 0, missed = 0, all = 0;
+    g.dates.forEach(date => { const b = combinedDay(dayAgg(date)); completed += b.COMPLETED; missed += b.MISSED; all += bucketAll(b); });
+    return { key: g.key, date: g.date, dates: g.dates, label: g.label, completed, missed, other: Math.max(0, all - completed - missed), all };
+  });
 }
 // фиксированное окно последних месяцев архива (не зависит от текущего периода) —
 // нужно, чтобы спарклайны/MoM в плашках всегда были содержательны, даже когда
@@ -1274,34 +1486,10 @@ function periodLabelFor(p) {
   if (p.from === ARCHIVE_FROM && p.to === ARCHIVE_TO) return 'весь период (с ' + ARCHIVE_FROM + ')';
   return p.from + ' — ' + p.to;
 }
-function setPeriodFromMonthKey(ym) {
-  const [yy, mm] = ym.split('-').map(Number);
-  const first = new Date(yy, mm - 1, 1), last = new Date(yy, mm, 0);
-  const from = fmtISO(first) < ARCHIVE_FROM ? ARCHIVE_FROM : fmtISO(first);
-  const to = fmtISO(last) > ARCHIVE_TO ? ARCHIVE_TO : fmtISO(last);
-  state.periodStack.push({ from: state.period.from, to: state.period.to });
-  state.period = { from, to };
-  // час относится к КОНКРЕТНОМУ дню: после смены периода этот день может из него
-  // выпасть, и график показывал бы данные вне выбранного диапазона
-  state.hourDrill = { b1: null, b3: null, fb: null };
-  document.getElementById('flt-period-lbl').textContent = periodLabelFor(state.period);
-  setupPeriodMenu();
-  renderAll();
-}
-function periodBack() {
-  const prev = state.periodStack.pop();
-  if (!prev) return;
-  state.period = prev;
-  state.hourDrill = { b1: null, b3: null, fb: null };
-  document.getElementById('flt-period-lbl').textContent = periodLabelFor(state.period);
-  setupPeriodMenu();
-  renderAll();
-}
-
 /* -- Детализация «внутри дня» (часовой разрез) -----------------------------
    Единая точка входа данных для ЛЮБОГО блока с посуточной динамикой (01, 03,
    «Обращения по объектам») — клик по дню переключает ЭТОТ график на часовой
-   разрез НА МЕСТЕ (свой crumbs/back у каждого блока), точно так же, как
+   разрез НА МЕСТЕ (общий навигатор времени на всех карточках), как и
    переход год → месяц, БЕЗ модальных окон (правка по требованию пользователя
    20.08.2026 — исходная версия открывала модалку, это было неверно). Данные —
    из byObjectHour (см. build_model.py) — точные целые, БЕЗ разбивки по ролям
@@ -1330,23 +1518,12 @@ function hourBuckets(date) {
 
 function renderB1() {
   cacheSync();
-  const gran = b1Granularity();
-  const cr = document.getElementById('b1-crumbs');
-  if (gran === 'hours') {
-    cr.classList.add('on');
-    const d = new Date(state.hourDrill.b1 + 'T00:00:00');
-    document.getElementById('b1-cur').textContent = 'часы дня ' + d.getDate() + ' ' + MONTH_NAMES[d.getMonth()].toLowerCase() + ' ' + d.getFullYear();
-    document.getElementById('b1-back').textContent = '← назад к дням';
-  } else if (state.periodStack.length) {
-    cr.classList.add('on');
-    document.getElementById('b1-cur').textContent = 'период сужен кликом по графику · ' + periodLabelShort();
-    document.getElementById('b1-back').textContent = '← назад к предыдущему периоду';
-  } else {
-    cr.classList.remove('on');
-  }
-  document.getElementById('b1-hint').textContent = gran === 'months' ? 'клик по месяцу — фильтр периода сузится до месяца'
-    : gran === 'days' ? 'клик по дню — часовой разрез (на месте, как переход год → месяц)'
-    : 'часовой разрез дня · фильтр «Роль» здесь не действует (нет разбивки по ролям внутри часа)';
+  const lvl = timeLevel();
+  renderTimeNav();
+  document.getElementById('b1-hint').textContent = lvl === 'hour'
+    ? 'часовой разрез дня · фильтр «Роль» здесь не действует (нет разбивки по ролям внутри часа)'
+    : lvl === 'day' ? 'клик по дню — часы; стрелки ‹ › двигают период у всех графиков сразу'
+    : 'клик по столбцу — провал внутрь периода (сразу во всех блоках)';
   const scopeLbl = { all: 'все задачи', planned: 'только плановые', unplanned: 'только неплановые' }[state.scope];
   document.getElementById('b1-chart-hint').textContent = scopeLbl;
 
@@ -1356,17 +1533,13 @@ function renderB1() {
     { key: 'other', label: 'В работе / прочее', color: '#00AAFF' },
     { key: 'missed', label: 'Пропущено', color: '#E62632' },
   ];
-  renderStackedBars(document.getElementById('b1-chart'), buckets, series, {
-    maxLabels: gran === 'hours' ? 24 : gran === 'days' ? buckets.length : 16,
-    // Клик по столбику — настоящий фильтр/навигация, на месте графика, БЕЗ
-    // модальных окон: месяц -> сужает «Период» (глобальный фильтр) до этого
-    // месяца; день -> локально переключает ЭТОТ график на часовой разрез
-    // (state.hourDrill.b1), не трогая глобальный фильтр периода — час не
-    // выразить датой. Кнопка "← назад" в крошках понимает оба уровня.
-    onClick: (b) => {
-      if (gran === 'months') { setPeriodFromMonthKey(b.key); }
-      else if (gran === 'days') { withCubes(() => { state.hourDrill.b1 = b.date; renderB1(); }); }
-    },
+  renderSeries(document.getElementById('b1-chart'), buckets, series, {
+    shape: seriesShape(buckets.length),
+    maxLabels: lvl === 'hour' ? 24 : 16,
+    // Клик по столбцу — общий провал во времени (год → месяц → день → час):
+    // двигается ОДНО состояние, поэтому синхронно переключаются и блок 03,
+    // и «Обращения по объектам», а не только этот график.
+    onClick: (b) => timeDrillDown(b),
   });
 
   const kpi = b1Kpi(), sp = b1Sparks(), mom = b1MoM();
@@ -1407,17 +1580,31 @@ function renderB1Tree() {
   const plEff = effCM(planned.COMPLETED, planned.MISSED), fbEff = effCM(unplanned.COMPLETED, unplanned.MISSED);
   const host = document.getElementById('b1-tree');
   if (!total) { host.innerHTML = '<p class="note">Нет задач в выбранном периоде.</p>'; return; }
+  // П1: узлы дерева — те же кнопки, что тумблер «Все / Плановые / Неплановые»
+  // в панели фильтров. Оба контрола пишут в один state.scope и всегда
+  // показывают одно состояние (подсветка .sel).
+  const sel = c => state.scope === c ? ' sel' : '';
   host.innerHTML = `
-    <div class="cat-node root"><div class="cn-name">Все задачи</div><div class="cn-val">${fmt(total)}</div></div>
+    <div class="cat-node root clickable${sel('all')}" data-scope="all" title="Показать все задачи (то же, что тумблер в фильтрах)"><div class="cn-name">Все задачи</div><div class="cn-val">${fmt(total)}</div></div>
     <div class="cat-stem-root"></div>
     <div class="cat-branch-wrap">
       <div class="cat-branch">
-        <div class="cat-node pl"><div class="cn-name">Плановые</div><div class="cn-val">${fmt(plAll)}</div><div class="cn-eff">${pct(plAll / total, 1)} · эфф. ${pct(plEff, 1)}</div></div>
+        <div class="cat-node pl clickable${sel('planned')}" data-scope="planned" title="Оставить только плановые задачи"><div class="cn-name">Плановые</div><div class="cn-val">${fmt(plAll)}</div><div class="cn-eff">${pct(plAll / total, 1)} · эфф. ${pct(plEff, 1)}</div></div>
       </div>
       <div class="cat-branch">
-        <div class="cat-node fb"><div class="cn-name">Неплановые</div><div class="cn-val">${fmt(fbAll)}</div><div class="cn-eff">${pct(fbAll / total, 1)} · эфф. ${pct(fbEff, 1)}</div></div>
+        <div class="cat-node fb clickable${sel('unplanned')}" data-scope="unplanned" title="Оставить только неплановые задачи"><div class="cn-name">Неплановые</div><div class="cn-val">${fmt(fbAll)}</div><div class="cn-eff">${pct(fbAll / total, 1)} · эфф. ${pct(fbEff, 1)}</div></div>
       </div>
     </div>`;
+  host.querySelectorAll('[data-scope]').forEach(el => el.onclick = () => applyScope(el.dataset.scope));
+}
+
+/* Единая точка смены области задач: и тумблер в фильтрах, и клик по узлу
+   дерева категорий (П1) идут сюда, поэтому расхождение состояний невозможно. */
+function applyScope(scope) {
+  state.scope = scope;
+  document.querySelectorAll('#b1-scope-toggle button').forEach(x => x.classList.toggle('active', x.dataset.scope === scope));
+  // блок 04 пересчитываем тоже: в режиме «Счёт по задачам» тумблер на него влияет
+  renderB1(); if (SEEN.b2a) renderB2a(); if (SEEN.b4) renderB4();
 }
 
 function b1FeedbackBucket() {
@@ -1620,96 +1807,53 @@ function showRoleDetail(role) {
   });
 }
 
+/* «Обращения по объектам» (П3). Раньше этот блок жил своей жизнью: только
+   посуточная раскладка, свой area-рендерер, свой день для часового разреза.
+   Теперь он строится на ТЕХ ЖЕ группах времени (timeGroups) и том же
+   рендерере, что блоки 01 и 03 — меняются только ряды (объекты вместо
+   статусов) и палитра, которую пользователь просил сохранить. */
 const FB_PALETTE = ['#002882', '#00AAFF', '#23A75B', '#F5A623', '#667EB4', '#E62632'];
-// Посуточная (не понедельная) агрегация: у каждого дня в периоде — реальное
-// количество обращений за ЭТОТ день, без "усечения" по границе недели, из-за
-// которого график раньше выглядел как повторяющийся заход с нуля. Подпись оси
-// — день месяца (число.месяц), тот же формат, что и в остальном дашборде.
-function b1FeedbackDaily(topN = 5) {
-  const dates = periodDates();
-  if (!dates.length) return { days: [], series: [], totalAll: 0, maxDay: 0, objectsWithFb: 0 };
+function b1FeedbackSeries(topN = 5) {
+  const groups = timeGroups();
+  if (!groups.length) return { rows: [], series: [], totalAll: 0, maxBucket: 0, objectsWithFb: 0 };
   const allSel = state.objects.size === 0 || state.objects.size === OBJECTS.length;
-  const perDayObj = new Map();  // date -> Map(objId -> count) — запись на КАЖДЫЙ день периода, включая нулевые
+  const perGroup = groups.map(() => new Map());   // индекс группы -> Map(objId -> кол-во)
   const objTotals = new Map();
-  dates.forEach(date => {
-    perDayObj.set(date, new Map());
-    // Блок "Обращения по объектам" по требованию пользователя учитывает
-    // ТОЛЬКО период и объект — роль сюда не должна влиять (в отличие от
-    // остальных объектных блоков), поэтому берём сырые строки без
-    // роль-апортирования (не objectRowsForDate()).
-    const rows = ROWS_BY_DATE.get(date) || [];
-    rows.forEach(r => {
-      if (!allSel && !state.objects.has(r.objId)) return;
-      const v = bucketAll(r.unplanned);
-      if (v <= 0) return;
-      const m = perDayObj.get(date);
-      m.set(r.objId, (m.get(r.objId) || 0) + v);
-      objTotals.set(r.objId, (objTotals.get(r.objId) || 0) + v);
+  groups.forEach((g, gi) => {
+    g.dates.forEach(date => {
+      // Блок учитывает ТОЛЬКО период и объект — роль сюда по требованию
+      // пользователя не влияет, поэтому берём сырые строки (не objectRowsForDate).
+      const rows = ROWS_BY_DATE.get(date) || [];
+      rows.forEach(r => {
+        if (!allSel && !state.objects.has(r.objId)) return;
+        const v = bucketAll(r.unplanned);
+        if (v <= 0) return;
+        const m = perGroup[gi];
+        m.set(r.objId, (m.get(r.objId) || 0) + v);
+        objTotals.set(r.objId, (objTotals.get(r.objId) || 0) + v);
+      });
     });
   });
   const totalAll = [...objTotals.values()].reduce((a, b) => a + b, 0);
-  const objectsWithFb = objTotals.size;
   const sortedObjs = [...objTotals.entries()].sort((a, b) => b[1] - a[1]);
   const topIds = sortedObjs.slice(0, topN).map(x => x[0]);
   const hasOther = sortedObjs.length > topN;
-  const series = topIds.map((id, i) => ({ key: id, label: objById[id] ? esc(objById[id].name) : '—', color: FB_PALETTE[i % FB_PALETTE.length] }));
+  const series = topIds.map((id, i) => ({ key: id, objId: id, label: objById[id] ? esc(objById[id].name) : '—', color: FB_PALETTE[i % FB_PALETTE.length] }));
   if (hasOther) series.push({ key: '__other__', label: 'Прочие объекты', color: '#A3B0D4' });
-  const days = dates.map(date => {
-    const m = perDayObj.get(date);
-    const row = { label: dLabel(date), date };
+  const rows = groups.map((g, gi) => {
+    const row = { key: g.key, label: g.label, date: g.date, dates: g.dates };
     let otherSum = 0;
-    for (const [objId, v] of m.entries()) { if (topIds.includes(objId)) row[objId] = (row[objId] || 0) + v; else otherSum += v; }
+    for (const [objId, v] of perGroup[gi].entries()) { if (topIds.includes(objId)) row[objId] = (row[objId] || 0) + v; else otherSum += v; }
     if (hasOther) row.__other__ = otherSum;
     return row;
   });
-  let maxDay = 0;
-  days.forEach(d => { const tot = series.reduce((a, se) => a + (d[se.key] || 0), 0); if (tot > maxDay) maxDay = tot; });
-  return { days, series, totalAll, maxDay, objectsWithFb };
+  let maxBucket = 0;
+  rows.forEach(r => { const tot = series.reduce((a, se) => a + (r[se.key] || 0), 0); if (tot > maxBucket) maxBucket = tot; });
+  return { rows, series, totalAll, maxBucket, objectsWithFb: objTotals.size };
 }
 
-// Стековый area-график (N слоёв, накопление по объектам внутри недели)
-function renderStackedArea(host, buckets, series, opts) {
-  opts = opts || {};
-  const W = Math.max(320, host.clientWidth || 560);
-  const H = parseInt(host.dataset.h || '200', 10);
-  const L = 44, R = 10, T = 12, B = 26;
-  const pw = W - L - R, ph = H - T - B;
-  const n = buckets.length;
-  const totals = buckets.map(b => series.reduce((a, s) => a + (b[s.key] || 0), 0));
-  const maxV = niceMax(Math.max(1, ...totals));
-  const xOf = i => n === 1 ? L + pw / 2 : L + pw * i / (n - 1);
-  const yOf = v => T + ph - (v / maxV) * ph;
-  const skip = labelSkip(n, 12);
-  const s = svg('svg', { class: 'chart-svg' + (n / skip > 18 ? ' dense' : ''), viewBox: `0 0 ${W} ${H}`, height: H });
-  for (let i = 0; i <= 2; i++) { const v = maxV * i / 2; const y = yOf(v); s.appendChild(svg('line', { class: i === 0 ? 'axis-line' : 'grid-line', x1: L, y1: y, x2: W - R, y2: y })); s.appendChild(svgText(L - 5, y + 3, fmt(v), 'tick-lbl', { 'text-anchor': 'end' })); }
-  let cumPrev = buckets.map(() => 0);
-  series.forEach(se => {
-    const cumCur = buckets.map((b, i) => cumPrev[i] + (b[se.key] || 0));
-    const top = cumCur.map((v, i) => `${xOf(i)},${yOf(v)}`).join(' ');
-    const bottom = cumPrev.map((v, i) => `${xOf(i)},${yOf(v)}`).reverse().join(' ');
-    s.appendChild(svg('polygon', { points: `${top} ${bottom}`, fill: se.color, opacity: 0.88 }));
-    cumPrev = cumCur;
-  });
-  buckets.forEach((b, i) => { if (i % skip === 0 || i === n - 1) s.appendChild(svgText(xOf(i), H - 8, b.label, 'tick-lbl', { 'text-anchor': 'middle' })); });
-  buckets.forEach((b, i) => {
-    const hw = Math.max(8, pw / n);
-    const hit = svg('rect', { class: 'bar-hit', x: xOf(i) - hw / 2, y: T, width: hw, height: ph });
-    hit.addEventListener('mousemove', e => showTip(
-      `<div class="tt-title">${b.label}</div>` +
-      series.map(se => `<div class="tt-row"><span class="k"><span class="tt-sw" style="background:${se.color}"></span>${se.label}</span><span>${fmt(b[se.key] || 0)}</span></div>`).join('') +
-      `<div class="tt-row" style="margin-top:3px;border-top:1px solid rgba(255,255,255,.2);padding-top:3px"><span class="k">Всего</span><span>${fmt(totals[i])}</span></div>`, e));
-    hit.addEventListener('mouseleave', hideTip);
-    if (opts.onClick && b.date) { hit.style.cursor = 'pointer'; hit.addEventListener('click', () => { hideTip(); opts.onClick(b); }); }
-    s.appendChild(hit);
-  });
-  host.innerHTML = ''; host.appendChild(s);
-}
-
-// Часовой разрез "Обращений по объектам" для одного дня — только НЕплановые
-// (feedback) задачи, час берётся из того же byObjectHour, что и у блоков 01/03.
-// В часовом виде стек по объектам сворачивается в единый статусный разрез
-// (выполнено/в работе/пропущено), как в блоке 01 — детальный стек по объекту
-// внутри часа был бы избыточен при 24 узких столбиках.
+// Часовой разрез обращений: стек по объектам внутри 24 столбиков был бы
+// нечитаем, поэтому в часах показываем статусный разрез, как в блоке 01.
 function fbHourBuckets(date) {
   const out = [];
   for (let h = 0; h < 24; h++) {
@@ -1720,58 +1864,96 @@ function fbHourBuckets(date) {
   }
   return out;
 }
+
+/* П4: легенда — фильтр с множественным выбором. Клик по подписи объекта
+   добавляет/убирает его из фильтра «Объекты» в шапке, то есть меняет ВЕСЬ
+   дашборд. Невыбранные не исчезают из списка, а сереют, чтобы можно было
+   набрать несколько. Легенда и галочки в фильтре всегда синхронны. */
+function renderPickLegend(host, series, opts) {
+  opts = opts || {};
+  const isOn = opts.isOn || (() => true);
+  host.className = 'legend' + (opts.pick ? ' pick' : '');
+  host.innerHTML = series.map((s, i) => `<span data-i="${i}"${opts.pick ? ` class="${isOn(s) ? '' : 'off'}" title="Клик — выбрать/снять этот объект во всём дашборде"` : ''}><span class="sw" style="background:${s.color}"></span>${s.label}</span>`).join('');
+  if (!opts.pick) return;
+  host.querySelectorAll('[data-i]').forEach(el => el.onclick = () => opts.onPick(series[Number(el.dataset.i)]));
+}
+// Переключение одного объекта в фильтре: из «выбраны все» первый клик делает
+// выбор ровно из одного объекта (так ожидаемее, чем «все кроме одного»).
+function toggleObjectFilter(objId) {
+  if (!objId || objId === '__other__') return;
+  const all = OBJECTS.map(o => o.id);
+  let sel = (state.objects.size === 0 || state.objects.size === OBJECTS.length) ? [] : [...state.objects];
+  if (!sel.length) sel = [objId];
+  else if (sel.includes(objId)) { sel = sel.filter(x => x !== objId); if (!sel.length) sel = all; }
+  else sel.push(objId);
+  applyObjectFilter(sel);
+}
+
+function toggleRoleFilter(role) {
+  let sel = roleFilterAllSel() ? [] : [...state.roles];
+  if (!sel.length) sel = [role];
+  else if (sel.includes(role)) { sel = sel.filter(x => x !== role); if (!sel.length) sel = ROLES.slice(); }
+  else sel.push(role);
+  applyRoleFilter(sel);
+}
+
 function renderB1Feedback() {
   cacheSync();
   const kpiWrap = document.getElementById('b1-fb-kpi');
   const chartHost = document.getElementById('b1-fb-chart');
   const legend = document.getElementById('b1-fb-legend');
   const note = document.getElementById('b1-fb-note');
-  const cr = document.getElementById('b1-fb-crumbs');
+  renderTimeNav();
 
-  if (state.hourDrill.fb) {
-    cr.classList.add('on');
-    const d = new Date(state.hourDrill.fb + 'T00:00:00');
-    document.getElementById('b1-fb-cur').textContent = 'часы дня ' + d.getDate() + ' ' + MONTH_NAMES[d.getMonth()].toLowerCase() + ' ' + d.getFullYear();
-    const buckets = fbHourBuckets(state.hourDrill.fb);
+  if (timeLevel() === 'hour') {
+    const buckets = fbHourBuckets(state.time.hour);
     const total = buckets.reduce((a, b) => a + b.all, 0);
     kpiWrap.innerHTML = '';
     [{ lbl: 'Обращений за день', val: fmt(total) }, { lbl: 'Макс. за час', val: fmt(Math.max(0, ...buckets.map(b => b.all))) }].forEach(t => {
       const el = document.createElement('div'); el.className = 'kpi-tile solo'; el.innerHTML = `<div><p class="lbl">${t.lbl}</p><p class="val">${t.val}</p></div>`; kpiWrap.appendChild(el);
     });
+    document.getElementById('b1-fb-hint').textContent = 'часы дня · роль здесь не действует';
     if (!total) { chartHost.innerHTML = '<p class="note info">Нет обращений в этот день (или всё отфильтровано выбранным объектом).</p>'; legend.innerHTML = ''; note.textContent = ''; return; }
     const series = [
       { key: 'completed', label: 'Выполнено', color: '#002882' },
       { key: 'other', label: 'В работе / прочее', color: '#00AAFF' },
       { key: 'missed', label: 'Пропущено', color: '#E62632' },
     ];
-    renderStackedBars(chartHost, buckets, series, { maxLabels: 24 });
-    legend.innerHTML = series.map(s => `<span><span class="sw" style="background:${s.color}"></span>${s.label}</span>`).join('');
+    renderSeries(chartHost, buckets, series, { shape: 'bars', maxLabels: 24 });
+    renderPickLegend(legend, series, {});
     note.textContent = 'Распределение обращений по часам суток внутри дня. Фильтр «Роль» здесь не действует.';
     return;
   }
-  cr.classList.remove('on');
 
-  const { days, series, totalAll, maxDay, objectsWithFb } = b1FeedbackDaily();
+  const { rows, series, totalAll, maxBucket, objectsWithFb } = b1FeedbackSeries();
+  const lvlWord = { year: 'за год', month: 'за месяц', week: 'за неделю', day: 'за день' }[timeLevel()] || 'за период';
   const tiles = [
     { lbl: 'Обращений всего', val: fmt(totalAll) },
-    { lbl: 'Макс. за день', val: fmt(maxDay) },
+    { lbl: 'Макс. ' + lvlWord, val: fmt(maxBucket) },
     { lbl: 'Объектов с обращениями', val: fmt(objectsWithFb) },
   ];
   kpiWrap.innerHTML = '';
   tiles.forEach(t => { const el = document.createElement('div'); el.className = 'kpi-tile solo'; el.innerHTML = `<div><p class="lbl">${t.lbl}</p><p class="val">${t.val}</p></div>`; kpiWrap.appendChild(el); });
-  if (!days.length || !totalAll) { chartHost.innerHTML = '<p class="note info">Нет обращений (неплановых задач) в выбранном периоде.</p>'; legend.innerHTML = ''; note.textContent = ''; return; }
-  // Клик по дню — локальный часовой разрез ЭТОГО графика (на месте, как и в
-  // блоках 01/03), а не модальное окно.
-  renderStackedArea(chartHost, days, series, { onClick: (b) => withCubes(() => { state.hourDrill.fb = b.date; renderB1Feedback(); }) });
-  legend.innerHTML = series.map(s => `<span><span class="sw" style="background:${s.color}"></span>${s.label}</span>`).join('');
-  note.textContent = 'Резкие скачки по дням стоит сверять с внешними причинами (кампании, инструктаж, сезонность), а не сразу трактовать как ухудшение качества обслуживания.';
+  document.getElementById('b1-fb-hint').textContent = 'стек по объектам · ' + GRAN_WORD[timeLevel()] + ' · клик по подписи объекта — фильтр';
+  if (!rows.length || !totalAll) { chartHost.innerHTML = '<p class="note info">Нет обращений (неплановых задач) в выбранном периоде.</p>'; legend.innerHTML = ''; note.textContent = ''; return; }
+  renderSeries(chartHost, rows, series, {
+    shape: seriesShape(rows.length),
+    onClick: (b) => timeDrillDown(b),
+  });
+  const selAll = state.objects.size === 0 || state.objects.size === OBJECTS.length;
+  renderPickLegend(legend, series, {
+    pick: true,
+    isOn: s => selAll || !s.objId || state.objects.has(s.objId),
+    onPick: s => toggleObjectFilter(s.objId),
+  });
+  note.textContent = 'Резкие скачки стоит сверять с внешними причинами (кампании, инструктаж, сезонность), а не сразу трактовать как ухудшение качества обслуживания.';
 }
 function renderB1FeedbackObjDetail() {
   const dates = periodDates();
   const allSel = state.objects.size === 0 || state.objects.size === OBJECTS.length;
   const totals = new Map();
   dates.forEach(date => {
-    // См. b1FeedbackDaily() — этот блок тоже только период+объект, без роли.
+    // См. b1FeedbackSeries() — этот блок тоже только период+объект, без роли.
     const rows = ROWS_BY_DATE.get(date) || [];
     rows.forEach(r => {
       if (!allSel && !state.objects.has(r.objId)) return;
@@ -1809,47 +1991,40 @@ function b3HourBuckets(date) {
   }
   return out;
 }
-function b3Granularity() {
-  if (state.hourDrill.b3) return 'hours';
-  const rows = b3Rows(); if (!rows.length) return 'days';
-  const span = (new Date(rows[rows.length - 1].date) - new Date(rows[0].date)) / 86400000 + 1;
-  return span <= 92 ? 'days' : 'months';
-}
+// Столбцы план-факта — те же группы времени, что и у блока 01.
 function b3Buckets() {
-  if (state.hourDrill.b3) return b3HourBuckets(state.hourDrill.b3);
-  const rows = b3Rows(); if (!rows.length) return [];
-  const span = (new Date(rows[rows.length - 1].date) - new Date(rows[0].date)) / 86400000 + 1;
-  if (span <= 92) return rows.map(r => ({ key: r.date, date: r.date, label: dLabel(r.date), plan: r.plan, onTime: r.onTime, late: r.late, missed: r.missed }));
-  const map = new Map();
-  rows.forEach(r => { const ym = r.date.slice(0, 7); if (!map.has(ym)) map.set(ym, { plan: 0, onTime: 0, late: 0, missed: 0 }); const b = map.get(ym); b.plan += r.plan; b.onTime += r.onTime; b.late += r.late; b.missed += r.missed; });
-  const keys = [...map.keys()].sort();
-  const multiYear = new Set(keys.map(k => k.split('-')[0])).size > 1;
-  return keys.map(ym => { const [yy, mm] = ym.split('-').map(Number); const b = map.get(ym); return { key: ym, label: MONTH_NAMES[mm - 1] + (multiYear ? ' ' + String(yy).slice(2) : ''), plan: b.plan, onTime: b.onTime, late: b.late, missed: b.missed }; });
-}
-function periodLabelShort() {
-  const p = state.period;
-  if (p.from && p.to) return dLabel(p.from) + '.' + p.from.slice(0, 4) + ' — ' + dLabel(p.to) + '.' + p.to.slice(0, 4);
-  return '';
+  if (timeLevel() === 'hour') return b3HourBuckets(state.time.hour);
+  return timeGroups().map(g => {
+    let plan = 0, onTime = 0, late = 0, missed = 0;
+    g.dates.forEach(date => { const p = dayAgg(date).planned; plan += bucketAll(p); onTime += p.completedOnTime; late += p.completedLate; missed += p.MISSED; });
+    return { key: g.key, date: g.date, dates: g.dates, label: g.label, plan, onTime, late, missed };
+  });
 }
 function renderB3() {
   cacheSync();
-  const gran = b3Granularity();
-  const cr = document.getElementById('b3-crumbs');
-  if (gran === 'hours') {
-    cr.classList.add('on');
-    const d = new Date(state.hourDrill.b3 + 'T00:00:00');
-    document.getElementById('b3-cur').textContent = 'часы дня ' + d.getDate() + ' ' + MONTH_NAMES[d.getMonth()].toLowerCase() + ' ' + d.getFullYear();
-    document.getElementById('b3-back').textContent = '← назад к дням';
-  } else {
-    cr.classList.remove('on');
-  }
+  const lvl = timeLevel();
+  renderTimeNav();
   const rows = b3Rows();
   const buckets = b3Buckets();
   const host = document.getElementById('b3-chart');
-  document.getElementById('b3-period-lbl').textContent = periodLabelShort() + (gran === 'days' ? ' · клик по дню — часы (на месте)' : gran === 'hours' ? ' · часовой разрез' : '');
+  document.getElementById('b3-period-lbl').textContent = windowLabel() + ' · ' + GRAN_WORD[lvl]
+    + (lvl === 'day' ? ' · клик по дню — часы' : lvl === 'hour' ? '' : ' · клик по столбцу — внутрь');
   if (!buckets.length) { host.innerHTML = '<p class="note info">Нет данных о плановых задачах в выбранном периоде.</p>'; document.getElementById('b3-kpi').innerHTML = ''; return; }
-  renderPlanFact3(host, buckets, {
-    onClick: (b) => { if (gran === 'days') withCubes(() => { state.hourDrill.b3 = b.date; renderB3(); }); },
+  renderSeries(host, buckets, [
+    { key: 'onTime', label: 'Вовремя', color: '#002882' },
+    { key: 'late', label: 'С опозданием', color: '#F5A623' },
+    { key: 'missed', label: 'Пропущено', color: '#E62632' },
+  ], {
+    shape: seriesShape(buckets.length),
+    plan: true,
+    maxLabels: lvl === 'hour' ? 24 : 16,
+    tip: (b) => `<div class="tt-title">${esc(b.label)}</div>`
+      + ttRow('#E4E8F0', 'План', fmt(b.plan))
+      + ttRow('#002882', 'Вовремя', fmt(b.onTime))
+      + ttRow('#F5A623', 'С опозданием', fmt(b.late))
+      + ttRow('#E62632', 'Пропущено', fmt(b.missed))
+      + ttTotal('Исполнение', pct(b.plan ? (b.onTime + b.late) / b.plan : 0)),
+    onClick: (b) => timeDrillDown(b),
   });
 
   const plan = rows.reduce((a, r) => a + r.plan, 0), onTime = rows.reduce((a, r) => a + r.onTime, 0), late = rows.reduce((a, r) => a + r.late, 0), missed = rows.reduce((a, r) => a + r.missed, 0);
@@ -2217,8 +2392,14 @@ function renderB4() {
     s.appendChild(hit);
   });
   chartHost.innerHTML = ''; chartHost.appendChild(s);
-  legend.innerHTML = roles.map(r => `<span><span class="sw" style="background:${roleColor(r)}"></span>${esc(r)}</span>`).join('');
-  note.textContent = 'Эффективность сотрудника = выполнено / назначено за выбранный период. Клик по столбику — список сотрудников в этом диапазоне.';
+  // П4: легенда ролей — тот же фильтр «Роль», что галочки в шапке
+  const roleAll = roleFilterAllSel();
+  renderPickLegend(legend, roles.map(r => ({ key: r, role: r, label: esc(r), color: roleColor(r) })), {
+    pick: true,
+    isOn: se => roleAll || state.roles.has(se.role),
+    onPick: se => toggleRoleFilter(se.role),
+  });
+  note.textContent = 'Эффективность сотрудника = выполнено / назначено за выбранный период. Клик по столбику — список сотрудников; клик по роли в легенде — фильтр по роли на весь дашборд.';
   const ch = document.getElementById('b4-chart-hint');
   if (ch) ch.textContent = state.b4src === 'task'
     ? 'счёт по задачам · фильтры период + объект + роль + план/внеплан'
@@ -2237,28 +2418,30 @@ function b4ShowBinDetail(bin) {
 /* ==============================================================
    ФИЛЬТРЫ (UI)
    ============================================================== */
+/* Явный выбор периода (пресет, календарь, «Сбросить всё») обнуляет путь
+   провала и часовой разрез: продолжать «назад» в отрезок, которого больше нет
+   в фильтре, было бы враньём. Детализация (Авто/Месяц/Неделя/День) при этом
+   сохраняется — это предпочтение пользователя, а не часть пути. */
+function resetTimeNav() { state.time.hour = null; state.time.stack = []; _grpKey = null; }
 function fltLabel(set, total) { if (set.size === total || set.size === 0) return 'все'; if (set.size === 1) return '1 выбран'; return set.size + ' выбрано'; }
 
 function applyLast3Months() {
   const end = ARCHIVE_TO, endD = new Date(end + 'T00:00:00');
   const startD = new Date(endD.getFullYear(), endD.getMonth() - 2, 1);
   state.period = { from: fmtISO(startD), to: end };
-  state.periodStack = [];
-  state.hourDrill = { b1: null, b3: null, fb: null };
+  resetTimeNav();
   document.getElementById('flt-period-lbl').textContent = 'последние 3 месяца';
 }
 function applyYTD() {
   state.period = { from: ARCHIVE_FROM, to: ARCHIVE_TO };
-  state.periodStack = [];
-  state.hourDrill = { b1: null, b3: null, fb: null };
+  resetTimeNav();
   document.getElementById('flt-period-lbl').textContent = 'весь период (с ' + ARCHIVE_FROM + ')';
 }
 function applyLastMonth() {
   const endD = new Date(ARCHIVE_TO + 'T00:00:00');
   const startD = new Date(endD.getFullYear(), endD.getMonth(), 1);
   state.period = { from: fmtISO(startD), to: ARCHIVE_TO };
-  state.periodStack = [];
-  state.hourDrill = { b1: null, b3: null, fb: null };
+  resetTimeNav();
   document.getElementById('flt-period-lbl').textContent = 'текущий месяц архива';
 }
 function setupPeriodMenu() {
@@ -2276,8 +2459,7 @@ function setupPeriodMenu() {
     const fv = document.getElementById('dt-from').value, tv = document.getElementById('dt-to').value;
     if (!fv || !tv || fv > tv) return;
     state.period = { from: fv, to: tv };
-    state.periodStack = [];
-    state.hourDrill = { b1: null, b3: null, fb: null };
+    resetTimeNav();
     document.getElementById('flt-period-lbl').textContent = fv + ' — ' + tv;
     renderAll();
   };
@@ -2346,6 +2528,9 @@ function setupFilters() {
     state.roles = new Set();
     state.scope = 'all';
     state.b4src = 'bruno';
+    state.time.gran = 'auto';
+    resetTimeNav();
+    document.querySelectorAll('#gran-toggle button').forEach(x => x.classList.toggle('active', x.dataset.gran === 'auto'));
     document.querySelectorAll('#b4-src-toggle button').forEach(x => x.classList.toggle('active', x.dataset.src === 'bruno'));
     state.drill = { b2aObj: null };
     setupPeriodMenu();
@@ -2356,11 +2541,16 @@ function setupFilters() {
     document.querySelectorAll('#b1-scope-toggle button').forEach(x => x.classList.toggle('active', x.dataset.scope === 'all'));
     renderAll();
   };
-  document.querySelectorAll('#b1-scope-toggle button').forEach(b => b.onclick = () => {
-    document.querySelectorAll('#b1-scope-toggle button').forEach(x => x.classList.remove('active'));
-    b.classList.add('active'); state.scope = b.dataset.scope;
-    // блок 04 пересчитываем тоже: в режиме «Счёт по задачам» тумблер на него влияет
-    renderB1(); renderB2a(); renderB4();
+  document.querySelectorAll('#b1-scope-toggle button').forEach(b => b.onclick = () => applyScope(b.dataset.scope));
+  // Детализация столбцов — общая для всех рядов динамики (П2). Смена детализации
+  // выводит из часового разреза: часы — это отдельный уровень, а не гранулярность.
+  document.querySelectorAll('#gran-toggle button').forEach(b => b.onclick = () => {
+    document.querySelectorAll('#gran-toggle button').forEach(x => x.classList.remove('active'));
+    b.classList.add('active');
+    state.time.gran = b.dataset.gran;
+    state.time.hour = null;
+    _grpKey = null;
+    renderAll();
   });
   document.querySelectorAll('#b4-src-toggle button').forEach(b => b.onclick = () => {
     document.querySelectorAll('#b4-src-toggle button').forEach(x => x.classList.remove('active'));
@@ -2369,12 +2559,6 @@ function setupFilters() {
     renderB1Roles(); renderB4();
   });
 }
-document.getElementById('b1-back').onclick = () => {
-  if (state.hourDrill.b1) { state.hourDrill.b1 = null; renderB1(); return; }
-  periodBack();
-};
-document.getElementById('b3-back').onclick = () => { state.hourDrill.b3 = null; renderB3(); };
-document.getElementById('b1-fb-back').onclick = () => { state.hourDrill.fb = null; renderB1Feedback(); };
 // Клик по ячейке треймапа сужает фильтр «Объекты» до одного объекта, поэтому крестик
 // панели зон должен и фильтр вернуть — иначе выйти из «одного объекта» можно было
 // только через «Сбросить всё», что заодно сбрасывало период и роль.
