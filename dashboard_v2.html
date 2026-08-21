@@ -2,7 +2,9 @@
 <html lang="ru">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<!-- viewport-fit=cover — страница занимает и «челку»/скруглённые углы; безопасные
+     отступы возвращаются через env(safe-area-inset-*) в CSS ниже (B-18) -->
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="color-scheme" content="light">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%23002882'/%3E%3Cpolygon points='6,21 25,21 22,25 3,25' fill='%2300AAFF'/%3E%3Cpolygon points='9,14 28,14 25,18 6,18' fill='white'/%3E%3Cpolygon points='12,7 31,7 28,11 9,11' fill='white'/%3E%3C/svg%3E">
 <title>Дашборд обслуживания объектов 2.0 — ВТБ</title>
@@ -237,7 +239,21 @@
   .stub-card { padding: 22px 16px; text-align: center; color: var(--text-muted); font-size: 12px; background: repeating-linear-gradient(135deg, var(--surface-1), var(--surface-1) 10px, var(--surface-0) 10px, var(--surface-0) 20px); border: 1px dashed var(--border-strong); border-radius: var(--card-radius); }
   .stub-card b { color: var(--vtb-navy); display: block; margin-bottom: 4px; font-family: var(--font-head); }
 
-  @media (max-width: 1000px) {
+  /* B-15. Планшет 820–1100 px: раньше всё схлопывалось в одну колонку уже с
+     1000 px, и на планшете (768–1024 портрет / 1024 ландшафт) дашборд выглядел
+     как растянутый телефон — карточки во всю ширину, море пустого места справа
+     от подписей. Теперь в этой полосе ряд остаётся из двух РАВНЫХ колонок:
+     пропорции 1.7fr/1fr здесь не работают — узкая колонка получалась 300 px и
+     резала имена ролей и подписи воронки. */
+  @media (min-width: 820px) and (max-width: 1100px) {
+    .app { padding: 16px 18px 44px; }
+    .row { grid-template-columns: 1fr 1fr !important; }
+    .b4-layout { grid-template-columns: 200px 1fr; }
+    #b1-kpi { grid-template-columns: repeat(2, 1fr) !important; }
+    .role-tiles { grid-template-columns: repeat(auto-fit, minmax(168px, 1fr)); }
+    .section-title { min-width: 260px; }
+  }
+  @media (max-width: 819.98px) {
     .row { grid-template-columns: 1fr !important; }
   }
   @media (max-width: 820px) {
@@ -320,6 +336,15 @@
   .chart-svg { animation: chart-in 0.18s ease-out; }
   @keyframes chart-in { from { opacity: 0; } to { opacity: 1; } }
   @media (prefers-reduced-motion: reduce) { .chart-svg { animation: none; } }
+  /* 29. Единый набор инлайн-иконок. Раньше классу .ic не было НИ ОДНОГО правила:
+     svg без width/height занимал дефолтные 300x150, а путь без stroke заливался
+     чёрным — крестики «закрыть» и шевроны фильтров были то невидимы, то ломали
+     вёрстку строки. Задаём размер и обводку по цвету текста. */
+  .ic { width: 14px; height: 14px; flex: 0 0 auto; display: inline-block; vertical-align: -2px;
+        fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+  .ic-chev { width: 11px; height: 11px; vertical-align: -1px; }
+  .modal-head .close .ic, .zones-panel h4 .close .ic { width: 15px; height: 15px; }
+  .active-flt .chip button .ic { width: 11px; height: 11px; }
   /* 26. Видимый фокус с клавиатуры */
   :focus-visible { outline: 2px solid var(--vtb-blue); outline-offset: 2px; border-radius: 4px; }
   /* 27. Печать: графики не должны обрезаться по ширине колонки */
@@ -328,6 +353,163 @@
     .row { display: block !important; }
     .card { margin-bottom: 10px; }
     .chart-svg { animation: none; }
+  }
+
+  /* ====================================================================
+     ГРУППА B — телефон и планшет (пп. 9–18)
+     Порог «телефона» — 820 px, он же MQ_PHONE в JS: одна константа на CSS и
+     на логику, иначе список объектов рисуется, а треймап уже нет (или наоборот).
+     ==================================================================== */
+
+  /* B-12. Горизонтальная прокрутка графика внутри карточки. На узком экране
+     31 столбик в 320 px — это 10 px на столбик и нечитаемые подписи; вместо
+     того чтобы сжимать, рисуем график в его «естественной» ширине и катаем
+     внутри карточки. Прокручивается только обёртка, страница по горизонтали
+     не едет. */
+  /* Без min-width:0 карточка-флекс/грид-элемент растягивается под содержимое, и
+     широкий SVG утаскивает за собой ВСЮ страницу — прокрутка получалась не
+     внутри карточки, а горизонтальная у body. */
+  .row > *, .card, .card > * { min-width: 0; }
+  .card > * { max-width: 100%; }
+  .chart-scroll { width: 100%; max-width: 100%; overflow-x: auto; overflow-y: hidden; -webkit-overflow-scrolling: touch; overscroll-behavior-x: contain; }
+  .chart-scroll > .chart-svg { max-width: none; }
+  .chart-scroll::-webkit-scrollbar { height: 6px; }
+  .chart-scroll::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 3px; }
+  .scroll-hint { font-size: 10px; color: var(--text-muted); margin: 2px 0 0; text-align: right; }
+
+  /* Заголовок карточки с кнопкой справа. В узкой колонке (планшет, телефон)
+     кнопка отжимала заголовок в три строки — переносим её под заголовок. */
+  .card-head-row { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+  @media (max-width: 1100px) {
+    .card-head-row { flex-direction: column; align-items: stretch; gap: 6px; }
+    .card-head-row .btn-detail { align-self: flex-start; }
+  }
+
+  /* B-13. Список объектов вместо треймапа на узком экране */
+  #b2a-treemap.list { position: static; height: auto; min-height: 0; }
+  .obj-row { display: grid; grid-template-columns: 1fr auto; grid-template-areas: 'name eff' 'bar val'; gap: 4px 10px; align-items: center; width: 100%; min-height: 48px; padding: 8px 10px; margin-bottom: 6px; background: var(--surface-1); border: 1px solid var(--border); border-radius: var(--radius); font-family: inherit; text-align: left; cursor: pointer; }
+  .obj-row:hover { border-color: var(--vtb-blue); }
+  .obj-row.sel { border-color: var(--vtb-navy); box-shadow: 0 0 0 1px var(--vtb-navy) inset; }
+  .obj-row .or-name { grid-area: name; font-size: 12px; font-weight: 600; color: var(--text-primary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .obj-row .or-eff { grid-area: eff; font-size: 11px; font-weight: 600; padding: 2px 7px; border-radius: 4px; white-space: nowrap; }
+  .obj-row .or-bar { grid-area: bar; height: 6px; background: var(--border); border-radius: 3px; overflow: hidden; }
+  .obj-row .or-bar > i { display: block; height: 100%; border-radius: 3px; }
+  .obj-row .or-val { grid-area: val; font-size: 11px; color: var(--text-secondary); white-space: nowrap; }
+
+  /* B-11 / B-14 / B-16. Общая механика «шторок»: затемнение под панелью зон,
+     панелью фильтров и полноэкранной модалкой — одно и то же. */
+  .sheet-backdrop { display: none; position: fixed; inset: 0; background: rgba(10,20,40,0.45); z-index: 380; }
+  .sheet-backdrop.on { display: block; }
+  body.sheet-lock { overflow: hidden; }
+  .sheet-head, .sheet-lbl, .filters-bar { display: none; }
+
+  /* B-9. Подсказка по тапу: на телефоне тултип шире экрана не нужен, и
+     «хвост» с инструкцией по второму тапу — часть той же подсказки. */
+  #tooltip .tt-tap { margin-top: 4px; padding-top: 4px; border-top: 1px solid rgba(255,255,255,.22); color: #A9C4EA; font-size: 10px; }
+
+  @media (max-width: 819.98px) {
+    /* B-18. Безопасные зоны: в ландшафте на телефоне с вырезом левый край
+       страницы иначе уезжает под «челку». */
+    .app { padding-left: calc(10px + env(safe-area-inset-left)); padding-right: calc(10px + env(safe-area-inset-right)); padding-bottom: calc(36px + env(safe-area-inset-bottom)); }
+    #tooltip { max-width: calc(100vw - 24px); font-size: 12px; padding: 9px 12px; }
+
+    /* B-10. Тач-цели не меньше 40 px — палец не попадает в 26-пиксельную стрелку */
+    .tnav .arrow { width: 40px; height: 40px; font-size: 16px; }
+    .tnav .path .crumb { min-height: 34px; padding: 6px 9px; }
+    .btn-detail { min-height: 40px; padding: 8px 14px; }
+    .toggle { width: 100%; }
+    .toggle button { flex: 1 1 0; min-height: 40px; padding: 10px 8px; font-size: 12px; }
+    .flt-menu label { min-height: 42px; padding: 10px 10px; font-size: 13px; }
+    .flt-menu input[type=checkbox] { width: 18px; height: 18px; }
+    .flt-menu .preset, .flt-menu .custom button { min-height: 40px; padding: 10px 14px; font-size: 12px; }
+    .flt-menu .custom input[type="date"] { min-height: 40px; flex: 1 1 120px; }
+    .legend.pick span { min-height: 34px; padding: 6px 10px; }
+    .active-flt .chip { min-height: 34px; padding: 5px 6px 5px 12px; font-size: 12px; }
+    .active-flt .chip button { min-width: 32px; min-height: 32px; display: inline-flex; align-items: center; justify-content: center; }
+    .modal-head .close, .zones-panel h4 .close { width: 44px; height: 44px; display: inline-flex; align-items: center; justify-content: center; }
+    .role-tile { min-height: 64px; }
+    .role-tile .rt-info-btn { min-width: 36px; min-height: 36px; }
+    .howto > summary { padding: 12px; min-height: 44px; }
+
+    /* B-11. Панель фильтров → кнопка «Фильтры» + шторка снизу.
+       Липкая панель на телефоне занимала до трети экрана и всё равно резалась;
+       теперь в шапке остаётся одна строка с кнопкой, счётчиком активных
+       фильтров и текущим окном времени. */
+    .filters-bar { display: flex; align-items: center; gap: 10px; position: sticky; top: 0; z-index: 210;
+      padding: 8px calc(10px + env(safe-area-inset-right)) 8px calc(10px + env(safe-area-inset-left));
+      margin: 0 calc(-10px - env(safe-area-inset-left)) 8px calc(-10px - env(safe-area-inset-right));
+      background: var(--surface-0); border-bottom: 1px solid var(--border); }
+    .filters-bar.stuck { box-shadow: 0 3px 12px rgba(0,40,130,0.12); }
+    .filters-bar .fbtn { display: inline-flex; align-items: center; gap: 8px; min-height: 40px; padding: 8px 14px; border: 1px solid var(--vtb-navy); background: var(--vtb-navy); color: #fff; border-radius: 999px; font-family: inherit; font-size: 13px; font-weight: 500; cursor: pointer; flex: 0 0 auto; }
+    .filters-bar .fbtn .ic { width: 16px; height: 16px; }
+    .filters-bar .fbtn .fbadge { background: var(--vtb-blue); color: #04203F; border-radius: 999px; min-width: 20px; height: 20px; display: none; align-items: center; justify-content: center; font-size: 11px; font-weight: 600; padding: 0 5px; }
+    .filters-bar .fbtn .fbadge.on { display: inline-flex; }
+    .filters-bar .fbar-win { font-size: 12px; color: var(--text-secondary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+
+    .filters { position: fixed; left: 0; right: 0; bottom: 0; top: auto; z-index: 400;
+      display: block; margin: 0; border-radius: 14px 14px 0 0; border: 0; box-shadow: 0 -8px 32px rgba(0,20,60,0.28);
+      background: var(--surface-2); max-height: 86vh; max-height: 86dvh; overflow-y: auto;
+      padding: 0 14px calc(16px + env(safe-area-inset-bottom));
+      transform: translateY(100%); transition: transform 0.22s ease-out; visibility: hidden; }
+    .filters.sheet-open { transform: none; visibility: visible; }
+    @media (prefers-reduced-motion: reduce) { .filters { transition: none; } }
+    .filters > .lbl { display: none; }
+    .sheet-head { display: flex; align-items: center; gap: 10px; position: sticky; top: 0; z-index: 2; background: var(--surface-2); padding: 12px 0 10px; border-bottom: 1px solid var(--border); margin-bottom: 12px; }
+    .sheet-head::before { content: ''; position: absolute; top: 5px; left: 50%; transform: translateX(-50%); width: 38px; height: 4px; border-radius: 2px; background: var(--border-strong); }
+    .sheet-head h3 { margin: 0; font-family: var(--font-head); font-size: 14px; color: var(--vtb-navy); font-weight: 600; }
+    .sheet-head .sh-done { margin-left: auto; min-height: 40px; padding: 8px 16px; border: 0; border-radius: 999px; background: var(--vtb-navy); color: #fff; font-family: inherit; font-size: 13px; cursor: pointer; }
+    /* Каждый фильтр — строка на всю ширину, меню раскрывается ПОД ней (аккордеон),
+       а не всплывающим слоем: абсолютный слой внутри шторки обрезался её краем. */
+    .filters .flt { width: 100%; flex-wrap: wrap; justify-content: flex-start; min-height: 46px; padding: 10px 12px; border-radius: 10px; font-size: 13px; margin-bottom: 8px; }
+    .filters .flt .chev { margin-left: auto; }
+    .filters .flt-menu { position: static; width: 100%; margin-top: 10px; max-height: 42vh; box-shadow: none; border-radius: 8px; }
+    .filters .toggle { margin-bottom: 8px; }
+    .filters .flt-reset { margin: 4px 0 0; width: 100%; min-height: 44px; border: 1px solid var(--border-strong); border-radius: 10px; }
+    .filters .sheet-lbl { display: block; font-family: var(--font-head); font-size: 11px; color: var(--vtb-navy); text-transform: uppercase; letter-spacing: 0.05em; margin: 12px 0 6px; font-weight: 600; }
+
+    /* B-14. Топ зон объекта — тоже шторка снизу, а не панель на 44 % ширины */
+    .zones-panel { position: fixed; left: 0; right: 0; bottom: 0; top: auto; width: 100%; height: auto;
+      max-height: 72vh; max-height: 72dvh; overflow-y: auto; z-index: 400;
+      border: 0; border-radius: 14px 14px 0 0; box-shadow: 0 -8px 32px rgba(0,20,60,0.28);
+      margin: 0; padding: 12px 14px calc(16px + env(safe-area-inset-bottom)); }
+    .zones-panel h4 { position: sticky; top: 0; background: var(--surface-2); padding: 4px 0 10px; margin: 0 0 6px; border-bottom: 1px solid var(--border); font-size: 13px; }
+    .zone-row { min-height: 40px; }
+    .zone-name { min-width: 0; }
+
+    /* B-16. Модалки на телефоне — во весь экран, с прокруткой только внутри тела */
+    .modal-overlay { padding: 0; align-items: flex-end; z-index: 500; }
+    .modal-box { width: 100%; max-width: none; height: 100dvh; max-height: 100dvh; border-radius: 0;
+      background: var(--surface-2); transition: transform 0.18s ease-out; }
+    .modal-box.dragging { transition: none; }
+    .modal-head { position: sticky; top: 0; z-index: 2; background: var(--surface-2); padding: calc(18px + env(safe-area-inset-top)) 14px 12px; touch-action: none; }
+    /* «Ручка» — видимая подсказка, что шапку можно потянуть вниз (B-16) */
+    .modal-head::before { content: ''; position: absolute; top: calc(7px + env(safe-area-inset-top)); left: 50%; transform: translateX(-50%); width: 38px; height: 4px; border-radius: 2px; background: var(--border-strong); }
+    .modal-head h4 { font-size: 15px; }
+    .modal-body { padding: 14px 14px calc(20px + env(safe-area-inset-bottom)); -webkit-overflow-scrolling: touch; }
+    .detail-table { font-size: 13px; }
+    .detail-table th, .detail-table td { padding: 9px 6px; }
+
+    /* Прочая мелочь узкого экрана */
+    /* Липкая строка «Фильтры» перекрывала бы верх карточки при переходе по якорю */
+    .section-wrap, .card { scroll-margin-top: 62px; }
+    /* Подпись (.hint) прижата к правому краю через margin-left:auto — в узкой
+       карточке она делила строку пополам и рвала заголовок на три строки.
+       На телефоне подпись уходит на свою строку целиком. */
+    .card-title { flex-wrap: wrap; }
+    .card-title .hint { margin-left: 0; flex: 1 0 100%; }
+    .tnav { gap: 8px; }
+    .tnav .path { margin-left: 0; width: 100%; }
+    .top-right { flex-wrap: wrap; gap: 8px; }
+    .funnel-casc { flex-wrap: wrap; row-gap: 6px; }
+    .fc-arrow { padding: 0 3px; }
+  }
+
+  /* B-9. На устройствах без мыши ховер-эффекты только мешают (залипают
+     после тапа), а тач-цели нужны и на планшете. */
+  @media (hover: none) {
+    .tm-cell:hover, .role-tile:hover, .obj-row:hover { filter: none; }
+    .tnav .arrow { min-width: 40px; min-height: 40px; }
+    .flt { min-height: 40px; }
   }
 </style>
 </head>
@@ -354,8 +536,21 @@
     </div>
   </div>
 
-  <!-- Фильтры -->
+  <!-- Фильтры. На телефоне (< 820 px) сама панель превращается в шторку снизу,
+       а в потоке остаётся только строка .filters-bar с кнопкой и счётчиком. -->
+  <div class="filters-bar" id="filters-bar">
+    <button class="fbtn" id="btn-filters" type="button" aria-controls="filters" aria-expanded="false">
+      <svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M2 4h12M4 8h8M6.5 12h3" /></svg>
+      Фильтры<span class="fbadge" id="flt-badge">0</span>
+    </button>
+    <span class="fbar-win" id="fbar-win"></span>
+  </div>
+  <div class="sheet-backdrop" id="sheet-backdrop"></div>
   <div class="filters" id="filters">
+    <div class="sheet-head">
+      <h3>Фильтры</h3>
+      <button class="sh-done" id="sheet-done" type="button">Готово</button>
+    </div>
     <span class="lbl">Фильтры</span>
     <div class="flt" data-flt="period">
       <span>Период:</span> <span id="flt-period-lbl">…</span>
@@ -372,11 +567,13 @@
       <span class="chev"><svg class="ic ic-chev" viewBox="0 0 16 16" aria-hidden="true"><path d="M4 6.5l4 4 4-4" /></svg></span>
       <div class="flt-menu" id="menu-role"></div>
     </div>
+    <span class="sheet-lbl">Категория задач</span>
     <div class="toggle" id="b1-scope-toggle">
       <button data-scope="all" class="active">Все задачи</button>
       <button data-scope="planned">Плановые</button>
       <button data-scope="unplanned">Неплановые</button>
     </div>
+    <span class="sheet-lbl">Детализация во времени</span>
     <div class="toggle" id="gran-toggle" title="Детализация столбцов во всех рядах динамики (блоки 01, 03 и «Обращения по объектам»)">
       <button data-gran="auto" class="active">Авто</button>
       <button data-gran="month">Месяц</button>
@@ -430,7 +627,7 @@
       <div id="b1-roles"></div>
     </div>
     <div class="card">
-      <div style="display:flex; align-items:baseline; justify-content:space-between; gap:8px;">
+      <div class="card-head-row">
         <p class="card-title" style="margin:0;">Обращения по объектам <span class="hint" id="b1-fb-hint">по дням, стек по объектам · клик по дню — часы (на месте)</span></p>
         <button class="btn-detail" id="b1-fb-detail-btn" type="button">Детализация по объектам</button>
       </div>
@@ -1321,18 +1518,33 @@ function svgText(x, y, str, cls, extra) { const t = svg('text', Object.assign({ 
 // блок 01 нумеровал КАЖДЫЙ день, а соседние графики — каждый 3-й или 6-й, и глазом
 // сопоставить дни между блоками было нельзя. Теперь правило общее: до 31 столбика
 // (месяц) подписываем всё, дальше — прореживаем.
+// B-12: сколько подписей влезает, теперь считается ОТ ШИРИНЫ графика, а не от
+// фиксированного числа: на телефоне 31 подпись в 300 px превращалась в кашу.
+// На широком экране бюджет заведомо больше 31, поэтому вид на десктопе прежний.
 function labelSkip(n, maxLabels) {
-  if (n <= 31) return 1;
-  return Math.max(1, Math.ceil(n / (maxLabels || 16)));
+  const cap = maxLabels || 16;
+  if (n <= 31 && n <= cap) return 1;
+  return Math.max(1, Math.ceil(n / cap));
 }
 
 function niceMax(v) { if (v <= 0) return 10; const pow = Math.pow(10, Math.floor(Math.log10(v))); const n = v / pow; const step = n <= 1 ? 1 : n <= 2 ? 2 : n <= 5 ? 5 : 10; return step * pow; }
+/* ==============================================================
+   ЭКРАН И ВВОД (группа B)
+   Один порог «телефона» на CSS и на логику — 820 px. Если разъедутся,
+   получится состояние «список объектов уже рисуется, а треймап ещё нет».
+   ============================================================== */
+const MQ_PHONE = window.matchMedia('(max-width: 819.98px)');
+function isPhone() { return MQ_PHONE.matches; }
+
 const TT = document.getElementById('tooltip');
-function showTip(html, evt) { TT.innerHTML = html; TT.style.opacity = '1'; moveTip(evt); }
+let _tipAbove = false;
+function showTip(html, evt, above) { TT.innerHTML = html; TT.style.opacity = '1'; _tipAbove = !!above; moveTip(evt); }
 function moveTip(evt) {
   const pad = 14, edge = 6;
   const r = TT.getBoundingClientRect();
   let x = evt.clientX + pad, y = evt.clientY + pad;
+  // При тапе подсказку ставим НАД точкой касания — иначе её закрывает палец.
+  if (_tipAbove) { x = evt.clientX - r.width / 2; y = evt.clientY - r.height - 20; }
   if (x + r.width > window.innerWidth - edge) x = evt.clientX - r.width - pad;
   if (y + r.height > window.innerHeight - edge) y = evt.clientY - r.height - pad;
   // после переворота подсказка могла уехать за левый/верхний край (узкое окно,
@@ -1342,6 +1554,47 @@ function moveTip(evt) {
   TT.style.left = x + 'px'; TT.style.top = y + 'px';
 }
 function hideTip() { TT.style.opacity = '0'; }
+
+/* B-9. Тултипы на телефоне. Раньше подсказки висели на mousemove, а тач-браузер
+   его не шлёт: на телефоне цифр не было видно вообще, а тап по столбику сразу
+   проваливался во времени — «промахнулся пальцем» стоил потери периода.
+   Теперь у элемента с действием две фазы: первый тап показывает подсказку и
+   «взводит» элемент, второй — выполняет действие. Мышь работает как раньше,
+   без лишнего клика.
+     attachTip(el, tipFn, onActivate) — единая точка для столбиков графиков,
+     ячеек треймапа и бинов блока 04. */
+const TAP_HINT = '<div class="tt-tap">Нажмите ещё раз, чтобы открыть</div>';
+let _armed = null, _armTimer = null, _swallowClick = false;
+function disarmTap() { clearTimeout(_armTimer); _armed = null; hideTip(); }
+function attachTip(el, tipFn, onActivate, opts) {
+  opts = opts || {};
+  el.addEventListener('pointermove', e => { if (e.pointerType === 'mouse') showTip(tipFn(e), e); });
+  el.addEventListener('pointerleave', e => { if (e.pointerType === 'mouse') hideTip(); });
+  el.addEventListener('pointerdown', e => {
+    if (e.pointerType === 'mouse') { _swallowClick = false; showTip(tipFn(e), e); return; }
+    if (_armed === el) { _swallowClick = false; return; }   // второй тап — пропускаем клик дальше
+    clearTimeout(_armTimer);
+    _armed = el;
+    _swallowClick = !!onActivate;
+    showTip(tipFn(e) + (onActivate ? (opts.hint || TAP_HINT) : ''), e, true);
+    _armTimer = setTimeout(() => { if (_armed === el) disarmTap(); }, 4500);
+  });
+  if (onActivate) {
+    el.style.cursor = 'pointer';
+    el.addEventListener('click', e => {
+      if (_swallowClick) { _swallowClick = false; return; }
+      clearTimeout(_armTimer); _armed = null; hideTip();
+      onActivate(e);
+    });
+  }
+}
+// Тап мимо «взведённого» элемента снимает подсказку (фаза перехвата — раньше
+// собственного обработчика элемента, поэтому повторный тап по нему не сбрасывается).
+document.addEventListener('pointerdown', e => {
+  if (!_armed) return;
+  if (e.target === _armed || (_armed.contains && _armed.contains(e.target))) return;
+  disarmTap();
+}, true);
 
 /* ЕДИНЫЙ рендерер ряда динамики (П2/П3).
    Раньше было три почти одинаковых функции: renderStackedBars (блок 01),
@@ -1357,17 +1610,28 @@ function hideTip() { TT.style.opacity = '0'; }
 function renderSeries(host, buckets, series, opts) {
   opts = opts || {};
   const shape = opts.shape || 'bars';
-  const W = Math.max(320, host.clientWidth || 560);
-  const H = parseInt(host.dataset.h || '210', 10);
+  const avail = Math.max(240, host.clientWidth || 560);
+  /* B-12. Узкая карточка + много столбиков = 8 px на столбик и нечитаемые
+     подписи. Вместо сжатия рисуем график в его «естественной» ширине (не менее
+     MIN_STEP на столбик) и катаем его горизонтально внутри карточки. На
+     широком экране условие не срабатывает никогда, вид прежний. Площадь
+     (длинный дневной ряд) не прокручиваем — она читается и сжатой, а 231
+     столбик по 26 px дал бы 6 метров прокрутки. */
+  const MIN_STEP = isPhone() ? 26 : 14;
+  const n0 = buckets.length || 1;
   const L = 42, R = 10, T = 12, B = 26;
+  const needW = n0 * MIN_STEP + L + R;
+  const scrollX = shape !== 'area' && needW > avail;
+  const W = scrollX ? Math.ceil(needW) : Math.max(320, avail);
+  const H = parseInt(host.dataset.h || '210', 10);
   const pw = W - L - R, ph = H - T - B;
-  const n = buckets.length || 1;
+  const n = n0;
   const totals = buckets.map(b => series.reduce((a, s) => a + (b[s.key] || 0), 0));
   const maxV = niceMax(Math.max(1, ...totals, ...(opts.plan ? buckets.map(b => b.plan || 0) : [])));
   const yOf = v => T + ph - (v / maxV) * ph;
   const step = pw / n;
   const xCenter = i => shape === 'area' ? (n === 1 ? L + pw / 2 : L + pw * i / (n - 1)) : L + step * i + step / 2;
-  const skip = labelSkip(n, opts.maxLabels || 16);
+  const skip = labelSkip(n, opts.maxLabels || Math.max(4, Math.floor(pw / 18)));
   const s = svg('svg', { class: 'chart-svg' + (n / skip > 18 ? ' dense' : ''), viewBox: `0 0 ${W} ${H}`, height: H });
   for (let i = 0; i <= 2; i++) {
     const v = maxV * i / 2, y = yOf(v);
@@ -1410,13 +1674,30 @@ function renderSeries(host, buckets, series, opts) {
     const hw = shape === 'area' ? Math.max(8, pw / n) : step;
     const hx = shape === 'area' ? xCenter(i) - hw / 2 : L + step * i;
     const hit = svg('rect', { class: 'bar-hit', x: hx, y: T, width: hw, height: ph });
-    hit.addEventListener('mousemove', e => showTip(opts.tip ? opts.tip(b, i) : defaultTip(b, i, series, totals), e));
-    hit.addEventListener('mouseleave', hideTip);
-    if (opts.onClick) { hit.style.cursor = 'pointer'; hit.addEventListener('click', () => { hideTip(); opts.onClick(b, i); }); }
+    attachTip(hit,
+      () => opts.tip ? opts.tip(b, i) : defaultTip(b, i, series, totals),
+      opts.onClick ? () => opts.onClick(b, i) : null,
+      { hint: '<div class="tt-tap">Нажмите ещё раз, чтобы провалиться внутрь</div>' });
     s.appendChild(hit);
     if (i % skip === 0 || (shape === 'area' && i === n - 1)) s.appendChild(svgText(xCenter(i), H - 8, b.label, 'tick-lbl', { 'text-anchor': 'middle' }));
   });
-  host.innerHTML = ''; host.appendChild(s);
+  host.innerHTML = '';
+  if (scrollX) {
+    const box = document.createElement('div');
+    box.className = 'chart-scroll';
+    s.style.width = W + 'px';
+    box.appendChild(s);
+    host.appendChild(box);
+    const hint = document.createElement('p');
+    hint.className = 'scroll-hint';
+    hint.textContent = '← график шире экрана, прокручивается вбок →';
+    host.appendChild(hint);
+    // Показываем правый (свежий) край ряда — он интереснее начала периода.
+    // Исключение — сутки по часам: их естественно читать с начала дня.
+    if (timeLevel() !== 'hour') box.scrollLeft = box.scrollWidth;
+  } else {
+    host.appendChild(s);
+  }
 }
 function ttRow(color, label, val) { return `<div class="tt-row"><span class="k"><span class="tt-sw" style="background:${color}"></span>${label}</span><span>${val}</span></div>`; }
 function ttTotal(label, val) { return `<div class="tt-row" style="margin-top:3px;border-top:1px solid rgba(255,255,255,.2);padding-top:3px"><span class="k">${label}</span><span>${val}</span></div>`; }
@@ -1580,7 +1861,9 @@ function renderB1() {
   ];
   renderSeries(document.getElementById('b1-chart'), buckets, series, {
     shape: seriesShape(buckets.length),
-    maxLabels: lvl === 'hour' ? 24 : 16,
+    // Для часов подписей ровно 24; в остальных случаях бюджет подписей
+    // считает renderSeries от фактической ширины графика (B-12).
+    maxLabels: lvl === 'hour' ? 24 : null,
     // Клик по столбцу — общий провал во времени (год → месяц → день → час):
     // двигается ОДНО состояние, поэтому синхронно переключаются и блок 03,
     // и «Обращения по объектам», а не только этот график.
@@ -2062,7 +2345,9 @@ function renderB3() {
   ], {
     shape: seriesShape(buckets.length),
     plan: true,
-    maxLabels: lvl === 'hour' ? 24 : 16,
+    // Для часов подписей ровно 24; в остальных случаях бюджет подписей
+    // считает renderSeries от фактической ширины графика (B-12).
+    maxLabels: lvl === 'hour' ? 24 : null,
     tip: (b) => `<div class="tt-title">${esc(b.label)}</div>`
       + ttRow('#E4E8F0', 'План', fmt(b.plan))
       + ttRow('#002882', 'Вовремя', fmt(b.onTime))
@@ -2184,16 +2469,43 @@ function renderB2a() {
   cacheSync();
   const rows = mergeSmallObjects(b2StructureByObject());
   const cont = document.getElementById('b2a-treemap');
-  Array.from(cont.querySelectorAll('.tm-cell')).forEach(el => el.remove());
+  Array.from(cont.querySelectorAll('.tm-cell, .obj-row')).forEach(el => el.remove());
   const zoomID = state.drill.b2aObj;
-  const rect = cont.getBoundingClientRect();
-  const W = (zoomID ? rect.width * 0.56 : rect.width) || 500, H = rect.height || 340;
+  /* B-13. На телефоне треймап нечитаем: 15 объектов в прямоугольнике 340x330
+     дают ячейки по 40 px, где помещается только «Бизнес-ц…». Ниже 820 px
+     показываем тот же набор списком «объект / объём / эффективность» —
+     сортировка и клик-фильтр те же, что у ячеек. */
+  const listMode = isPhone();
+  cont.classList.toggle('list', listMode);
   if (!rows.length) {
-    cont.querySelector('.zones-panel').classList.remove('on');
+    closeZones(true);
     const e = document.createElement('div'); e.className = 'note parked tm-cell'; e.style.cssText = 'position:static;margin:8px;'; e.textContent = 'Нет данных по объектам в выбранном периоде.'; cont.appendChild(e);
     return;
   }
   const totalCount = rows.reduce((a, r) => a + r.count, 0) || 1;
+  if (listMode) {
+    const maxC = Math.max(1, ...rows.map(r => r.count));
+    rows.forEach(c => {
+      const col = effColor(c.eff);
+      const isOther = c.id === '__other__';
+      const el = document.createElement('button');
+      el.type = 'button';
+      el.className = 'obj-row' + (state.objects.size < OBJECTS.length && state.objects.has(c.id) ? ' sel' : '');
+      el.innerHTML = `<span class="or-name">${esc(c.name)}</span>`
+        + `<span class="or-eff" style="background:${col.bg};color:${col.fg}">${pct(c.eff)}</span>`
+        + `<span class="or-bar"><i style="width:${Math.max(2, c.count / maxC * 100)}%;background:${col.bg}"></i></span>`
+        + `<span class="or-val">${fmt(c.count)} · ${pct(c.count / totalCount, 1)}</span>`;
+      el.onclick = () => withCubes(() => {
+        if (isOther) { state.drill.b2aObj = '__other__'; renderB2a(); }
+        else { state.drill.b2aObj = c.id; applyObjectFilter([c.id]); }
+      });
+      cont.appendChild(el);
+    });
+    renderZonesPanel(rows, zoomID);
+    return;
+  }
+  const rect = cont.getBoundingClientRect();
+  const W = (zoomID ? rect.width * 0.56 : rect.width) || 500, H = rect.height || 340;
   const cells = squarify(rows.map(r => ({ ...r, value: r.count })), W, H);
   cells.forEach(c => {
     const col = effColor(c.eff);
@@ -2202,35 +2514,51 @@ function renderB2a() {
     el.className = 'tm-cell' + (isOther ? ' other' : '') + (c.w * c.h < 3200 ? ' tiny' : '');
     el.style.cssText = `background:${col.bg};color:${col.fg};left:${c.x}px;top:${c.y}px;width:${Math.max(0, c.w - 3)}px;height:${Math.max(0, c.h - 3)}px;`;
     el.innerHTML = `<div><div class="tm-name">${esc(c.name)}</div><div class="tm-val">${fmt(c.count)} задач · ${pct(c.count / totalCount, 1)}</div></div><div class="tm-eff">${pct(c.eff)}</div>`;
-    if (isOther) {
-      // «Прочие» — объединение мелких объектов, не один объект: клик только зумит
-      // список внутри блока 02 (в фильтр объектов подставить нечего однозначно)
-      el.onclick = () => withCubes(() => { state.drill.b2aObj = '__other__'; renderB2a(); });
-      el.addEventListener('mousemove', (e) => showTip(`<div class="tt-title">${esc(c.name)}</div><div class="tt-row"><span class="k">Доля</span><span>${pct(c._share || 0, 1)}</span></div><div class="tt-row"><span class="k">Задач</span><span>${fmt(c.count)}</span></div><div class="tt-row"><span class="k">Эффективность</span><span>${pct(c.eff)}</span></div><div class="tt-row" style="margin-top:3px;border-top:1px solid rgba(255,255,255,.2);padding-top:3px"><span class="k">Объединено объектов</span><span>${(c._merged || []).length}</span></div>`, e));
-    } else {
-      // Клик по объекту — настоящий фильтр «Объекты» на весь дашборд (не только
-      // локальный зум зон внутри блока 02, как раньше)
-      el.onclick = () => withCubes(() => { state.drill.b2aObj = c.id; applyObjectFilter([c.id]); });
-      el.addEventListener('mousemove', (e) => showTip(`<div class="tt-title">${esc(c.name)}</div><div class="tt-row"><span class="k">Задач</span><span>${fmt(c.count)}</span></div><div class="tt-row"><span class="k">Выполнено</span><span>${fmt(c.completed)}</span></div><div class="tt-row"><span class="k">Пропущено</span><span>${fmt(c.missed)}</span></div><div class="tt-row"><span class="k">Эффективность</span><span>${pct(c.eff)}</span></div><div class="tt-row" style="margin-top:3px;border-top:1px solid rgba(255,255,255,.2);padding-top:3px"><span class="k">Клик</span><span>фильтр по объекту</span></div>`, e));
-    }
-    el.addEventListener('mouseleave', hideTip);
+    const tip = isOther
+      ? () => `<div class="tt-title">${esc(c.name)}</div><div class="tt-row"><span class="k">Доля</span><span>${pct(c._share || 0, 1)}</span></div><div class="tt-row"><span class="k">Задач</span><span>${fmt(c.count)}</span></div><div class="tt-row"><span class="k">Эффективность</span><span>${pct(c.eff)}</span></div><div class="tt-row" style="margin-top:3px;border-top:1px solid rgba(255,255,255,.2);padding-top:3px"><span class="k">Объединено объектов</span><span>${(c._merged || []).length}</span></div>`
+      : () => `<div class="tt-title">${esc(c.name)}</div><div class="tt-row"><span class="k">Задач</span><span>${fmt(c.count)}</span></div><div class="tt-row"><span class="k">Выполнено</span><span>${fmt(c.completed)}</span></div><div class="tt-row"><span class="k">Пропущено</span><span>${fmt(c.missed)}</span></div><div class="tt-row"><span class="k">Эффективность</span><span>${pct(c.eff)}</span></div><div class="tt-row" style="margin-top:3px;border-top:1px solid rgba(255,255,255,.2);padding-top:3px"><span class="k">Клик</span><span>фильтр по объекту</span></div>`;
+    // «Прочие» — объединение мелких объектов, не один объект: клик только зумит
+    // список внутри блока 02 (в фильтр объектов подставить нечего однозначно).
+    // Клик по обычной ячейке — настоящий фильтр «Объекты» на весь дашборд.
+    attachTip(el, tip, () => withCubes(() => {
+      if (isOther) { state.drill.b2aObj = '__other__'; renderB2a(); }
+      else { state.drill.b2aObj = c.id; applyObjectFilter([c.id]); }
+    }), { hint: '<div class="tt-tap">Нажмите ещё раз, чтобы отфильтровать по объекту</div>' });
     cont.appendChild(el);
   });
+  renderZonesPanel(rows, zoomID);
+}
+
+/* Панель «топ зон объекта». На широком экране — колонка справа внутри блока 02,
+   на телефоне (B-14) — шторка снизу с затемнением: панель на 44 % ширины
+   оставляла треймапу 200 px и была нечитаема на обеих половинах. */
+function renderZonesPanel(rows, zoomID) {
   const panel = document.getElementById('b2a-zones');
+  const zoneRow = (z, maxC) => { const col = effColor(z.eff); return `<div class="zone-row"><div class="zone-bar-wrap"><span class="zone-name">${esc(z.name)}</span><div class="zone-bar" style="width:${z.count / maxC * 100}%;background:${col.bg}"></div></div><span class="mini-num">${fmt(z.count)}</span></div>`; };
   if (zoomID === '__other__') {
     const other = rows.find(r => r.id === '__other__');
-    panel.classList.add('on');
-    document.getElementById('b2a-zones-title').textContent = 'Объединённые объекты (Прочие)';
     const merged = (other && other._merged) || [];
     const maxC = Math.max(1, ...merged.map(z => z.count));
-    document.getElementById('b2a-zones-list').innerHTML = merged.length ? merged.map(z => { const col = effColor(z.eff); return `<div class="zone-row"><div class="zone-bar-wrap"><span class="zone-name">${esc(z.name)}</span><div class="zone-bar" style="width:${z.count / maxC * 100}%;background:${col.bg}"></div></div><span class="mini-num">${fmt(z.count)}</span></div>`; }).join('') : '<p class="note">Нет объектов.</p>';
+    document.getElementById('b2a-zones-title').textContent = 'Объединённые объекты (Прочие)';
+    document.getElementById('b2a-zones-list').innerHTML = merged.length ? merged.map(z => zoneRow(z, maxC)).join('') : '<p class="note empty">Нет объектов.</p>';
+    openZones(panel);
   } else if (zoomID) {
-    panel.classList.add('on');
-    document.getElementById('b2a-zones-title').textContent = 'Топ зон · ' + (objById[zoomID] ? objById[zoomID].name : '');
     const zones = b2TopZonesOfObject(zoomID);
     const maxC = Math.max(1, ...zones.map(z => z.count));
-    document.getElementById('b2a-zones-list').innerHTML = zones.length ? zones.map(z => { const col = effColor(z.eff); return `<div class="zone-row"><div class="zone-bar-wrap"><span class="zone-name">${esc(z.name)}</span><div class="zone-bar" style="width:${z.count / maxC * 100}%;background:${col.bg}"></div></div><span class="mini-num">${fmt(z.count)}</span></div>`; }).join('') : '<p class="note">Нет зон с задачами в периоде.</p>';
-  } else panel.classList.remove('on');
+    document.getElementById('b2a-zones-title').textContent = 'Топ зон · ' + (objById[zoomID] ? objById[zoomID].name : '');
+    document.getElementById('b2a-zones-list').innerHTML = zones.length ? zones.map(z => zoneRow(z, maxC)).join('') : '<p class="note empty">Нет зон с задачами в периоде.</p>';
+    openZones(panel);
+  } else closeZones(true);
+}
+function openZones(panel) {
+  panel.classList.add('on');
+  if (isPhone()) setBackdrop('zones'); else setBackdrop(null, 'zones');
+}
+function closeZones(silent) {
+  const panel = document.getElementById('b2a-zones');
+  if (panel) panel.classList.remove('on');
+  setBackdrop(null, 'zones');
+  if (!silent) { state.drill.b2aObj = null; }
 }
 
 // Единая точка перерисовки. cacheSync() снимает кэш, если фильтры изменились;
@@ -2290,6 +2618,12 @@ function renderActiveFilters() {
     ? '<span class="none">Активные фильтры:</span>' + chips.map(c => `<span class="chip">${c.txt}<button type="button" data-clr="${c.k}" aria-label="Снять фильтр" title="Снять этот фильтр"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8" /></svg></button></span>`).join('')
     : '<span class="none">Фильтры не заданы — показан весь архив.</span>';
   host.querySelectorAll('[data-clr]').forEach(b => b.onclick = () => clearFilter(b.dataset.clr));
+  // B-11: та же информация в свёрнутом виде — счётчик на кнопке «Фильтры»
+  // и текущее окно времени рядом с ней (на телефоне панели фильтров не видно).
+  const badge = document.getElementById('flt-badge');
+  if (badge) { badge.textContent = String(chips.length); badge.classList.toggle('on', chips.length > 0); }
+  const win = document.getElementById('fbar-win');
+  if (win) win.textContent = windowLabel() + ' · ' + GRAN_WORD[timeLevel()];
 }
 function clearFilter(kind) {
   if (kind === 'period') { applyYTD(); resetTimeNav(); setupPeriodMenu(); renderAll(); }
@@ -2469,10 +2803,11 @@ function renderB4() {
     });
     if (b.items.length) s.appendChild(svgText(x0 + bw / 2, T + ph - (b.items.length / maxV) * ph - 4, fmt(b.items.length), 'bar-total-lbl', { 'text-anchor': 'middle' }));
     s.appendChild(svgText(x0 + bw / 2, H - 8, b.label + '%', 'tick-lbl', { 'text-anchor': 'middle' }));
-    const hit = svg('rect', { class: 'bar-hit', x: x0 - (gap - bw) / 2, y: T, width: gap, height: ph, style: b.items.length ? 'cursor:pointer' : '' });
-    hit.addEventListener('mousemove', e => showTip(`<div class="tt-title">Эффективность ${b.label}%</div><div class="tt-row"><span class="k">Сотрудников</span><span>${fmt(b.items.length)}</span></div>`, e));
-    hit.addEventListener('mouseleave', hideTip);
-    hit.addEventListener('click', () => { if (b.items.length) b4ShowBinDetail(b); });
+    const hit = svg('rect', { class: 'bar-hit', x: x0 - (gap - bw) / 2, y: T, width: gap, height: ph });
+    attachTip(hit,
+      () => `<div class="tt-title">Эффективность ${b.label}%</div><div class="tt-row"><span class="k">Сотрудников</span><span>${fmt(b.items.length)}</span></div>`,
+      b.items.length ? () => b4ShowBinDetail(b) : null,
+      { hint: '<div class="tt-tap">Нажмите ещё раз — список сотрудников</div>' });
     s.appendChild(hit);
   });
   chartHost.innerHTML = ''; chartHost.appendChild(s);
@@ -2597,6 +2932,13 @@ function setupFilters() {
   setupPeriodMenu();
   setupObjectMenu();
   setupRoleMenu();
+  // B-11: кнопка «Фильтры» и её шторка (на десктопе строка .filters-bar скрыта CSS)
+  document.getElementById('btn-filters').onclick = e => {
+    e.stopPropagation();
+    if (document.getElementById('filters').classList.contains('sheet-open')) closeFilterSheet();
+    else openFilterSheet();
+  };
+  document.getElementById('sheet-done').onclick = e => { e.stopPropagation(); closeFilterSheet(); };
   document.querySelectorAll('.flt[data-flt]').forEach(el => el.onclick = e => {
     if (el.classList.contains('disabled')) { e.stopPropagation(); return; }
     if (e.target.closest('.flt-menu')) return;
@@ -2648,20 +2990,96 @@ function setupFilters() {
 // только через «Сбросить всё», что заодно сбрасывало период и роль.
 document.getElementById('b2a-zones-close').onclick = () => {
   state.drill.b2aObj = null;
+  closeZones(true);
   if (state.objects.size < OBJECTS.length) applyObjectFilter(OBJECTS.map(o => o.id));
   else renderB2a();
 };
+
+/* ==============================================================
+   МОБИЛЬНЫЕ ШТОРКИ (B-11, B-14, B-16)
+   Затемнение общее для панели фильтров, панели зон и модалки — иначе две
+   шторки одновременно снимали блокировку прокрутки друг у друга.
+   ============================================================== */
+let _sheetOwner = null;
+function setBackdrop(owner, release) {
+  const bd = document.getElementById('sheet-backdrop');
+  if (!bd) return;
+  if (owner) {
+    _sheetOwner = owner;
+    bd.classList.add('on');
+    document.body.classList.add('sheet-lock');
+  } else if (!release || _sheetOwner === release) {
+    _sheetOwner = null;
+    bd.classList.remove('on');
+    document.body.classList.remove('sheet-lock');
+  }
+}
+function openFilterSheet() {
+  const f = document.getElementById('filters');
+  f.classList.add('sheet-open');
+  document.getElementById('btn-filters').setAttribute('aria-expanded', 'true');
+  setBackdrop('filters');
+}
+function closeFilterSheet() {
+  const f = document.getElementById('filters');
+  if (!f.classList.contains('sheet-open')) return;
+  f.classList.remove('sheet-open');
+  f.querySelectorAll('.flt-menu.open').forEach(m => m.classList.remove('open'));
+  document.getElementById('btn-filters').setAttribute('aria-expanded', 'false');
+  setBackdrop(null, 'filters');
+}
+function closeTopSheet() {
+  if (document.getElementById('modal-overlay').classList.contains('on')) { hideModal(); return true; }
+  if (document.getElementById('filters').classList.contains('sheet-open')) { closeFilterSheet(); return true; }
+  if (document.getElementById('b2a-zones').classList.contains('on') && isPhone()) { closeZones(false); renderB2a(); return true; }
+  return false;
+}
+document.getElementById('sheet-backdrop').addEventListener('click', closeTopSheet);
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeTopSheet(); });
 
 /* === Модальное окно (детализация) === */
 function showModal(title, bodyHtml) {
   document.getElementById('modal-title').innerHTML = title;
   document.getElementById('modal-body').innerHTML = bodyHtml;
+  const box = document.getElementById('modal-overlay').querySelector('.modal-box');
+  box.style.transform = '';
   document.getElementById('modal-overlay').classList.add('on');
+  if (isPhone()) document.body.classList.add('sheet-lock');
 }
-function hideModal() { document.getElementById('modal-overlay').classList.remove('on'); }
+function hideModal() {
+  document.getElementById('modal-overlay').classList.remove('on');
+  if (!_sheetOwner) document.body.classList.remove('sheet-lock');
+}
 document.getElementById('modal-close').onclick = hideModal;
 document.getElementById('modal-overlay').addEventListener('click', e => { if (e.target.id === 'modal-overlay') hideModal(); });
 document.getElementById('b1-fb-detail-btn').onclick = () => renderB1FeedbackObjDetail();
+
+/* B-16. Полноэкранная модалка закрывается свайпом вниз по её шапке — на
+   телефоне крестик в верхнем углу дотянуться пальцем труднее всего. */
+(function modalSwipe() {
+  const box = document.getElementById('modal-overlay').querySelector('.modal-box');
+  const head = document.getElementById('modal-overlay').querySelector('.modal-head');
+  let y0 = null, dy = 0;
+  head.addEventListener('pointerdown', e => {
+    if (!isPhone() || e.pointerType === 'mouse') return;
+    y0 = e.clientY; dy = 0; box.classList.add('dragging');
+    try { head.setPointerCapture(e.pointerId); } catch (err) {}
+  });
+  head.addEventListener('pointermove', e => {
+    if (y0 == null) return;
+    dy = Math.max(0, e.clientY - y0);
+    box.style.transform = 'translateY(' + dy + 'px)';
+  });
+  const end = () => {
+    if (y0 == null) return;
+    box.classList.remove('dragging');
+    if (dy > 90) hideModal();
+    box.style.transform = '';
+    y0 = null; dy = 0;
+  };
+  head.addEventListener('pointerup', end);
+  head.addEventListener('pointercancel', end);
+})();
 
 /* === СТАРТ === */
 let APP_STARTED = false;
@@ -2722,7 +3140,23 @@ if ('ResizeObserver' in window) {
   window.addEventListener('resize', _onWidthChange, { passive: true });
 }
 const filtersEl = document.getElementById('filters');
-window.addEventListener('scroll', () => filtersEl.classList.toggle('stuck', window.scrollY > 8), { passive: true });
+const filtersBarEl = document.getElementById('filters-bar');
+window.addEventListener('scroll', () => {
+  const stuck = window.scrollY > 8;
+  filtersEl.classList.toggle('stuck', stuck);
+  filtersBarEl.classList.toggle('stuck', stuck);
+}, { passive: true });
+
+/* B-17. Смена «телефон ↔ десктоп» может произойти и без изменения ширины
+   контейнера (поворот планшета, режим чтения), а блок 02 рисуется по-разному
+   в этих режимах. Слушаем сам порог, а не только ResizeObserver. */
+function _onBreakpoint() {
+  closeFilterSheet();
+  if (!isPhone()) setBackdrop(null, 'zones');
+  if (APP_STARTED) renderAll();
+}
+if (MQ_PHONE.addEventListener) MQ_PHONE.addEventListener('change', _onBreakpoint);
+else if (MQ_PHONE.addListener) MQ_PHONE.addListener(_onBreakpoint);
 
 PERF._t0 = performance.now();
 startApp();
