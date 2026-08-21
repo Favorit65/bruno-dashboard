@@ -1,0 +1,168 @@
+name: Обновление данных (архив + модель)
+
+# Ежедневный робот конвейера «Дашборд 2.0»:
+#   1. догружает из Bruno API новые сутки в архив (ветка data-archive);
+#   2. пересобирает единый агрегат model.json.gz (build_model.py);
+#   3. кладёт агрегат в ветку data-model (перезапись, история не копится).
+# После успеха автоматически запускается публикация сайта (deploy-pages.yml).
+
+on:
+  schedule:
+    # 20:00 UTC = 23:00 МСК, когда сутки уже почти закрыты
+    - cron: '0 20 * * *'
+  workflow_dispatch:
+    inputs:
+      date_from:
+        description: 'Начало догрузки, ГГГГ-ММ-ДД (пусто = продолжить с последнего дня архива)'
+        required: false
+        type: string
+      date_to:
+        description: 'Конец догрузки, ГГГГ-ММ-ДД (пусто = сегодня)'
+        required: false
+        type: string
+      force_full:
+        description: 'Перевыгрузить весь период заново, игнорируя архив'
+        type: boolean
+        default: false
+      skip_fetch:
+        description: 'Не ходить в API — только пересобрать модель из архива'
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+concurrency:
+  group: bruno-model
+  cancel-in-progress: false
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    steps:
+      - name: Код проекта (main)
+        uses: actions/checkout@v4
+
+      - name: Архив сырых данных (ветка data-archive)
+        uses: actions/checkout@v4
+        with:
+          ref: data-archive
+          path: archive
+          fetch-depth: 1
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Зависимости
+        run: pip install -r requirements.txt
+
+      - name: Определить период догрузки
+        id: period
+        env:
+          IN_FROM: ${{ inputs.date_from }}
+          IN_TO: ${{ inputs.date_to }}
+        run: |
+          python - <<'PY' >> "$GITHUB_OUTPUT"
+          import json, os
+          from datetime import date, timedelta, timezone, datetime
+
+          MSK = timezone(timedelta(hours=3))
+          today = datetime.now(MSK).date()
+
+          d_from = (os.environ.get("IN_FROM") or "").strip()
+          d_to = (os.environ.get("IN_TO") or "").strip() or today.isoformat()
+
+          if not d_from:
+              try:
+                  with open("archive/manifest.json", encoding="utf-8") as f:
+                      days = json.load(f).get("days", {})
+                  done = sorted(d for d, r in days.items() if r.get("complete"))
+              except FileNotFoundError:
+                  done = []
+              if done:
+                  # с запасом в 5 суток назад — вдруг данные доехали задним числом
+                  d_from = (date.fromisoformat(done[-1]) - timedelta(days=5)).isoformat()
+              else:
+                  d_from = "2026-01-01"
+
+          print("from=" + d_from)
+          print("to=" + d_to)
+          PY
+
+      - name: Догрузить новые сутки из Bruno API
+        if: ${{ inputs.skip_fetch != true }}
+        env:
+          BRUNO_TOKEN: ${{ secrets.BRUNO_TOKEN }}
+        run: |
+          if [ -z "$BRUNO_TOKEN" ]; then
+            echo "::error::Секрет BRUNO_TOKEN не задан (Settings -> Secrets and variables -> Actions)"
+            exit 1
+          fi
+          python fetch_bruno.py \
+            --token "$BRUNO_TOKEN" \
+            --from "${{ steps.period.outputs.from }}" \
+            --to "${{ steps.period.outputs.to }}" \
+            --archive archive \
+            --refresh-last 5 \
+            ${{ inputs.force_full && '--force' || '' }}
+
+      - name: Сохранить архив в ветку data-archive
+        working-directory: archive
+        run: |
+          git config user.name "bruno-bot"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          if git diff --cached --quiet; then
+            echo "Новых сырых данных нет — коммит не нужен."
+          else
+            git commit -m "archive: автообновление ${{ steps.period.outputs.from }}..${{ steps.period.outputs.to }}"
+            git push origin HEAD:data-archive
+          fi
+
+      - name: Собрать model.json.gz
+        run: |
+          python build_model.py --archive archive --out model.json.gz
+          ls -lh model.json.gz
+
+      - name: Опубликовать модель в ветку data-model
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          rm -rf /tmp/pub && mkdir -p /tmp/pub
+          cp model.json.gz /tmp/pub/
+          cat > /tmp/pub/README.md <<'MD'
+          # Ветка data-model
+
+          Здесь лежит только собранный агрегат `model.json.gz` — его читает
+          `dashboard_v2.html` и конвейер презентации.
+
+          Ветка **перезаписывается** роботом `update-model.yml` при каждом
+          обновлении данных, история намеренно не копится (файл ~9 МБ).
+          Исходники — в ветке `main`, сырые данные — в ветке `data-archive`.
+
+          Скачать свежую модель локально:
+
+              git fetch origin data-model
+              git show origin/data-model:model.json.gz > model.json.gz
+          MD
+          cd /tmp/pub
+          git init -q -b data-model
+          git config user.name "bruno-bot"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -q -m "model: сборка $(date -u +'%Y-%m-%d %H:%M') UTC"
+          git push -q --force "https://x-access-token:${GH_TOKEN}@github.com/${{ github.repository }}.git" data-model
+
+      - name: Итог
+        run: |
+          {
+            echo "### Данные обновлены"
+            echo ""
+            echo "- Период догрузки: \`${{ steps.period.outputs.from }}\` .. \`${{ steps.period.outputs.to }}\`"
+            echo "- Размер модели: $(du -h model.json.gz | cut -f1)"
+            echo "- Дней в архиве: $(ls archive/raw | wc -l)"
+            echo ""
+            echo "Публикация сайта запустится автоматически."
+          } >> "$GITHUB_STEP_SUMMARY"

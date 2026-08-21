@@ -1,4 +1,4 @@
-name: Count Bruno stats
+name: "служебный — Count Bruno stats"
 
 on:
   workflow_dispatch:

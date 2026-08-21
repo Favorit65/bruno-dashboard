@@ -1,4 +1,4 @@
-name: Build data (aggregates)
+name: "старый конвейер v3 — Build data (aggregates)"
 
 on:
   workflow_dispatch:
@@ -7,8 +7,8 @@ on:
         description: 'Окно разрезов/категорий, дней'
         type: string
         default: '30'
-  schedule:
-    - cron: '0 21 * * *'
+  # schedule: отключено 21.08.2026 — ежедневную выгрузку
+  # ведёт новый конвейер update-model.yml. Кнопка Run workflow работает.
 
 permissions:
   contents: write

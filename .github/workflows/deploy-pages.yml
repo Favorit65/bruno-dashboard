@@ -1,11 +1,22 @@
-name: Deploy to GitHub Pages
+name: Публикация дашборда (GitHub Pages)
 
-# Публикует статику (index.html, dashboard_*.html, data.json.gz) на GitHub Pages.
-# Срабатывает при каждом push в main — в т.ч. когда робот build-data.yml
-# коммитит свежий data.json.gz, поэтому данные на сайте обновляются сами.
+# Собирает сайт из трёх источников:
+#   main         -> index.html, dashboard_v2.html и прочая статика
+#   data-model   -> свежий model.json.gz (кладёт робот update-model.yml)
+#   main         -> data.json.gz для старого дашборда v3 (пока он жив)
+# Запускается: при правке HTML в main, после успешного обновления данных
+# и вручную кнопкой Run workflow.
+
 on:
   push:
     branches: [ main ]
+    paths:
+      - '**.html'
+      - '.nojekyll'
+      - '.github/workflows/deploy-pages.yml'
+  workflow_run:
+    workflows: ["Обновление данных (архив + модель)"]
+    types: [ completed ]
   workflow_dispatch:
 
 permissions:
@@ -19,15 +30,53 @@ concurrency:
 
 jobs:
   deploy:
+    # после робота публикуем только если он отработал успешно
+    if: ${{ github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success' }}
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - name: Код проекта (main)
+        uses: actions/checkout@v4
+
+      - name: Свежая модель (ветка data-model)
+        id: model
+        continue-on-error: true
+        uses: actions/checkout@v4
+        with:
+          ref: data-model
+          path: _model
+          fetch-depth: 1
+
+      - name: Собрать содержимое сайта
+        run: |
+          mkdir -p site
+          cp .nojekyll site/ 2>/dev/null || touch site/.nojekyll
+          cp index.html site/
+          cp dashboard_v2.html site/
+          # старый дашборд v3 и его данные — пока не выведен из эксплуатации
+          cp dashboard_vtb_live_3.html site/ 2>/dev/null || true
+          cp data.json.gz site/ 2>/dev/null || true
+          if [ -f _model/model.json.gz ]; then
+            cp _model/model.json.gz site/
+          else
+            echo "::warning::Ветка data-model пуста — сайт уедет без свежей модели. Запустите workflow «Обновление данных»."
+          fi
+          ls -lh site
+
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:
-          path: '.'          # публикуем корень репозитория целиком
+          path: site
       - id: deployment
         uses: actions/deploy-pages@v4
+
+      - name: Итог
+        run: |
+          {
+            echo "### Сайт опубликован"
+            echo ""
+            echo "- Адрес: ${{ steps.deployment.outputs.page_url }}"
+            echo "- Модель: $( [ -f site/model.json.gz ] && du -h site/model.json.gz | cut -f1 || echo 'НЕ ПРИЛОЖЕНА' )"
+          } >> "$GITHUB_STEP_SUMMARY"

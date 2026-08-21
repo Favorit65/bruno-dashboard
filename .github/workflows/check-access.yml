@@ -1,4 +1,4 @@
-name: Check Bruno access
+name: "служебный — Check Bruno access"
 
 on:
   workflow_dispatch:

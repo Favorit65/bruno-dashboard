@@ -22,3 +22,7 @@ Thumbs.db
 /data.local.json
 
 /archive/
+
+# Собранная модель живёт в ветке data-model, а не в main (см. README).
+/model.json.gz
+/model.json

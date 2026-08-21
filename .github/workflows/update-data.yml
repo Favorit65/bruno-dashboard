@@ -1,4 +1,4 @@
-name: Update Bruno data
+name: "старый конвейер v3 — Update Bruno data"
 
 # Раз в день обновляет data.json.gz из Bruno API и коммитит его в репозиторий.
 #
@@ -12,9 +12,8 @@ name: Update Bruno data
 #     распаковывать в браузере.
 
 on:
-  schedule:
-    # 21:00 UTC = 04:00 по Новосибирску (UTC+7). Минуты/часы можно поменять.
-    - cron: '0 21 * * *'
+  # schedule: отключено 21.08.2026 — ежедневную выгрузку
+  # ведёт новый конвейер update-model.yml. Кнопка Run workflow работает.
   workflow_dispatch:
     inputs:
       dry_run:

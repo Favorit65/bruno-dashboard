@@ -1,0 +1,12 @@
+# Единые переносы строк: в репозитории всегда LF, независимо от ОС.
+# Без этого правки из Windows дают "изменён весь файл" в каждом коммите.
+* text=auto eol=lf
+
+# Бинарные — не трогать никогда
+*.gz    binary
+*.pptx  binary
+*.xlsx  binary
+*.docx  binary
+*.png   binary
+*.jpg   binary
+*.pdf   binary
