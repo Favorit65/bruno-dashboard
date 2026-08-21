@@ -58,6 +58,9 @@ jobs:
           cp data.json.gz site/ 2>/dev/null || true
           if [ -f _model/model.json.gz ]; then
             cp _model/model.json.gz site/
+            # формат 2: сайт грузит core сразу, cubes догружает фоном
+            cp _model/model.core.json.gz _model/model.cubes.json.gz site/ 2>/dev/null || \
+              echo "::warning::В ветке data-model нет файлов формата 2 — дашборд откатится на model.json.gz. Перезапустите «Обновление данных»."
           else
             echo "::warning::Ветка data-model пуста — сайт уедет без свежей модели. Запустите workflow «Обновление данных»."
           fi
@@ -76,5 +79,7 @@ jobs:
             echo "### Сайт опубликован"
             echo ""
             echo "- Адрес: ${{ steps.deployment.outputs.page_url }}"
-            echo "- Модель: $( [ -f site/model.json.gz ] && du -h site/model.json.gz | cut -f1 || echo 'НЕ ПРИЛОЖЕНА' )"
+            echo "- Модель (формат 1): $( [ -f site/model.json.gz ] && du -h site/model.json.gz | cut -f1 || echo 'НЕ ПРИЛОЖЕНА' )"
+            echo "- Первый экран (core): $( [ -f site/model.core.json.gz ] && du -h site/model.core.json.gz | cut -f1 || echo 'НЕТ' )"
+            echo "- Догрузка (cubes): $( [ -f site/model.cubes.json.gz ] && du -h site/model.cubes.json.gz | cut -f1 || echo 'НЕТ' )"
           } >> "$GITHUB_STEP_SUMMARY"

@@ -131,10 +131,33 @@ def month_label(y, m, short=False):
 
 
 # --------------------------------------------------------------- загрузка
-def load_model(path):
+def _read_json(path):
     op = gzip.open if str(path).endswith(".gz") else open
     with op(path, "rt", encoding="utf-8") as f:
         return json.load(f)
+
+
+def load_model(path):
+    """Читает модель формата 1 (model.json.gz) или формата 2 (model.core.json.gz).
+
+    Формат 2 разрезан на две части ради скорости загрузки сайта; отчёту нужны обе,
+    поэтому вторая (model.cubes.json.gz) подхватывается рядом с первой. На выходе
+    в обоих случаях — одна и та же структура, дальше по коду разницы нет.
+    """
+    data = _read_json(path)
+    if not isinstance(data, dict) or data.get("f") != 2:
+        return data
+
+    import model_v2
+    from pathlib import Path as _P
+    p = _P(path)
+    name = p.name
+    cubes_name = (name[:-len(".core.json.gz")] + ".cubes.json.gz"
+                  if name.endswith(".core.json.gz") else "model.cubes.json.gz")
+    cubes_path = p.with_name(cubes_name)
+    if not cubes_path.exists():
+        raise SystemExit("ОШИБКА: рядом с %s нет второй половины модели (%s)" % (name, cubes_name))
+    return model_v2.decode(data, _read_json(cubes_path))
 
 
 class Period:

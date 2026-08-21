@@ -6,6 +6,8 @@
 <meta name="color-scheme" content="light">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%23002882'/%3E%3Cpolygon points='6,21 25,21 22,25 3,25' fill='%2300AAFF'/%3E%3Cpolygon points='9,14 28,14 25,18 6,18' fill='white'/%3E%3Cpolygon points='12,7 31,7 28,11 9,11' fill='white'/%3E%3C/svg%3E">
 <title>Дашборд обслуживания объектов 2.0 — ВТБ</title>
+<!-- Браузер начинает качать модель, не дожидаясь конца разбора страницы -->
+<link rel="preload" href="model.core.json.gz" as="fetch" crossorigin="anonymous">
 <style>
   :root {
     /* ===== БРЕНДБУК ВТБ ===== */
@@ -257,6 +259,19 @@
   .howto .howto-body b { color: var(--vtb-navy); }
   .load-bar { position: fixed; top: 0; left: 0; right: 0; padding: 12px 16px; background: var(--vtb-navy); color: #fff; font-size: 13px; z-index: 10000; text-align: center; }
   .load-bar.err { background: var(--text-danger); text-align: left; line-height: 1.5; padding: 16px 18px; }
+  /* Полоса прогресса: честный процент по принятым байтам, чтобы ожидание
+     не выглядело зависанием (раньше была статичная надпись «Загружаю…»). */
+  .load-bar .lb-bar { display: block; height: 3px; margin: 8px auto 0; max-width: 460px; background: rgba(255,255,255,0.25); border-radius: 2px; overflow: hidden; }
+  .load-bar .lb-bar > i { display: block; height: 100%; width: 0; background: var(--vtb-blue); transition: width 0.15s linear; }
+  /* Скелетоны: пока блок не отрисован, вместо пустоты — мерцающая заглушка */
+  .app.loading .card > div[id]:empty,
+  .app.loading .card > div[id][data-h]:empty { min-height: 84px; border-radius: var(--radius);
+    background: linear-gradient(100deg, var(--surface-1) 30%, var(--surface-0) 50%, var(--surface-1) 70%);
+    background-size: 300% 100%; animation: skel 1.3s ease-in-out infinite; }
+  @keyframes skel { 0% { background-position: 100% 0; } 100% { background-position: 0 0; } }
+  @media (prefers-reduced-motion: reduce) { .app.loading .card > div[id]:empty { animation: none; } }
+  /* Блок ждёт фоновой догрузки тяжёлых кубов */
+  .pending-note { font-size: 11.5px; color: var(--text-secondary); background: var(--surface-1); border: 1px dashed var(--border-strong); border-radius: var(--radius); padding: 14px; text-align: center; }
   @media print {
     .filters, .scope-hint { display: none !important; }
     .app { max-width: none; padding: 0 6px; }
@@ -268,7 +283,7 @@
 </style>
 </head>
 <body>
-<div class="app">
+<div class="app loading">
 
   <div class="top-bar">
     <div class="brand">
@@ -385,6 +400,7 @@
 
   <!-- BLOCK 02 -->
   <div class="section-wrap">
+  <div data-lazy="b2a"></div>
   <div class="section-title"><span class="snum">02</span>Структура<span class="hint" id="b2-sec-hint">клик по объекту — топ зон</span></div>
   <div class="row" style="grid-template-columns: 1.35fr 1fr;">
     <div class="card">
@@ -431,6 +447,7 @@
 
   <!-- BLOCK 04 -->
   <div class="section-wrap">
+  <div data-lazy="b4"></div>
   <div class="section-title"><span class="snum">04</span>Персонал<span class="hint">сотрудники по бинам эффективности · клик по бину — список</span></div>
   <div class="row" style="grid-template-columns: 1fr 1.7fr;">
     <div class="card">
@@ -477,8 +494,22 @@
 /* ==============================================================
    КОНФИГ / ЗАГРУЗКА
    ============================================================== */
+/* Модель приезжает двумя файлами (формат 2, см. model_v2.py):
+     model.core.json.gz  — справочники + кубы блоков 01/03, грузится сразу;
+     model.cubes.json.gz — тяжёлые кубы блоков 02/04 и часового разреза,
+                           догружается фоном уже после первой отрисовки.
+   Если новых файлов на сервере нет (старая публикация) — молча откатываемся
+   на единый model.json.gz формата 1, дашборд работает как раньше. */
+const M2_CORE = 'model.core.json.gz';
+const M2_CUBES = 'model.cubes.json.gz';
 const DATA_URLS = ['model.json.gz', 'model.json'];
 let GZ_UNSUPPORTED = false;
+
+/* Замеры этапов загрузки — в консоли доступны как window.__perf.
+   Нужны, чтобы обсуждать скорость по цифрам, а не на глаз. */
+const PERF = { fromCache: false };
+window.__perf = PERF;
+function perfMark(name, t0) { PERF[name] = Math.round(performance.now() - t0); }
 
 // Экранирование пользовательских строк (имена объектов, зон, ролей, сотрудников)
 // перед вставкой в innerHTML/атрибуты. Раньше имя с кавычкой или «<» ломало вёрстку
@@ -507,25 +538,8 @@ async function fetchData() {
   }
   for (const url of DATA_URLS) {
     try {
-      const resp = await fetch(url, { cache: 'no-store' });
-      if (!resp.ok) continue;
-      if (url.endsWith('.gz')) {
-        showStatus('Загружаю ' + url + '…');
-        const buf = await resp.arrayBuffer();
-        showStatus('Распаковываю (' + (buf.byteLength / 1048576).toFixed(1) + ' МБ сжатых)…');
-        if ('DecompressionStream' in window) {
-          try {
-            const stream = new Blob([buf]).stream().pipeThrough(new DecompressionStream('gzip'));
-            const txt = await new Response(stream).text();
-            showStatus('Разбираю JSON…');
-            return JSON.parse(txt);
-          } catch (e) { /* сервер мог уже распаковать — пробуем как текст */ }
-        } else {
-          GZ_UNSUPPORTED = true;
-        }
-        try { return JSON.parse(new TextDecoder('utf-8').decode(buf)); } catch (e) { continue; }
-      }
-      return await resp.json();
+      const data = await fetchJson(url, (got, total) => showStatus('Загружаю модель…', total ? got / total : 0));
+      if (data) return data;
     } catch (e) { /* следующий url */ }
   }
   if (GZ_UNSUPPORTED) {
@@ -536,12 +550,124 @@ async function fetchData() {
     + 'Проверьте, что <code>model.json.gz</code> лежит рядом с этим HTML и отдаётся сервером.');
 }
 
+/* Скачивание + распаковка ПОТОКОМ. Раньше файл сначала целиком складывался в
+   память (arrayBuffer), потом целиком распаковывался, и только потом разбирался
+   — на 9 МБ это лишние секунды и двойной расход памяти. Теперь распаковка идёт
+   по мере получения байтов, а onProgress даёт честный процент для полосы. */
+async function fetchJson(url, onProgress) {
+  const t0 = performance.now();
+  const resp = await fetch(url, { cache: 'no-store' });
+  if (!resp.ok) { const e = new Error('HTTP ' + resp.status + ' — ' + url); e.httpStatus = resp.status; throw e; }
+  const total = Number(resp.headers.get('Content-Length') || 0);
+  let text = null;
+
+  if (resp.body && typeof ReadableStream !== 'undefined') {
+    const reader = resp.body.getReader();
+    const first = await reader.read();
+    const head = first.value;
+    // Файл может приехать уже распакованным (сервер сам снял gzip) — смотрим
+    // на сигнатуру 1f 8b, а не на расширение, иначе распаковка падает на ровном месте.
+    const isGz = !!(head && head.length > 1 && head[0] === 0x1f && head[1] === 0x8b);
+    if (isGz && !('DecompressionStream' in window)) { GZ_UNSUPPORTED = true; reader.cancel(); throw new Error('no DecompressionStream'); }
+    let got = head ? head.length : 0;
+    if (onProgress) onProgress(got, total);
+    const src = new ReadableStream({
+      start(c) { if (head) c.enqueue(head); if (first.done) c.close(); },
+      async pull(c) {
+        const r = await reader.read();
+        if (r.done) { c.close(); return; }
+        got += r.value.length;
+        if (onProgress) onProgress(got, total);
+        c.enqueue(r.value);
+      },
+      cancel(reason) { try { reader.cancel(reason); } catch (e) {} }
+    });
+    text = await new Response(isGz ? src.pipeThrough(new DecompressionStream('gzip')) : src).text();
+  } else {
+    // Совсем старый браузер: как было раньше, одним куском.
+    const buf = await resp.arrayBuffer();
+    const u8 = new Uint8Array(buf);
+    if (u8.length > 1 && u8[0] === 0x1f && u8[1] === 0x8b) {
+      if (!('DecompressionStream' in window)) { GZ_UNSUPPORTED = true; throw new Error('no DecompressionStream'); }
+      text = await new Response(new Blob([buf]).stream().pipeThrough(new DecompressionStream('gzip'))).text();
+    } else {
+      text = new TextDecoder('utf-8').decode(buf);
+    }
+  }
+  perfMark('download+unzip:' + url, t0);
+  const t1 = performance.now();
+  const obj = JSON.parse(text);
+  perfMark('parse:' + url, t1);
+  return obj;
+}
+
+/* ---------- Кэш разобранных частей модели в браузере (IndexedDB) ----------
+   Повторный заход не качает 9 МБ заново: сверяем ETag файла на сервере
+   (запрос HEAD, несколько килобайт) с тем, что лежит в кэше. Совпал — берём
+   из кэша, не совпал (модель пересобралась) — качаем и перезаписываем.
+   Любая ошибка кэша не фатальна: просто грузим как обычно. */
+const IDB_NAME = 'bruno-dashboard', IDB_STORE = 'model-parts', IDB_VER = 1;
+function idb() {
+  return new Promise((res) => {
+    try {
+      if (!window.indexedDB) return res(null);
+      const rq = indexedDB.open(IDB_NAME, IDB_VER);
+      rq.onupgradeneeded = () => { const db = rq.result; if (!db.objectStoreNames.contains(IDB_STORE)) db.createObjectStore(IDB_STORE); };
+      rq.onsuccess = () => res(rq.result);
+      rq.onerror = () => res(null);
+    } catch (e) { res(null); }
+  });
+}
+function idbGet(db, key) {
+  return new Promise((res) => {
+    try { const rq = db.transaction(IDB_STORE, 'readonly').objectStore(IDB_STORE).get(key); rq.onsuccess = () => res(rq.result || null); rq.onerror = () => res(null); }
+    catch (e) { res(null); }
+  });
+}
+function idbPut(db, key, value) {
+  return new Promise((res) => {
+    try { const rq = db.transaction(IDB_STORE, 'readwrite').objectStore(IDB_STORE).put(value, key); rq.onsuccess = () => res(true); rq.onerror = () => res(false); }
+    catch (e) { res(false); }
+  });
+}
+async function loadPart(url, onProgress) {
+  let tag = null;
+  try {
+    const h = await fetch(url, { method: 'HEAD', cache: 'no-store' });
+    if (!h.ok) { const e = new Error('HTTP ' + h.status + ' — ' + url); e.httpStatus = h.status; throw e; }
+    tag = h.headers.get('ETag') || h.headers.get('Last-Modified') || null;
+  } catch (e) { if (e.httpStatus) throw e; /* HEAD не поддержан — просто качаем */ }
+
+  const db = tag ? await idb() : null;
+  if (db) {
+    const hit = await idbGet(db, url);
+    if (hit && hit.tag === tag && hit.data) { PERF.fromCache = true; return hit.data; }
+  }
+  const data = await fetchJson(url, onProgress);
+  if (db && tag) idbPut(db, url, { tag, data }).catch(() => {});
+  return data;
+}
+
 function statusEl() {
   let el = document.getElementById('load-status');
   if (!el) { el = document.createElement('div'); el.id = 'load-status'; el.className = 'load-bar'; document.body.appendChild(el); }
   return el;
 }
-function showStatus(msg) { const el = statusEl(); el.className = 'load-bar'; el.textContent = msg; }
+let _lastPct = -1;
+function showStatus(msg, frac) {
+  const el = statusEl();
+  el.className = 'load-bar';
+  let txt = el.querySelector('.lb-txt');
+  if (!txt) { el.innerHTML = '<span class="lb-txt"></span><span class="lb-bar"><i></i></span>'; txt = el.querySelector('.lb-txt'); }
+  const bar = el.querySelector('.lb-bar');
+  if (frac == null) { txt.textContent = msg; bar.style.display = 'none'; _lastPct = -1; return; }
+  const pct = Math.round(Math.max(0, Math.min(1, frac)) * 100);
+  if (pct === _lastPct) return;         // не дёргаем DOM на каждый чанк
+  _lastPct = pct;
+  txt.textContent = msg + '  ' + pct + '%';
+  bar.style.display = '';
+  bar.firstChild.style.width = pct + '%';
+}
 function hideStatus() { const el = document.getElementById('load-status'); if (el) el.remove(); }
 function showError(msg) { const el = statusEl(); el.className = 'load-bar err'; el.innerHTML = '<strong>Ошибка:</strong> ' + msg; }
 
@@ -581,9 +707,174 @@ function dateRange(fromISO, toISO) {
 function fmtISO(d) { return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
 function dLabel(iso) { const d = new Date(iso + 'T00:00:00'); return d.getDate() + '.' + (d.getMonth() + 1); }
 
+/* ---------------- Загрузка модели: формат 2 (две части) или формат 1 -------
+   Формат 2: сперва приезжает core (блоки 01 и 03 рисуются сразу), затем фоном
+   cubes (блоки 02 и 04, часовой разрез). Формат 1: как раньше, одним файлом. */
+let V2 = null;                  // индексы формата 2: дни, роли, id объектов/зон/сотрудников
+let CUBES_READY = false;        // тяжёлые кубы доехали?
+let CUBES_PROMISE = null;       // ожидание догрузки — на случай клика раньше времени
+
 async function loadAndMap() {
   showStatus('Загружаю данные…');
-  const raw = await fetchData();
+  const t0 = performance.now();
+  let core = null;
+  if (location.protocol !== 'file:') {
+    try {
+      core = await loadPart(M2_CORE, (g, t) => showStatus('Загружаю данные…', t ? g / t : null));
+    } catch (e) { core = null; console.warn('Формат 2 недоступен, откатываюсь на model.json.gz:', e && e.message); }
+  }
+  if (core && core.f === 2) {
+    showStatus('Готовлю данные…');
+    const t1 = performance.now();
+    mapCoreV2(core);
+    perfMark('map:core', t1);
+    CUBES_PROMISE = loadCubesV2();
+  } else {
+    const raw = await fetchData();
+    showStatus('Готовлю данные…');
+    const t1 = performance.now();
+    mapLegacy(raw);
+    perfMark('map:legacy', t1);
+    CUBES_READY = true;
+    CUBES_PROMISE = Promise.resolve();
+  }
+  perfMark('first-data-ready', t0);
+}
+
+/* Общее для обоих форматов: список ролей и цвета. */
+function finishRoles() {
+  for (const [id, e] of Object.entries(EMPLOYEES)) { ROLE_OF[id] = normRole(e && e.roleName); }
+  const rolesInCube = new Set();
+  for (const rows of ROWS_ROLE_BY_DATE.values()) for (const r of rows) rolesInCube.add(r.role);
+  ROLES = [...new Set([...Object.values(ROLE_OF), ...rolesInCube])].sort((a, b) => a.localeCompare(b, 'ru'));
+  ROLES.forEach(r => roleColor(r));
+}
+
+/* Бакет из плоского массива чисел. Порядок полей — контракт с model_v2.py. */
+function bucketAt(a, off, wide) {
+  return {
+    NEW: a[off], WAITING: a[off + 1], COMPLETING: a[off + 2], COMPLETED: a[off + 3], MISSED: a[off + 4],
+    completedOnTime: a[off + 5], completedLate: a[off + 6],
+    delayHoursSum: wide ? a[off + 7] : 0, delayHoursN: wide ? a[off + 8] : 0
+  };
+}
+
+function mapCoreV2(core) {
+  META = core.meta || {};
+  const d = core.dirs || {};
+  const objIds = (d.objects || {}).ids || [], objNames = (d.objects || {}).names || [];
+  const zoneIds = (d.zones || {}).ids || [], zoneNames = (d.zones || {}).names || [], zoneObj = (d.zones || {}).obj || [];
+  V2 = { days: core.days || [], roles: (core.roles || []).map(normRole), objIds, zoneIds, empIds: d.empIds || Object.keys(d.employees || {}) };
+
+  OBJECTS = objIds.map((id, i) => ({ id, name: objNames[i] || '(без имени)' }));
+  OBJECTS.forEach(o => objById[o.id] = o);
+  ZONES = zoneIds.map((id, i) => ({ id, name: zoneNames[i] || '(без имени)', objectID: objIds[zoneObj[i]] || '' }));
+  ZONES.forEach(z => zoneById[z.id] = z);
+
+  ARCHIVE_FROM = META.archiveFrom; ARCHIVE_TO = META.archiveTo;
+  ALL_DATES = (ARCHIVE_FROM && ARCHIVE_TO) ? dateRange(ARCHIVE_FROM, ARCHIVE_TO) : [];
+
+  EMPLOYEES = d.employees || {};
+  mapCubesV2(core.cubes || {});
+  finishRoles();
+}
+
+async function loadCubesV2() {
+  try {
+    const data = await loadPart(M2_CUBES, null);
+    const t0 = performance.now();
+    mapCubesV2(data.cubes || {});
+    perfMark('map:cubes', t0);
+  } catch (e) {
+    console.warn('Не удалось догрузить model.cubes.json.gz:', e && e.message);
+  }
+  CUBES_READY = true;
+  if (APP_STARTED) renderAll();       // блоки 02/04 и часовой разрез оживают
+}
+
+/* Разбор кубов формата 2. Вызывается дважды: для core (сразу) и для второй
+   части (фоном). Каждый куб — плоский массив чисел с шагом stride; имена полей
+   не хранятся вовсе, поэтому и файл меньше, и JSON.parse кратно быстрее. */
+function mapCubesV2(cubes) {
+  const days = V2.days, objIds = V2.objIds, empIds = V2.empIds, roles = V2.roles;
+
+  // byObjectDay: [день, объект, planned(9), unplanned(9)]
+  const bod = cubes.byObjectDay;
+  if (bod) {
+    const a = bod.rows, st = bod.stride;
+    for (let i = 0; i < a.length; i += st) {
+      const date = days[a[i]];
+      let list = ROWS_BY_DATE.get(date);
+      if (!list) ROWS_BY_DATE.set(date, list = []);
+      list.push({ objId: objIds[a[i + 1]], planned: bucketAt(a, i + 2, true), unplanned: bucketAt(a, i + 11, true) });
+    }
+  }
+  // byObjectRoleDay: [день, объект, роль, planned(7), unplanned(7)]
+  const bord = cubes.byObjectRoleDay;
+  if (bord) {
+    const a = bord.rows, st = bord.stride;
+    for (let i = 0; i < a.length; i += st) {
+      const date = days[a[i]];
+      let list = ROWS_ROLE_BY_DATE.get(date);
+      if (!list) ROWS_ROLE_BY_DATE.set(date, list = []);
+      list.push({ objId: objIds[a[i + 1]], role: roles[a[i + 2]], planned: bucketAt(a, i + 3, false), unplanned: bucketAt(a, i + 10, false) });
+    }
+  }
+  const bzd = cubes.byZoneDay;
+  if (bzd) {
+    const a = bzd.rows, st = bzd.stride;
+    for (let i = 0; i < a.length; i += st) {
+      const date = days[a[i]];
+      let list = ZONE_ROWS_BY_DATE.get(date);
+      if (!list) ZONE_ROWS_BY_DATE.set(date, list = []);
+      list.push({ zoneId: V2.zoneIds[a[i + 1]], objectID: objIds[a[i + 2]] || '', completed: a[i + 3], missed: a[i + 4] });
+    }
+  }
+  const boh = cubes.byObjectHour;
+  if (boh) {
+    const a = boh.rows, st = boh.stride;
+    for (let i = 0; i < a.length; i += st) {
+      const hk = days[a[i]] + '|' + String(a[i + 1]).padStart(2, '0');
+      let list = ROWS_HOUR_BY_KEY.get(hk);
+      if (!list) ROWS_HOUR_BY_KEY.set(hk, list = []);
+      list.push({ objId: objIds[a[i + 2]], planned: bucketAt(a, i + 3, true), unplanned: bucketAt(a, i + 12, true) });
+    }
+  }
+  const bed = cubes.byEmployeeDay;
+  if (bed) {
+    const a = bed.rows, st = bed.stride;
+    for (let i = 0; i < a.length; i += st) {
+      const date = days[a[i]];
+      let list = EMP_ROWS_BY_DATE.get(date);
+      if (!list) EMP_ROWS_BY_DATE.set(date, list = []);
+      list.push({ empId: empIds[a[i + 1]], ai: a[i + 2], ci: a[i + 3], at: a[i + 4], ct: a[i + 5] });
+    }
+  }
+  const beod = cubes.byEmployeeObjectDay;
+  if (beod) {
+    const a = beod.rows, st = beod.stride;
+    for (let i = 0; i < a.length; i += st) {
+      const date = days[a[i]];
+      let list = EMP_OBJ_BY_DATE.get(date);
+      if (!list) EMP_OBJ_BY_DATE.set(date, list = []);
+      list.push({ objId: objIds[a[i + 1]], empId: empIds[a[i + 2]], ai: a[i + 3], ci: a[i + 4], at: a[i + 5], ct: a[i + 6] });
+    }
+  }
+  HAS_EMP_OBJ = EMP_OBJ_BY_DATE.size > 0;
+  const betd = cubes.byEmployeeTaskDay;
+  if (betd) {
+    const a = betd.rows, st = betd.stride;
+    for (let i = 0; i < a.length; i += st) {
+      const date = days[a[i]];
+      let list = EMP_TASK_BY_DATE.get(date);
+      if (!list) EMP_TASK_BY_DATE.set(date, list = []);
+      list.push({ objId: objIds[a[i + 1]], empId: empIds[a[i + 2]], pa: a[i + 3], pc: a[i + 4], ua: a[i + 5], uc: a[i + 6] });
+    }
+  }
+  HAS_EMP_TASK = EMP_TASK_BY_DATE.size > 0;
+}
+
+function mapLegacy(raw) {
   META = raw.meta || {};
   const dir = raw.directories || {};
   OBJECTS = Object.entries(dir.objects || {}).map(([id, name]) => ({ id, name: name || '(без имени)' }));
@@ -1074,7 +1365,7 @@ function renderB1() {
     // выразить датой. Кнопка "← назад" в крошках понимает оба уровня.
     onClick: (b) => {
       if (gran === 'months') { setPeriodFromMonthKey(b.key); }
-      else if (gran === 'days') { state.hourDrill.b1 = b.date; renderB1(); }
+      else if (gran === 'days') { withCubes(() => { state.hourDrill.b1 = b.date; renderB1(); }); }
     },
   });
 
@@ -1471,7 +1762,7 @@ function renderB1Feedback() {
   if (!days.length || !totalAll) { chartHost.innerHTML = '<p class="note info">Нет обращений (неплановых задач) в выбранном периоде.</p>'; legend.innerHTML = ''; note.textContent = ''; return; }
   // Клик по дню — локальный часовой разрез ЭТОГО графика (на месте, как и в
   // блоках 01/03), а не модальное окно.
-  renderStackedArea(chartHost, days, series, { onClick: (b) => { state.hourDrill.fb = b.date; renderB1Feedback(); } });
+  renderStackedArea(chartHost, days, series, { onClick: (b) => withCubes(() => { state.hourDrill.fb = b.date; renderB1Feedback(); }) });
   legend.innerHTML = series.map(s => `<span><span class="sw" style="background:${s.color}"></span>${s.label}</span>`).join('');
   note.textContent = 'Резкие скачки по дням стоит сверять с внешними причинами (кампании, инструктаж, сезонность), а не сразу трактовать как ухудшение качества обслуживания.';
 }
@@ -1558,7 +1849,7 @@ function renderB3() {
   document.getElementById('b3-period-lbl').textContent = periodLabelShort() + (gran === 'days' ? ' · клик по дню — часы (на месте)' : gran === 'hours' ? ' · часовой разрез' : '');
   if (!buckets.length) { host.innerHTML = '<p class="note info">Нет данных о плановых задачах в выбранном периоде.</p>'; document.getElementById('b3-kpi').innerHTML = ''; return; }
   renderPlanFact3(host, buckets, {
-    onClick: (b) => { if (gran === 'days') { state.hourDrill.b3 = b.date; renderB3(); } },
+    onClick: (b) => { if (gran === 'days') withCubes(() => { state.hourDrill.b3 = b.date; renderB3(); }); },
   });
 
   const plan = rows.reduce((a, r) => a + r.plan, 0), onTime = rows.reduce((a, r) => a + r.onTime, 0), late = rows.reduce((a, r) => a + r.late, 0), missed = rows.reduce((a, r) => a + r.missed, 0);
@@ -1694,12 +1985,12 @@ function renderB2a() {
     if (isOther) {
       // «Прочие» — объединение мелких объектов, не один объект: клик только зумит
       // список внутри блока 02 (в фильтр объектов подставить нечего однозначно)
-      el.onclick = () => { state.drill.b2aObj = '__other__'; renderB2a(); };
+      el.onclick = () => withCubes(() => { state.drill.b2aObj = '__other__'; renderB2a(); });
       el.addEventListener('mousemove', (e) => showTip(`<div class="tt-title">${esc(c.name)}</div><div class="tt-row"><span class="k">Доля</span><span>${pct(c._share || 0, 1)}</span></div><div class="tt-row"><span class="k">Задач</span><span>${fmt(c.count)}</span></div><div class="tt-row"><span class="k">Эффективность</span><span>${pct(c.eff)}</span></div><div class="tt-row" style="margin-top:3px;border-top:1px solid rgba(255,255,255,.2);padding-top:3px"><span class="k">Объединено объектов</span><span>${(c._merged || []).length}</span></div>`, e));
     } else {
       // Клик по объекту — настоящий фильтр «Объекты» на весь дашборд (не только
       // локальный зум зон внутри блока 02, как раньше)
-      el.onclick = () => { state.drill.b2aObj = c.id; applyObjectFilter([c.id]); };
+      el.onclick = () => withCubes(() => { state.drill.b2aObj = c.id; applyObjectFilter([c.id]); });
       el.addEventListener('mousemove', (e) => showTip(`<div class="tt-title">${esc(c.name)}</div><div class="tt-row"><span class="k">Задач</span><span>${fmt(c.count)}</span></div><div class="tt-row"><span class="k">Выполнено</span><span>${fmt(c.completed)}</span></div><div class="tt-row"><span class="k">Пропущено</span><span>${fmt(c.missed)}</span></div><div class="tt-row"><span class="k">Эффективность</span><span>${pct(c.eff)}</span></div><div class="tt-row" style="margin-top:3px;border-top:1px solid rgba(255,255,255,.2);padding-top:3px"><span class="k">Клик</span><span>фильтр по объекту</span></div>`, e));
     }
     el.addEventListener('mouseleave', hideTip);
@@ -1725,10 +2016,41 @@ function renderB2a() {
 // Единая точка перерисовки. cacheSync() снимает кэш, если фильтры изменились;
 // try/catch не даёт одному упавшему блоку молча оставить дашборд полурисованным —
 // раньше исключение внутри рендера после загрузки данных нигде не ловилось.
+/* Детализация «день -> часы» и панель зон живут во второй части модели, которая
+   догружается фоном. Если пользователь кликнул раньше, чем она доехала, —
+   не игнорируем клик и не показываем пустоту, а ждём её и выполняем действие. */
+function withCubes(fn) {
+  if (CUBES_READY) return fn();
+  showStatus('Догружаю детализацию…');
+  (CUBES_PROMISE || Promise.resolve()).then(() => { hideStatus(); fn(); });
+}
+
+/* Блоки 02 и 04 обычно ниже первого экрана. Раньше они рисовались вместе с
+   остальными ещё до того, как пользователь их увидит, и удлиняли ожидание.
+   Теперь рисуются при первом появлении в поле зрения (дальше — как обычно,
+   на каждый пересчёт фильтров). */
+const SEEN = { b2a: false, b4: false };
+function watchLazyBlocks() {
+  if (!('IntersectionObserver' in window)) { SEEN.b2a = SEEN.b4 = true; renderB2a(); renderB4(); return; }
+  const io = new IntersectionObserver((ents) => {
+    ents.forEach(e => {
+      if (!e.isIntersecting) return;
+      const k = e.target.dataset.lazy;
+      if (SEEN[k]) return;
+      SEEN[k] = true;
+      io.unobserve(e.target);
+      if (k === 'b2a') renderB2a(); else renderB4();
+    });
+  }, { rootMargin: '300px 0px' });
+  document.querySelectorAll('[data-lazy]').forEach(el => io.observe(el));
+}
+
 function renderAll() {
   cacheSync();
   try {
-    renderB1(); renderB2a(); renderB3(); renderB4();
+    renderB1(); renderB3();
+    if (SEEN.b2a) renderB2a();
+    if (SEEN.b4) renderB4();
   } catch (err) {
     console.error(err);
     showError('Не удалось построить дашборд: ' + esc(err && err.message || err)
@@ -2088,7 +2410,11 @@ async function startApp() {
     document.getElementById('sub-lbl').textContent = `Система Bruno · ${OBJECTS.length} объектов · архив ${ARCHIVE_FROM} — ${ARCHIVE_TO}`;
     setupFilters();
     renderAll();
+    watchLazyBlocks();
+    document.querySelector('.app').classList.remove('loading');
     hideStatus();
+    perfMark('first-paint', PERF._t0 || performance.now());
+    console.log('perf (мс):', PERF);
     // Дашборд считает «сегодня» = последний день архива, а не календарное сегодня.
     // Пока архив не догружен, все сравнения «к пред. мес.» идут по 1..N, где
     // N — последний день архива, и это регулярно вызывает вопрос «почему 1–19,
@@ -2109,11 +2435,28 @@ async function startApp() {
     }
   } catch (err) { console.error(err); showError(err.message); }
 }
-let _rt = null;
-window.addEventListener('resize', () => { if (!APP_STARTED) return; clearTimeout(_rt); _rt = setTimeout(renderAll, 180); }, { passive: true });
+/* Перерисовка при изменении размера — ТОЛЬКО когда меняется ширина.
+   Раньше слушали window.resize: на телефоне он срабатывает от появления и
+   скрытия адресной строки (меняется высота), и каждый скролл запускал полный
+   пересчёт архива. Теперь следим за шириной контейнера. */
+let _rt = null, _lastW = 0;
+const _appEl = document.querySelector('.app');
+function _onWidthChange() {
+  const w = Math.round(_appEl.clientWidth);
+  if (!APP_STARTED || w === _lastW) return;
+  _lastW = w;
+  clearTimeout(_rt); _rt = setTimeout(renderAll, 180);
+}
+if ('ResizeObserver' in window) {
+  _lastW = Math.round(_appEl.clientWidth);
+  new ResizeObserver(_onWidthChange).observe(_appEl);
+} else {
+  window.addEventListener('resize', _onWidthChange, { passive: true });
+}
 const filtersEl = document.getElementById('filters');
 window.addEventListener('scroll', () => filtersEl.classList.toggle('stuck', window.scrollY > 8), { passive: true });
 
+PERF._t0 = performance.now();
 startApp();
 </script>
 </body>

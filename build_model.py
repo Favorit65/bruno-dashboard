@@ -646,6 +646,8 @@ def main():
                     help="projectID для фильтрации user.projects[] (если не указан — берётся первая заполненная роль)")
     ap.add_argument("--feedback-cap", type=int, default=1000,
                     help="Сколько последних текстов обращений сохранить в модели (по умолчанию 1000, 0 = не хранить)")
+    ap.add_argument("--no-v2", action="store_true",
+                    help="Не писать компактные model.core.json.gz / model.cubes.json.gz (формат 2)")
     args = ap.parse_args()
 
     archive = Path(args.archive)
@@ -719,14 +721,33 @@ def main():
         "feedbackExamples": feedback_examples,
     }
 
-    tmp = Path(args.out + ".part")
-    with gzip.open(tmp, "wt", encoding="utf-8", compresslevel=6) as f:
-        json.dump(model, f, ensure_ascii=False, separators=(",", ":"), default=str)
-    tmp.replace(args.out)
-    size = Path(args.out).stat().st_size
+    def dump_gz(obj, path):
+        tmp = Path(str(path) + ".part")
+        with gzip.open(tmp, "wt", encoding="utf-8", compresslevel=6) as f:
+            json.dump(obj, f, ensure_ascii=False, separators=(",", ":"), default=str)
+        tmp.replace(path)
+        return Path(path).stat().st_size
+
+    size = dump_gz(model, args.out)
+
+    # --- компактный формат 2 для сайта (см. model_v2.py) ---------------------
+    # Дашборд грузит core сразу и рисует блоки 01/03, а cubes догружает фоном.
+    # Legacy-файл выше остаётся: его читает конвейер презентации и он же —
+    # запасной вариант, если с новым форматом что-то пойдёт не так.
+    core_size = cubes_size = 0
+    if not args.no_v2:
+        import model_v2
+        core, cubes = model_v2.encode(model)
+        base = str(args.out)[:-8] if str(args.out).endswith(".json.gz") else str(args.out)
+        core_path, cubes_path = base + ".core.json.gz", base + ".cubes.json.gz"
+        core_size = dump_gz(core, core_path)
+        cubes_size = dump_gz(cubes, cubes_path)
 
     print("\n" + "=" * 66)
     print("ГОТОВО: %s (%s)" % (args.out, human(size)))
+    if core_size:
+        print("  формат 2: %s (%s) + %s (%s) — первый экран грузит только core"
+              % (Path(core_path).name, human(core_size), Path(cubes_path).name, human(cubes_size)))
     print("  byObjectDay: %d записей ('дата|объект')" % len(by_object_day))
     print("  byZoneDay:   %d записей ('дата|зона')" % len(by_zone_day))
     print("  byEmployeeDay: %d записей ('дата|сотрудник')" % len(by_employee_day))

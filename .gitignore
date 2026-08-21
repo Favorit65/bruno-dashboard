@@ -26,3 +26,11 @@ Thumbs.db
 # Собранная модель живёт в ветке data-model, а не в main (см. README).
 /model.json.gz
 /model.json
+/model.core.json.gz
+/model.cubes.json.gz
+
+# Временные файлы проверок (архивные срезы, пробные модели)
+_scratch_*
+
+# Временная папка (device_bash не умеет удалять файлы)
+_to_delete/

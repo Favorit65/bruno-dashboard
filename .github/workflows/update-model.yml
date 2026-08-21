@@ -132,11 +132,17 @@ jobs:
         run: |
           rm -rf /tmp/pub && mkdir -p /tmp/pub
           cp model.json.gz /tmp/pub/
+          # компактный формат 2 — его читает сайт (см. model_v2.py)
+          cp model.core.json.gz model.cubes.json.gz /tmp/pub/
           cat > /tmp/pub/README.md <<'MD'
           # Ветка data-model
 
-          Здесь лежит только собранный агрегат `model.json.gz` — его читает
-          `dashboard_v2.html` и конвейер презентации.
+          Здесь лежат собранные агрегаты:
+
+          * `model.core.json.gz` + `model.cubes.json.gz` — компактный формат 2,
+            его грузит `dashboard_v2.html` (core сразу, cubes фоном);
+          * `model.json.gz` — прежний единый файл, читает конвейер презентации
+            и он же запасной вариант для дашборда.
 
           Ветка **перезаписывается** роботом `update-model.yml` при каждом
           обновлении данных, история намеренно не копится (файл ~9 МБ).
