@@ -380,6 +380,30 @@ def process_archive(archive, manifest, employee_dir, team_membership, feedback_c
     by_object_hour = defaultdict(empty_bucket)
     by_object_hour_unplanned = defaultdict(empty_bucket)
 
+    # НОВОЕ (проход 9, фильтры в блоке 04 «Персонал»). Два независимых куба, оба
+    # с ключом "date|objectID|employeeID" — блок 04 переключается между ними
+    # тумблером «Источник», чтобы нативные цифры Bruno не подменялись нашими молча.
+    #
+    #  - by_employee_object_day — НАТИВНАЯ статистика Bruno (statByEmployee +
+    #    statByTeam), та же самая, что и в by_employee_day, но БЕЗ схлопывания
+    #    objectID. Оказалось, что обе выгрузки всегда несут заполненный objectID
+    #    (проверено: 0 пустых на 1538 и 4939 записях за день) — прежний код просто
+    #    выбрасывал это измерение, из-за чего фильтр «Объект» не мог действовать на
+    #    блок 04. Источник правды не меняется, добавляется только разрез.
+    #    Значения: ai/ci — индивидуальные (assigned/completed), at/ct — командные
+    #    доли (задача команды делится поровну на участников), как и раньше.
+    #
+    #  - by_employee_task_day — АЛЬТЕРНАТИВНЫЙ счёт по taskPlan: единственный
+    #    способ получить разрез план/внеплан по сотруднику, которого у Bruno в
+    #    статистике нет вовсе. Задача апортируется ДРОБНО между employees[] (равный
+    #    вес), иначе цифры раздуваются: в реальных данных у задачи бывает 8, 14, 30
+    #    и даже 46 исполнителей, и полный зачёт каждому дал бы ~10-кратный перекос
+    #    относительно числа задач. При дробном апортировании сумма по сотрудникам
+    #    сходится с числом задач в by_object_day.
+    #    pa/pc — плановые назначено/выполнено, ua/uc — неплановые.
+    by_employee_object_day = defaultdict(lambda: {"ai": 0, "ci": 0, "at": 0.0, "ct": 0.0})
+    by_employee_task_day = defaultdict(lambda: {"pa": 0.0, "pc": 0.0, "ua": 0.0, "uc": 0.0})
+
     if days_override is not None:
         days = days_override  # ручная пересборка порциями (см. rebuild_chunked.py, не часть штатного конвейера)
     else:
@@ -461,6 +485,23 @@ def process_archive(archive, manifest, employee_dir, team_membership, feedback_c
                         if status == "COMPLETED":
                             rbucket["completedLate" if is_late_role else "completedOnTime"] += share
 
+                # -- новое: сотрудник x объект x план/внеплан (альтернативный
+                # источник для блока 04, см. комментарий у объявления куба) --
+                if status in STATUSES:
+                    emp_ids = [e for e in (rec.get("employees") or []) if e]
+                    if emp_ids:
+                        share = 1.0 / len(emp_ids)
+                        for eid in emp_ids:
+                            slot = by_employee_task_day[d + "|" + obj + "|" + str(eid)]
+                            if is_planned:
+                                slot["pa"] += share
+                                if status == "COMPLETED":
+                                    slot["pc"] += share
+                            else:
+                                slot["ua"] += share
+                                if status == "COMPLETED":
+                                    slot["uc"] += share
+
                 if status == "COMPLETED":
                     dl_deadline = parse_dt(rec.get("completionDeadlineDate"))
                     dl_complete = parse_dt(rec.get("date_complete") or rec.get("completionDate"))
@@ -519,6 +560,10 @@ def process_archive(archive, manifest, employee_dir, team_membership, feedback_c
             slot = by_employee_day[d + "|" + eid]
             slot["ai"] += c + m
             slot["ci"] += c
+            obj_id = str(rec.get("objectID") or "")
+            oslot = by_employee_object_day[d + "|" + obj_id + "|" + eid]
+            oslot["ai"] += c + m
+            oslot["ci"] += c
 
         # --- statByTeam: командная часть, распределяется поровну на всех участников ---
         st_path = day_dir / "statByTeam.json.gz"
@@ -536,10 +581,14 @@ def process_archive(archive, manifest, employee_dir, team_membership, feedback_c
             m = rec.get("missedTasksCount", 0) or 0
             share_assigned = (c + m) / team["size"]
             share_completed = c / team["size"]
+            obj_id = str(rec.get("objectID") or "")
             for member_id in team["memberIDs"]:
                 slot = by_employee_day[d + "|" + member_id]
                 slot["at"] += share_assigned
                 slot["ct"] += share_completed
+                oslot = by_employee_object_day[d + "|" + obj_id + "|" + member_id]
+                oslot["at"] += share_assigned
+                oslot["ct"] += share_completed
 
         if i % 30 == 0 or i == len(days):
             print("\r     %d/%d дней обработано" % (i, len(days)), end="", flush=True)
@@ -575,8 +624,16 @@ def process_archive(archive, manifest, employee_dir, team_membership, feedback_c
 
     feedback_examples = feedback_examples[-feedback_cap:] if feedback_cap else feedback_examples
 
+    # дробные доли храним с 3 знаками — как и в кубе ролей, иначе float-хвосты
+    # раздувают JSON на мегабайты без всякой пользы
+    by_employee_object_day = {k: {kk: (round(vv, 3) if isinstance(vv, float) else vv) for kk, vv in v.items()}
+                              for k, v in by_employee_object_day.items()}
+    by_employee_task_day = {k: {kk: round(vv, 3) for kk, vv in v.items()}
+                            for k, v in by_employee_task_day.items()}
+
     return (by_object_day_combined, dict(by_zone_day), dict(by_employee_day), feedback_examples, qa,
-            by_object_role_day_combined, by_object_hour_combined)
+            by_object_role_day_combined, by_object_hour_combined,
+            by_employee_object_day, by_employee_task_day)
 
 
 # --------------------------------------------------------------------- main
@@ -615,7 +672,8 @@ def main():
         % (emp_stats["noRole"], emp_stats["ambiguousRole"], emp_stats["noTeam"], emp_stats["multiTeam"]), "ok")
 
     (by_object_day, by_zone_day, by_employee_day, feedback_examples, qa,
-     by_object_role_day, by_object_hour) = process_archive(
+     by_object_role_day, by_object_hour,
+     by_employee_object_day, by_employee_task_day) = process_archive(
         archive, manifest, employee_dir, team_membership, args.feedback_cap)
 
     obj_dict = {uid(o): o.get("name") or "" for o in objects if not o.get("deleted")}
@@ -649,6 +707,14 @@ def main():
             # целые (прямой пересчёт статусов, просто с ключом по часу вместо только дня).
             "byObjectRoleDay": by_object_role_day,
             "byObjectHour": by_object_hour,
+            # НОВОЕ (проход 9): блок 04 «Персонал» с фильтрами.
+            # byEmployeeObjectDay — та же нативная статистика Bruno, что и
+            # byEmployeeDay, но с сохранённым objectID (даёт фильтр «Объект»).
+            # byEmployeeTaskDay — счёт по taskPlan с дробным апортированием между
+            # employees[]; единственный источник, где есть разрез план/внеплан
+            # по сотруднику. Дашборд переключает их тумблером «Источник».
+            "byEmployeeObjectDay": by_employee_object_day,
+            "byEmployeeTaskDay": by_employee_task_day,
         },
         "feedbackExamples": feedback_examples,
     }
@@ -666,6 +732,8 @@ def main():
     print("  byEmployeeDay: %d записей ('дата|сотрудник')" % len(by_employee_day))
     print("  byObjectRoleDay: %d записей ('дата|объект|роль')" % len(by_object_role_day))
     print("  byObjectHour: %d записей ('дата|час|объект')" % len(by_object_hour))
+    print("  byEmployeeObjectDay: %d записей ('дата|объект|сотрудник', нативная стат. Bruno)" % len(by_employee_object_day))
+    print("  byEmployeeTaskDay:   %d записей ('дата|объект|сотрудник', счёт по taskPlan)" % len(by_employee_task_day))
     print("  feedbackExamples: %d текстов сохранено" % len(feedback_examples))
     print("-" * 66)
     print("QA сверка (Bruno statByZone vs сырой taskPlan, должны быть близки):")

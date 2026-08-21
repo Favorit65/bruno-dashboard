@@ -320,7 +320,7 @@
       <p><b>Период</b>, <b>Объекты</b> и <b>Роль</b> пересчитывают весь дашборд (блоки 01–04). Исключение — «Обращения по объектам»: он намеренно реагирует только на период и объект, роль на него не влияет.</p>
       <p><b>Роль</b> на объектных блоках (01–03) и в «Статистике по ролям» учитывается через апортирование задачи по её исполнителям: задача с командой — по составу команды, задача без команды (например, неплановая) — по своим прямым исполнителям. На топ зон внутри объекта (блок 02) и на часовые разрезы роль не влияет — в этих данных нет разбивки по ролям.</p>
       <p><b>Тумблер «Все / Плановые / Неплановые»</b> действует на блоки 01, 02 и «Статистику по ролям». План–факт (блок 03) всегда считается только по плановым (регулярным) задачам.</p>
-      <p><b>Блок 04 «Персонал»</b> не делится ни на объекты, ни на плановые/неплановые: источник там другой — нативная статистика Bruno по сотруднику, в ней этих разрезов нет. Фильтр «Роль» на него действует.</p>
+      <p><b>Блок 04 «Персонал»</b> умеет считать двумя способами, переключатель — в самом блоке. <b>«Статистика Bruno»</b> (по умолчанию) — нативные посуточные агрегаты Bruno по сотруднику; действуют период, объект и роль, но не тумблер план/внеплан — такого разреза у Bruno нет. <b>«Счёт по задачам»</b> — наш пересчёт по taskPlan с делением задачи между исполнителями; действуют все фильтры, но цифры законно отличаются от нативных.</p>
       <p><b>Клик — это тоже фильтр.</b> Месяц в блоке 01 сужает период; день переключает график на часы прямо на месте (без всплывающих окон); объект в блоке 02 сужает фильтр объектов; плашка роли в блоке 01 сужает фильтр ролей. Вернуться — кнопкой «← назад» в хлебных крошках или «Сбросить всё».</p>
     </div>
   </details>
@@ -434,9 +434,13 @@
   <div class="section-title"><span class="snum">04</span>Персонал<span class="hint">сотрудники по бинам эффективности · клик по бину — список</span></div>
   <div class="row" style="grid-template-columns: 1fr 1.7fr;">
     <div class="card">
-      <p class="card-title">Статистика периода</p>
+      <p class="card-title">Статистика периода <span class="hint">источник данных</span></p>
+      <div class="toggle" id="b4-src-toggle" style="margin-bottom:10px;">
+        <button data-src="bruno" class="active">Статистика Bruno</button>
+        <button data-src="task">Счёт по задачам</button>
+      </div>
       <div class="kpi-grid" style="grid-template-columns: repeat(2, 1fr);" id="b4-kpi"></div>
-      <p class="note parked" style="margin-top:10px;">Фильтры «Объект» и «Все/Плановые/Неплановые» на этот блок не действуют. Источник — нативная посуточная статистика Bruno по сотруднику (statByEmployee/statByTeam), в ней нет ни объекта, ни деления план/внеплан — этих разрезов у Bruno для сотрудника просто нет. Фильтр «Роль» работает, т.к. роль сотрудника берётся из справочника, а не из этой статистики.</p>
+      <p class="note info" style="margin-top:10px;" id="b4-src-note"></p>
     </div>
     <div class="card">
       <p class="card-title">Сотрудники по бинам эффективности <span class="hint" id="b4-chart-hint"></span></p>
@@ -550,7 +554,10 @@ let ROWS_ROLE_BY_DATE = new Map(); // date -> [{objId, role, planned, unplanned}
 let ROWS_HOUR_BY_KEY = new Map();  // "date|HH" -> [{objId, planned, unplanned}]  (точные целые, для часового среза; без роли)
 let ZONE_ROWS_BY_DATE = new Map(); // date -> [{zoneId, objectID, completed, missed}]
 let EMPLOYEES = {}, ROLE_OF = {}, ROLES = [];  // empId -> {name, roleName, teamIDs}; empId -> roleName (trimmed); список уникальных ролей
-let EMP_ROWS_BY_DATE = new Map();  // date -> [{empId, ai, ci, at, ct}]
+let EMP_ROWS_BY_DATE = new Map();  // date -> [{empId, ai, ci, at, ct}] — нативная стат. Bruno БЕЗ объекта (старый ключ, оставлен для совместимости)
+let EMP_OBJ_BY_DATE = new Map();   // date -> [{objId, empId, ai, ci, at, ct}] — та же нативная стат. Bruno, но С объектом
+let EMP_TASK_BY_DATE = new Map();  // date -> [{objId, empId, pa, pc, ua, uc}] — счёт по taskPlan, дробные доли между исполнителями
+let HAS_EMP_OBJ = false, HAS_EMP_TASK = false;
 let ARCHIVE_FROM = null, ARCHIVE_TO = null;
 let ALL_DATES = [];             // полный список дат архива, по порядку
 
@@ -633,6 +640,26 @@ async function loadAndMap() {
   // Цвет роли закрепляем один раз по алфавитному списку — иначе он зависел от того,
   // в каком порядке роли впервые попали в рендер, и «переезжал» при смене фильтров.
   ROLES.forEach(r => roleColor(r));
+  // Блок 04: два независимых источника (см. build_model.py, проход 9).
+  // byEmployeeObjectDay — нативная статистика Bruno с сохранённым objectID:
+  // раньше объект схлопывался при сборке, поэтому фильтр «Объект» физически не
+  // мог действовать на блок 04. byEmployeeTaskDay — пересчёт по taskPlan, там
+  // есть разрез план/внеплан, которого у Bruno в статистике нет вовсе.
+  const beod = (raw.daily || {}).byEmployeeObjectDay || {};
+  for (const [key, v] of Object.entries(beod)) {
+    const p = key.split('|');
+    if (!EMP_OBJ_BY_DATE.has(p[0])) EMP_OBJ_BY_DATE.set(p[0], []);
+    EMP_OBJ_BY_DATE.get(p[0]).push({ objId: p[1], empId: p[2], ai: v.ai || 0, ci: v.ci || 0, at: v.at || 0, ct: v.ct || 0 });
+  }
+  HAS_EMP_OBJ = EMP_OBJ_BY_DATE.size > 0;
+  const betd = (raw.daily || {}).byEmployeeTaskDay || {};
+  for (const [key, v] of Object.entries(betd)) {
+    const p = key.split('|');
+    if (!EMP_TASK_BY_DATE.has(p[0])) EMP_TASK_BY_DATE.set(p[0], []);
+    EMP_TASK_BY_DATE.get(p[0]).push({ objId: p[1], empId: p[2], pa: v.pa || 0, pc: v.pc || 0, ua: v.ua || 0, uc: v.uc || 0 });
+  }
+  HAS_EMP_TASK = EMP_TASK_BY_DATE.size > 0;
+
   const bed = (raw.daily || {}).byEmployeeDay || {};
   for (const [key, v] of Object.entries(bed)) {
     const sep = key.indexOf('|');
@@ -651,7 +678,8 @@ const state = {
   periodStack: [],   // снимки периода перед сужением кликом по столбику — для кнопки «назад»
   objects: new Set(),
   roles: new Set(),   // пусто = все роли; фильтрует ВЕСЬ дашборд (см. objectRowsForDate)
-  scope: 'all',   // all | planned | unplanned — влияет на блоки 01 и 02 (блок 03 — всегда план, блок 04 — не делится на план/внеплан в данных)
+  scope: 'all',   // all | planned | unplanned — влияет на блоки 01 и 02 (блок 03 — всегда план; блок 04 — только в режиме «Счёт по задачам»)
+  b4src: 'bruno', // bruno | task — источник блока 04, см. empRowsForDate()
   drill: { b2aObj: null },
   // Локальный "день -> часы" переход для блоков с посуточной динамикой —
   // работает ТАК ЖЕ, как переход "год -> месяц" (в графике на месте, со
@@ -674,7 +702,7 @@ function inPeriod(date) { return (!state.period.from || date >= state.period.fro
    вызывающего), поэтому отдавать один и тот же объект нескольким потребителям безопасно. */
 let _cacheKey = null, _cachePeriod = null, _cacheDay = new Map();
 function cacheSync() {
-  const key = state.period.from + '~' + state.period.to + '~' + state.scope + '~'
+  const key = state.period.from + '~' + state.period.to + '~' + state.scope + '~' + state.b4src + '~'
     + state.objects.size + ':' + [...state.objects].sort().join(',') + '~'
     + state.roles.size + ':' + [...state.roles].sort().join(',');
   if (key !== _cacheKey) { _cacheKey = key; _cachePeriod = null; _cacheDay = new Map(); }
@@ -1222,14 +1250,15 @@ function renderB1Roles() {
   const roleMonthly = new Map(); // role -> ym -> {c, a}
   sparkDates.forEach(date => {
     const ym = date.slice(0, 7);
-    const rows = EMP_ROWS_BY_DATE.get(date) || [];
-    rows.forEach(r => {
+    // через empRowsForDate — значит мини-график в плашке роли тоже уважает фильтр
+    // объектов и выбранный источник, а не живёт по своим правилам
+    empRowsForDate(date).forEach(r => {
       const role = ROLE_OF[r.empId] || 'Без роли';
       if (!roleMonthly.has(role)) roleMonthly.set(role, new Map());
       const rm = roleMonthly.get(role);
       if (!rm.has(ym)) rm.set(ym, { c: 0, a: 0 });
       const b = rm.get(ym);
-      b.c += r.ci + r.ct; b.a += r.ai + r.at;
+      b.c += r.c; b.a += r.a;
     });
   });
   // прогресс-линия в плашке = доля выполненных из (выполнено+пропущено), НЕ доля задач роли от общего числа
@@ -1263,24 +1292,21 @@ function renderB1Roles() {
 // за выбранный период, мини-график динамики (то же фиксированное окно 6 мес.)
 function showRoleDetail(role) {
   const empIds = Object.keys(EMPLOYEES).filter(id => (ROLE_OF[id] || 'Без роли') === role);
-  const todayRows = EMP_ROWS_BY_DATE.get(ARCHIVE_TO) || [];
-  const todayByEmp = new Map(todayRows.map(r => [r.empId, r.ai + r.at]));
-  const acc = new Map(); // empId -> {a, c}
-  periodDates().forEach(date => {
-    const rows = EMP_ROWS_BY_DATE.get(date) || [];
-    rows.forEach(r => { if (!acc.has(r.empId)) acc.set(r.empId, { a: 0, c: 0 }); const m = acc.get(r.empId); m.a += r.ai + r.at; m.c += r.ci + r.ct; });
-  });
+  // тот же источник и те же фильтры, что и в блоке 04 — иначе «эфф. за период»
+  // в модалке роли не сходилась бы с тем, что показывает блок 04 рядом
+  const todayByEmp = new Map();
+  empRowsForDate(ARCHIVE_TO).forEach(r => todayByEmp.set(r.empId, (todayByEmp.get(r.empId) || 0) + r.a));
+  const acc = empAccumulate(periodDates());
   const sparkDates = b1SparkDates(6);
   const monthKeys = [...new Set(sparkDates.map(d => d.slice(0, 7)))].sort();
   const empMonthly = new Map(); // empId -> ym -> {a,c}
   sparkDates.forEach(date => {
     const ym = date.slice(0, 7);
-    const rows = EMP_ROWS_BY_DATE.get(date) || [];
-    rows.forEach(r => {
+    empRowsForDate(date).forEach(r => {
       if (!empMonthly.has(r.empId)) empMonthly.set(r.empId, new Map());
       const em = empMonthly.get(r.empId);
       if (!em.has(ym)) em.set(ym, { a: 0, c: 0 });
-      const b = em.get(ym); b.a += r.ai + r.at; b.c += r.ci + r.ct;
+      const b = em.get(ym); b.a += r.a; b.c += r.c;
     });
   });
   const rows = empIds.map(id => {
@@ -1732,17 +1758,51 @@ const B4_BINS = [
   { key: 'b3', lo: 70, hi: 90, label: '70–90' },
   { key: 'b4', lo: 90, hi: 100.0001, label: '90–100' },
 ];
-function empEfficiencyList() {
-  const dates = periodDates();
-  const acc = new Map(); // empId -> {a, c}
-  dates.forEach(date => {
-    const rows = EMP_ROWS_BY_DATE.get(date) || [];
-    rows.forEach(r => {
-      if (!acc.has(r.empId)) acc.set(r.empId, { a: 0, c: 0 });
-      const m = acc.get(r.empId);
-      m.a += r.ai + r.at; m.c += r.ci + r.ct;
+/* Единая точка данных по сотрудникам за день -> [{empId, a, c}] (a — назначено,
+   c — выполнено), с уже применённым фильтром объектов и (в режиме «по задачам»)
+   тумблером план/внеплан. Два источника принципиально разные, поэтому переключаются
+   явно, а не подменяются молча:
+     bruno — нативная статистика Bruno (statByEmployee + доля statByTeam). Это
+       источник правды по персональной статистике (см. CLAUDE.md). Объект теперь
+       есть (byEmployeeObjectDay), деления план/внеплан у Bruno нет.
+     task  — пересчёт по taskPlan: задача делится ПОРОВНУ между employees[].
+       Даёт все разрезы, включая план/внеплан, но это уже наша методика: цифры
+       законно отличаются от нативных.
+   Если модель старая (без новых кубов) — тихо откатываемся на byEmployeeDay,
+   как было раньше, чтобы дашборд не ломался на старом model.json.gz. */
+function empRowsForDate(date) {
+  const allSelObj = state.objects.size === 0 || state.objects.size === OBJECTS.length;
+  const out = [];
+  if (state.b4src === 'task' && HAS_EMP_TASK) {
+    (EMP_TASK_BY_DATE.get(date) || []).forEach(r => {
+      if (!allSelObj && !state.objects.has(r.objId)) return;
+      let a = 0, c = 0;
+      if (state.scope === 'all' || state.scope === 'planned') { a += r.pa; c += r.pc; }
+      if (state.scope === 'all' || state.scope === 'unplanned') { a += r.ua; c += r.uc; }
+      if (a > 0 || c > 0) out.push({ empId: r.empId, a, c });
     });
-  });
+  } else if (HAS_EMP_OBJ) {
+    (EMP_OBJ_BY_DATE.get(date) || []).forEach(r => {
+      if (!allSelObj && !state.objects.has(r.objId)) return;
+      out.push({ empId: r.empId, a: r.ai + r.at, c: r.ci + r.ct });
+    });
+  } else {
+    (EMP_ROWS_BY_DATE.get(date) || []).forEach(r => out.push({ empId: r.empId, a: r.ai + r.at, c: r.ci + r.ct }));
+  }
+  return out;
+}
+function empAccumulate(dates) {
+  const acc = new Map(); // empId -> {a, c}
+  dates.forEach(date => empRowsForDate(date).forEach(r => {
+    if (!acc.has(r.empId)) acc.set(r.empId, { a: 0, c: 0 });
+    const m = acc.get(r.empId); m.a += r.a; m.c += r.c;
+  }));
+  return acc;
+}
+function b4SrcAvailable() { return state.b4src === 'task' ? HAS_EMP_TASK : HAS_EMP_OBJ; }
+
+function empEfficiencyList() {
+  const acc = empAccumulate(periodDates());
   const out = [];
   const allSelRoles = roleFilterAllSel();
   for (const [empId, m] of acc.entries()) {
@@ -1758,8 +1818,32 @@ function empEfficiencyList() {
 function b4Bins(list) {
   return B4_BINS.map(b => ({ ...b, items: list.filter(e => e.eff * 100 >= b.lo && e.eff * 100 < b.hi) }));
 }
+const B4_SRC_NOTE = {
+  bruno: 'Источник — <b>нативная посуточная статистика Bruno</b> (statByEmployee + доля statByTeam), '
+    + 'источник правды по персональной статистике. Действуют фильтры «Период», «Объект» и «Роль». '
+    + 'Тумблер «Все / Плановые / Неплановые» здесь <b>не действует</b>: у Bruno в статистике по сотруднику нет деления на плановые и неплановые задачи.',
+  task: 'Источник — <b>пересчёт по задачам</b> (taskPlan): каждая задача делится поровну между своими исполнителями '
+    + '(в реальных данных у задачи бывает от 1 до 46 исполнителей, поэтому доли дробные — иначе цифры раздуваются в разы). '
+    + 'Действуют <b>все</b> фильтры, включая «Все / Плановые / Неплановые». '
+    + 'Цифры законно отличаются от режима «Статистика Bruno» — это две разные методики счёта, а не расхождение данных.',
+};
 function renderB4() {
   cacheSync();
+  const noteSrc = document.getElementById('b4-src-note');
+  // старая модель без новых кубов — работаем как раньше и честно об этом пишем,
+  // а не показываем подпись про фильтры, которые в этом случае не действуют
+  if (noteSrc) noteSrc.innerHTML = (HAS_EMP_OBJ || HAS_EMP_TASK)
+    ? (B4_SRC_NOTE[state.b4src] || '')
+    : 'Модель собрана старой версией <code>build_model.py</code>: в ней нет разреза по объекту и по плану/внеплану для сотрудников. '
+      + 'Блок считается как раньше — действует только фильтр «Период» и «Роль». Чтобы включить остальные фильтры, пересоберите '
+      + '<code>model.json.gz</code> текущей версией <code>build_model.py</code>.';
+  const srcToggle = document.getElementById('b4-src-toggle');
+  if (srcToggle) srcToggle.style.display = (HAS_EMP_OBJ || HAS_EMP_TASK) ? '' : 'none';
+  if (!b4SrcAvailable() && (HAS_EMP_OBJ || HAS_EMP_TASK)) {
+    document.getElementById('b4-chart').innerHTML = '<p class="note warn">В этой модели нет куба для выбранного источника. Пересоберите model.json.gz текущей версией build_model.py.</p>';
+    document.getElementById('b4-kpi').innerHTML = ''; document.getElementById('b4-legend').innerHTML = '';
+    return;
+  }
   const list = empEfficiencyList();
   const kpiWrap = document.getElementById('b4-kpi');
   const chartHost = document.getElementById('b4-chart');
@@ -1812,7 +1896,11 @@ function renderB4() {
   });
   chartHost.innerHTML = ''; chartHost.appendChild(s);
   legend.innerHTML = roles.map(r => `<span><span class="sw" style="background:${roleColor(r)}"></span>${esc(r)}</span>`).join('');
-  note.textContent = 'Эффективность сотрудника = выполнено / (выполнено + пропущено) за выбранный период. Клик по столбику — список сотрудников в этом диапазоне.';
+  note.textContent = 'Эффективность сотрудника = выполнено / назначено за выбранный период. Клик по столбику — список сотрудников в этом диапазоне.';
+  const ch = document.getElementById('b4-chart-hint');
+  if (ch) ch.textContent = state.b4src === 'task'
+    ? 'счёт по задачам · фильтры период + объект + роль + план/внеплан'
+    : 'статистика Bruno · фильтры период + объект + роль';
 }
 function b4ShowBinDetail(bin) {
   const rows = bin.items.slice().sort((a, b) => b.eff - a.eff);
@@ -1935,6 +2023,8 @@ function setupFilters() {
     state.objects = new Set(OBJECTS.map(o => o.id));
     state.roles = new Set();
     state.scope = 'all';
+    state.b4src = 'bruno';
+    document.querySelectorAll('#b4-src-toggle button').forEach(x => x.classList.toggle('active', x.dataset.src === 'bruno'));
     state.drill = { b2aObj: null };
     setupPeriodMenu();
     document.querySelectorAll('#menu-object input[type=checkbox]').forEach(i => i.checked = true);
@@ -1944,7 +2034,18 @@ function setupFilters() {
     document.querySelectorAll('#b1-scope-toggle button').forEach(x => x.classList.toggle('active', x.dataset.scope === 'all'));
     renderAll();
   };
-  document.querySelectorAll('#b1-scope-toggle button').forEach(b => b.onclick = () => { document.querySelectorAll('#b1-scope-toggle button').forEach(x => x.classList.remove('active')); b.classList.add('active'); state.scope = b.dataset.scope; renderB1(); renderB2a(); });
+  document.querySelectorAll('#b1-scope-toggle button').forEach(b => b.onclick = () => {
+    document.querySelectorAll('#b1-scope-toggle button').forEach(x => x.classList.remove('active'));
+    b.classList.add('active'); state.scope = b.dataset.scope;
+    // блок 04 пересчитываем тоже: в режиме «Счёт по задачам» тумблер на него влияет
+    renderB1(); renderB2a(); renderB4();
+  });
+  document.querySelectorAll('#b4-src-toggle button').forEach(b => b.onclick = () => {
+    document.querySelectorAll('#b4-src-toggle button').forEach(x => x.classList.remove('active'));
+    b.classList.add('active'); state.b4src = b.dataset.src;
+    // источник влияет и на плашки ролей (их мини-графики), поэтому перерисовываем оба
+    renderB1Roles(); renderB4();
+  });
 }
 document.getElementById('b1-back').onclick = () => {
   if (state.hourDrill.b1) { state.hourDrill.b1 = null; renderB1(); return; }
