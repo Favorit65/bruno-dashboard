@@ -33,6 +33,8 @@
   .top-right { display: flex; align-items: center; gap: 14px; }
   .updated { font-size: 12px; color: var(--text-secondary); display: inline-flex; align-items: center; gap: 6px; }
   .updated::before { content: ''; width: 8px; height: 8px; border-radius: 50%; background: var(--vtb-green); }
+  .updated.stale { color: var(--text-warning); cursor: help; }
+  .updated.stale::before { background: var(--vtb-amber); }
   .badge-dev { font-size: 10.5px; background: var(--bg-warning); color: var(--text-warning); padding: 3px 9px; border-radius: 999px; font-weight: 500; }
 
   /* ФИЛЬТРЫ */
@@ -172,6 +174,7 @@
   .grid-line { stroke: rgba(0,40,130,0.08); stroke-width: 1; }
   .axis-line { stroke: var(--border-strong); stroke-width: 1; }
   .tick-lbl { fill: var(--text-muted); font-size: 10px; }
+  .chart-svg.dense .tick-lbl { font-size: 8.5px; }
   .bar-hit { fill: transparent; cursor: pointer; }
   .bar-total-lbl { fill: var(--text-primary); font-size: 10.5px; font-weight: 600; }
   .svg-bar { transition: opacity 0.12s; }
@@ -476,6 +479,15 @@ let GZ_UNSUPPORTED = false;
 // Экранирование пользовательских строк (имена объектов, зон, ролей, сотрудников)
 // перед вставкой в innerHTML/атрибуты. Раньше имя с кавычкой или «<» ломало вёрстку
 // карточки или тултипа — теперь нет.
+// Единая нормализация имени роли: обрезаем пробелы (в т.ч. неразрывные) и
+// схлопываем внутренние. Применяется и к справочнику сотрудников, и к ключам
+// byObjectRoleDay — иначе "Менеджер клининга " и "Менеджер клининга" живут как
+// две разные роли и фильтр по одной из них не находит ничего.
+function normRole(v) {
+  const t = String(v == null ? '' : v).replace(/[\s\u00a0]+/g, ' ').trim();
+  return t || 'Без роли';
+}
+
 function esc(v) {
   return String(v == null ? '' : v).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 }
@@ -543,6 +555,7 @@ let ARCHIVE_FROM = null, ARCHIVE_TO = null;
 let ALL_DATES = [];             // полный список дат архива, по порядку
 
 const MONTH_NAMES = ['Янв', 'Фев', 'Мар', 'Апр', 'Май', 'Июн', 'Июл', 'Авг', 'Сен', 'Окт', 'Ноя', 'Дек'];
+const MONTH_GEN = ['янв.', 'фев.', 'мар.', 'апр.', 'мая', 'июн.', 'июл.', 'авг.', 'сен.', 'окт.', 'ноя.', 'дек.'];
 
 function emptyBucket() { return { NEW: 0, WAITING: 0, COMPLETING: 0, COMPLETED: 0, MISSED: 0, completedOnTime: 0, completedLate: 0, delayHoursSum: 0, delayHoursN: 0 }; }
 function addBucket(a, b) {
@@ -583,7 +596,13 @@ async function loadAndMap() {
   }
   const bord = (raw.daily || {}).byObjectRoleDay || {};
   for (const [key, v] of Object.entries(bord)) {
-    const parts = key.split('|'); const date = parts[0], objId = parts[1], role = parts[2];
+    // ВАЖНО: имена ролей в справочнике Bruno приходят с висячими пробелами
+    // ("Менеджер клининга ", "Инженер "), и раньше ключи byObjectRoleDay брались
+    // как есть, а роль сотрудника — уже через .trim(). Строки не совпадали, из-за
+    // чего выбор такой роли в фильтре обнулял блоки 01–03 (а клик по плашке роли —
+    // блок 04). Нормализуем в одном месте, на входе.
+    const parts = key.split('|'); const date = parts[0], objId = parts[1];
+    const role = normRole(parts[2]);
     if (!ROWS_ROLE_BY_DATE.has(date)) ROWS_ROLE_BY_DATE.set(date, []);
     ROWS_ROLE_BY_DATE.get(date).push({ objId, role, planned: Object.assign(emptyBucket(), v.planned), unplanned: Object.assign(emptyBucket(), v.unplanned) });
   }
@@ -603,8 +622,14 @@ async function loadAndMap() {
   }
 
   EMPLOYEES = dir.employees || {};
-  for (const [id, e] of Object.entries(EMPLOYEES)) { ROLE_OF[id] = ((e && e.roleName) || 'Без роли').trim() || 'Без роли'; }
-  ROLES = [...new Set(Object.values(ROLE_OF))].sort((a, b) => a.localeCompare(b, 'ru'));
+  for (const [id, e] of Object.entries(EMPLOYEES)) { ROLE_OF[id] = normRole(e && e.roleName); }
+  // Список ролей = объединение справочника сотрудников и ролей, реально
+  // встречающихся в кубе byObjectRoleDay: раньше в справочнике была роль
+  // («Наблюдатель»), которой нет в кубе, из-за чего размеры множеств расходились
+  // и проверка «выбраны все роли» вела себя непредсказуемо.
+  const rolesInCube = new Set();
+  for (const rows of ROWS_ROLE_BY_DATE.values()) for (const r of rows) rolesInCube.add(r.role);
+  ROLES = [...new Set([...Object.values(ROLE_OF), ...rolesInCube])].sort((a, b) => a.localeCompare(b, 'ru'));
   // Цвет роли закрепляем один раз по алфавитному списку — иначе он зависел от того,
   // в каком порядке роли впервые попали в рендер, и «переезжал» при смене фильтров.
   ROLES.forEach(r => roleColor(r));
@@ -717,6 +742,16 @@ function svg(tag, attrs, children) {
   return el;
 }
 function svgText(x, y, str, cls, extra) { const t = svg('text', Object.assign({ x, y, class: cls || 'tick-lbl' }, extra || {})); t.textContent = str; return t; }
+// Сколько подписей рисовать по оси X. Раньше у каждого графика было своё жёстко
+// зашитое число (12 у стекового area, 16 у план-факта), поэтому при сужении периода
+// блок 01 нумеровал КАЖДЫЙ день, а соседние графики — каждый 3-й или 6-й, и глазом
+// сопоставить дни между блоками было нельзя. Теперь правило общее: до 31 столбика
+// (месяц) подписываем всё, дальше — прореживаем.
+function labelSkip(n, maxLabels) {
+  if (n <= 31) return 1;
+  return Math.max(1, Math.ceil(n / (maxLabels || 16)));
+}
+
 function niceMax(v) { if (v <= 0) return 10; const pow = Math.pow(10, Math.floor(Math.log10(v))); const n = v / pow; const step = n <= 1 ? 1 : n <= 2 ? 2 : n <= 5 ? 5 : 10; return step * pow; }
 const TT = document.getElementById('tooltip');
 function showTip(html, evt) { TT.innerHTML = html; TT.style.opacity = '1'; moveTip(evt); }
@@ -733,9 +768,9 @@ function renderStackedBars(host, buckets, series, opts) {
   const yOf = v => T + ph - (v / maxV) * ph;
   const n = buckets.length || 1;
   const step = pw / n, bw = Math.min(46, step * 0.7);
-  const s = svg('svg', { class: 'chart-svg', viewBox: `0 0 ${W} ${H}`, height: H });
+  const skip = opts.maxLabels ? Math.max(1, Math.ceil(n / opts.maxLabels)) : labelSkip(n, 16);
+  const s = svg('svg', { class: 'chart-svg' + (n / skip > 18 ? ' dense' : ''), viewBox: `0 0 ${W} ${H}`, height: H });
   for (let i = 0; i <= 2; i++) { const v = maxV * i / 2; const y = yOf(v); s.appendChild(svg('line', { class: i === 0 ? 'axis-line' : 'grid-line', x1: L, y1: y, x2: W - R, y2: y })); s.appendChild(svgText(L - 5, y + 3, fmt(v), 'tick-lbl', { 'text-anchor': 'end' })); }
-  const skip = Math.ceil(n / (opts.maxLabels || 16));
   buckets.forEach((b, i) => {
     const cx = L + step * i + (step - bw) / 2;
     let acc = 0;
@@ -770,9 +805,9 @@ function renderPlanFact3(host, buckets, opts) {
   const yOf = v => T + ph - (v / maxV) * ph;
   const n = buckets.length || 1;
   const step = pw / n, bw = Math.min(46, step * 0.72), inner = Math.max(4, bw * 0.5);
-  const s = svg('svg', { class: 'chart-svg', viewBox: `0 0 ${W} ${H}`, height: H });
+  const skip = labelSkip(n, 16);
+  const s = svg('svg', { class: 'chart-svg' + (n / skip > 18 ? ' dense' : ''), viewBox: `0 0 ${W} ${H}`, height: H });
   for (let i = 0; i <= 2; i++) { const v = maxV * i / 2; const y = yOf(v); s.appendChild(svg('line', { class: i === 0 ? 'axis-line' : 'grid-line', x1: L, y1: y, x2: W - R, y2: y })); s.appendChild(svgText(L - 5, y + 3, fmt(v), 'tick-lbl', { 'text-anchor': 'end' })); }
-  const skip = Math.ceil(n / 16);
   buckets.forEach((b, i) => {
     const cx = L + step * i + (step - bw) / 2;
     if (b.plan > 0) s.appendChild(svg('rect', { x: cx, y: yOf(b.plan), width: bw, height: Math.max(0.5, (b.plan / maxV) * ph), rx: 2, fill: '#E4E8F0', stroke: '#C9D3E4', 'stroke-width': 1 }));
@@ -900,13 +935,13 @@ function b1MoMBuckets() {
     const b = combinedDay(dayAgg(date));
     acc[t].completed += b.COMPLETED; acc[t].missed += b.MISSED; acc[t].all += bucketAll(b); acc[t].n++;
   });
-  return (acc.last.n && acc.prev.n) ? Object.assign(acc, { dayCut }) : null;
+  return (acc.last.n && acc.prev.n) ? Object.assign(acc, { dayCut, prevMonth: mm }) : null;
 }
 function b1MoM() {
   const c = b1MoMBuckets(); if (!c) return null;
   const last = c.last, prev = c.prev;
   const rel = (a, p) => p > 0 ? (a - p) / p : null;
-  return { all: rel(last.all, prev.all), completed: rel(last.completed, prev.completed), missed: rel(last.missed, prev.missed), effPP: effCM(last.completed, last.missed) - effCM(prev.completed, prev.missed), dayCut: c.dayCut };
+  return { all: rel(last.all, prev.all), completed: rel(last.completed, prev.completed), missed: rel(last.missed, prev.missed), effPP: effCM(last.completed, last.missed) - effCM(prev.completed, prev.missed), dayCut: c.dayCut, prevMonth: c.prevMonth };
 }
 function b1Sparks() {
   const b = b1MonthlyRaw();
@@ -1017,7 +1052,9 @@ function renderB1() {
 
   const kpi = b1Kpi(), sp = b1Sparks(), mom = b1MoM();
   const arr = v => (v >= 0 ? '▲ ' : '▼ ');
-  const cmpNote = mom ? ' к 1–' + mom.dayCut + ' пред. мес.' : '';
+  // «1–19 июля» вместо «1–19 пред. мес.»: сразу видно, с каким именно отрезком
+  // сравнение, и почему граница — 19-е (последний день архива), а не сегодняшнее число
+  const cmpNote = mom ? ' к 1–' + mom.dayCut + ' ' + (MONTH_GEN[mom.prevMonth - 1] || '') : '';
   const momTxt = v => v == null ? '' : arr(v) + Math.abs(v * 100).toFixed(0) + '%' + cmpNote;
   const ppTxt = v => v == null ? '' : arr(v) + Math.abs(v * 100).toFixed(1) + ' п.п.' + cmpNote;
   const cUp = v => v == null ? 'neutral' : v > 0.005 ? 'ok' : v < -0.005 ? 'bad' : 'neutral';
@@ -1325,7 +1362,8 @@ function renderStackedArea(host, buckets, series, opts) {
   const maxV = niceMax(Math.max(1, ...totals));
   const xOf = i => n === 1 ? L + pw / 2 : L + pw * i / (n - 1);
   const yOf = v => T + ph - (v / maxV) * ph;
-  const s = svg('svg', { class: 'chart-svg', viewBox: `0 0 ${W} ${H}`, height: H });
+  const skip = labelSkip(n, 12);
+  const s = svg('svg', { class: 'chart-svg' + (n / skip > 18 ? ' dense' : ''), viewBox: `0 0 ${W} ${H}`, height: H });
   for (let i = 0; i <= 2; i++) { const v = maxV * i / 2; const y = yOf(v); s.appendChild(svg('line', { class: i === 0 ? 'axis-line' : 'grid-line', x1: L, y1: y, x2: W - R, y2: y })); s.appendChild(svgText(L - 5, y + 3, fmt(v), 'tick-lbl', { 'text-anchor': 'end' })); }
   let cumPrev = buckets.map(() => 0);
   series.forEach(se => {
@@ -1335,7 +1373,6 @@ function renderStackedArea(host, buckets, series, opts) {
     s.appendChild(svg('polygon', { points: `${top} ${bottom}`, fill: se.color, opacity: 0.88 }));
     cumPrev = cumCur;
   });
-  const skip = Math.max(1, Math.ceil(n / 12));
   buckets.forEach((b, i) => { if (i % skip === 0 || i === n - 1) s.appendChild(svgText(xOf(i), H - 8, b.label, 'tick-lbl', { 'text-anchor': 'middle' })); });
   buckets.forEach((b, i) => {
     const hw = Math.max(8, pw / n);
@@ -1951,12 +1988,24 @@ async function startApp() {
     setupFilters();
     renderAll();
     hideStatus();
+    // Дашборд считает «сегодня» = последний день архива, а не календарное сегодня.
+    // Пока архив не догружен, все сравнения «к пред. мес.» идут по 1..N, где
+    // N — последний день архива, и это регулярно вызывает вопрос «почему 1–19,
+    // ведь сегодня 21-е». Показываем отставание прямо в шапке.
     const el = document.getElementById('updated-lbl');
-    // раньше при отсутствии META.generatedFromSnapshot в шапке навсегда оставалось
-    // «обновлено сейчас» — это неправда: данные из архива, а не живые
-    el.textContent = (META && META.generatedFromSnapshot)
-      ? 'модель собрана на ' + META.generatedFromSnapshot
-      : 'данные архива по ' + ARCHIVE_TO;
+    const today = fmtISO(new Date());
+    const lagDays = Math.round((new Date(today + 'T00:00:00') - new Date(ARCHIVE_TO + 'T00:00:00')) / 86400000);
+    const src = (META && META.generatedFromSnapshot) ? 'модель собрана на ' + META.generatedFromSnapshot : 'архив по ' + ARCHIVE_TO;
+    if (lagDays >= 2) {
+      el.textContent = src + ' · отставание ' + lagDays + ' дн.';
+      el.classList.add('stale');
+      el.title = 'Последний день данных — ' + ARCHIVE_TO + ', сегодня ' + today + '.\n'
+        + 'Все расчёты «сегодня» и сравнения «к пред. мес.» идут по последний день архива.\n'
+        + 'Чтобы догнать: запустить fetch_bruno.py (или workflow build-data) и пересобрать model.json.gz.';
+    } else {
+      el.textContent = src;
+      el.title = 'Последний день данных — ' + ARCHIVE_TO;
+    }
   } catch (err) { console.error(err); showError(err.message); }
 }
 let _rt = null;

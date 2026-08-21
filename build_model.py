@@ -262,6 +262,17 @@ def load_directories(archive):
     return latest, objects, zones, users, teams, roles
 
 
+def norm_role(name):
+    """Имя роли из справочника Bruno приходит с висячими пробелами — реально
+    встречаются "Менеджер клининга " и "Инженер " (проверено на снимке
+    справочников за 19.08.2026). Из-за этого ключи byObjectRoleDay и roleName в
+    справочнике сотрудников расходились на один пробел, и фильтр «Роль» в
+    дашборде обнулял блоки 01-03 для таких ролей. Нормализуем ОДИН раз, здесь:
+    все производные (roleName сотрудника, ключи куба ролей) идут отсюда."""
+    t = " ".join(str(name or "").split())
+    return t or "Без роли"
+
+
 def build_role_lookup(roles):
     """roleID -> имя роли. Схлопывание дублей по имени происходит естественно:
     группировка везде идёт по СТРОКЕ имени, а не по id, так что два разных id с
@@ -270,7 +281,7 @@ def build_role_lookup(roles):
     for r in roles:
         if r.get("deleted"):
             continue
-        out[uid(r)] = r.get("name") or "Без роли"
+        out[uid(r)] = norm_role(r.get("name"))
     return out
 
 
