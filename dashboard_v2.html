@@ -593,6 +593,8 @@
       <button data-gran="day">День</button>
     </div>
     <button class="flt-reset" id="btn-reset">Сбросить всё</button>
+    <button class="flt-reset" id="btn-copy-link" type="button"
+      title="Скопировать ссылку на текущий срез: период, объекты, роль, категория задач, детализация и провал во времени. Открыв её, коллега увидит ровно то же, что видите вы.">Скопировать ссылку</button>
     <a class="report-link" id="report-link"
        href="https://github.com/Favorit65/bruno-dashboard/actions/workflows/build-report.yml"
        target="_blank" rel="noopener"
@@ -609,6 +611,7 @@
       <p><b>Блок 04 «Персонал»</b> умеет считать двумя способами, переключатель — в самом блоке. <b>«Статистика Bruno»</b> (по умолчанию) — нативные посуточные агрегаты Bruno по сотруднику; действуют период, объект и роль, но не тумблер план/внеплан — такого разреза у Bruno нет. <b>«Счёт по задачам»</b> — наш пересчёт по taskPlan с делением задачи между исполнителями; действуют все фильтры, но цифры законно отличаются от нативных.</p>
       <p><b>Время — общее для всех графиков.</b> Переключатель <b>Авто / Месяц / Неделя / День</b> в фильтрах задаёт детализацию столбцов сразу в блоке 01, блоке 03 и «Обращениях по объектам». Стрелки <b>‹ ›</b> на любой карточке двигают период у всех рядов одновременно; на краю архива стрелка гаснет.</p>
       <p><b>Клик — это тоже фильтр.</b> Клик по столбцу проваливается внутрь: год → месяц → день → час, синхронно во всех блоках (плашки, дерево и блоки 02/04 пересчитываются на тот же отрезок). Путь показан крошками справа от навигатора — клик по крошке возвращает на этот уровень. Объект в блоке 02 сужает фильтр объектов; плашка роли в блоке 01 — фильтр ролей; узел дерева категорий — то же, что тумблер «Все / Плановые / Неплановые»; подпись в легенде обращений или ролей добавляет и снимает объект/роль. Всё активное перечислено чипами под фильтрами и снимается там же.</p>
+      <p><b>Ссылка на срез.</b> Всё, что вы выбрали — период, объекты, роль, категория задач, детализация, провал в конкретный день или час, режим блока 04 и тумблер обращений — записывается прямо в адрес страницы. Кнопка <b>«Скопировать ссылку»</b> рядом со «Сбросить всё» кладёт адрес в буфер: открыв его, коллега увидит ровно тот же срез. Кнопки браузера <b>«назад» и «вперёд»</b> работают как шаги по времени: «назад» после провала возвращает на уровень выше. Если ссылка сделана на другой версии данных и какого-то объекта в модели больше нет — он молча пропускается, страница всё равно откроется.</p>
     </div>
   </details>
 
@@ -1444,6 +1447,7 @@ function timeDrillDown(g) {
       state.time.stack.push(timeSnapshot());
       state.period = { from: g.date, to: g.date };
       state.time.hour = g.date;
+      _hashPushNext = true;
       timeApply();
     });
     return;
@@ -1453,6 +1457,7 @@ function timeDrillDown(g) {
   state.period = { from, to };
   state.time.gran = 'auto';
   state.time.hour = null;
+  _hashPushNext = true;
   timeApply();
 }
 function timeUp(toIndex) {
@@ -1464,6 +1469,7 @@ function timeUp(toIndex) {
   state.period = { from: snap.period.from, to: snap.period.to };
   state.time.gran = snap.gran;
   state.time.hour = snap.hour;
+  _hashPushNext = true;
   timeApply();
 }
 // Каким «шагом» двигать окно стрелками ← →: календарным месяцем/годом/неделей,
@@ -2012,6 +2018,7 @@ function renderB1Tree() {
    дерева категорий (П1) идут сюда, поэтому расхождение состояний невозможно. */
 function applyScope(scope) {
   state.scope = scope;
+  syncHash();
   document.querySelectorAll('#b1-scope-toggle button').forEach(x => x.classList.toggle('active', x.dataset.scope === scope));
   // блок 04 пересчитываем тоже: в режиме «Счёт по задачам» тумблер на него влияет
   renderB1(); if (SEEN.b2a) renderB2a(); if (SEEN.b4) renderB4();
@@ -2668,6 +2675,7 @@ function squarify(items, W, H) {
 }
 
 function renderB2a() {
+  syncHash();
   cacheSync();
   const rows = mergeSmallObjects(b2StructureByObject());
   const cont = document.getElementById('b2a-treemap');
@@ -2841,6 +2849,7 @@ function clearFilter(kind) {
 
 function renderAll() {
   cacheSync();
+  syncHash();
   try {
     renderActiveFilters();
     renderB1(); renderB3();
@@ -3141,6 +3150,7 @@ function setupFilters() {
     else openFilterSheet();
   };
   document.getElementById('sheet-done').onclick = e => { e.stopPropagation(); closeFilterSheet(); };
+  document.getElementById('btn-copy-link').onclick = e => { e.stopPropagation(); copyShareLink(); };
   document.querySelectorAll('.flt[data-flt]').forEach(el => el.onclick = e => {
     if (el.classList.contains('disabled')) { e.stopPropagation(); return; }
     if (e.target.closest('.flt-menu')) return;
@@ -3187,6 +3197,7 @@ function setupFilters() {
   document.querySelectorAll('#b4-src-toggle button').forEach(b => b.onclick = () => {
     document.querySelectorAll('#b4-src-toggle button').forEach(x => x.classList.remove('active'));
     b.classList.add('active'); state.b4src = b.dataset.src;
+    syncHash();
     // источник влияет и на плашки ролей (их мини-графики), поэтому перерисовываем оба
     renderB1Roles(); renderB4();
   });
@@ -3197,6 +3208,7 @@ function setupFilters() {
     if (b.dataset.fbsrc === 'fb' && !HAS_FB) return;
     document.querySelectorAll('#b1-fb-toggle button').forEach(x => x.classList.remove('active'));
     b.classList.add('active'); state.fbSrc = b.dataset.fbsrc;
+    syncHash();
     renderB1Funnel(); renderB1Feedback();
   });
 }
@@ -3296,6 +3308,176 @@ document.getElementById('b1-fb-detail-btn').onclick = () => renderB1FeedbackObjD
   head.addEventListener('pointercancel', end);
 })();
 
+
+/* ==============================================================
+   ССЫЛКА НА СРЕЗ — СОСТОЯНИЕ ДАШБОРДА В URL-ХЭШЕ (пункт 32, 22.08.2026)
+
+   Зачем: «посмотри вот это» раньше означало «открой дашборд, поставь период
+   такой-то, сними галочки там-то». Теперь текущий срез целиком лежит в адресе,
+   и ссылка открывается у коллеги ровно в том же виде.
+
+   Что сериализуем и чем НЕ пользуемся:
+     p — период (from_to)          o — объекты (первые 8 символов UUID)
+     r — роли (по имени)           s — категория задач (scope)
+     g — детализация во времени    h — день часового разреза
+     b — источник блока 04         f — обращения/неплановые (проход 14)
+     d — зум блока 02
+   state.time.stack (путь провала) НЕ сериализуем: восстанавливать историю
+   переходов по ссылке не нужно, достаточно текущего окна — иначе хэш растёт
+   на каждый клик и ломается при смене модели.
+
+   Идентификаторы объектов — префикс UUID в 8 символов: полные UUID раздувают
+   ссылку до нечитаемости, а индексы в модели «поедут» после пересборки.
+   Ненайденный префикс молча пропускаем: модель могла измениться, но ссылка
+   не должна ронять страницу.
+
+   История браузера: фильтры — replaceState (иначе «назад» отменяло бы каждый
+   щелчок по чекбоксу в меню объектов), провалы во времени — pushState, потому
+   что «назад» пользователь ждёт именно как шаг вверх по пути.
+   ============================================================== */
+const HASH_KEYS = ['p', 'o', 'r', 's', 'g', 'h', 'b', 'f', 'd'];
+let _hashApplying = false;   // идёт применение хэша — писать обратно нельзя
+let _hashPushNext = false;   // следующий syncHash() создаёт запись в истории
+
+function objKey(id) { return String(id).slice(0, 8); }
+function objByKey(k) {
+  if (!k) return null;
+  const o = OBJECTS.find(x => objKey(x.id) === k);
+  return o ? o.id : null;
+}
+function buildHash() {
+  const q = [];
+  const add = (k, v) => q.push(k + '=' + encodeURIComponent(v));
+  // весь архив — состояние по умолчанию, в ссылку не пишем: пустой хэш читается
+  // как «всё», и «Сбросить всё» возвращает адрес к чистому виду
+  if (state.period.from && state.period.to && !(state.period.from === ARCHIVE_FROM && state.period.to === ARCHIVE_TO))
+    add('p', state.period.from + '_' + state.period.to);
+  if (state.objects.size && state.objects.size < OBJECTS.length) add('o', [...state.objects].map(objKey).join(','));
+  if (state.roles.size && state.roles.size < ROLES.length) add('r', [...state.roles].join(','));
+  if (state.scope !== 'all') add('s', state.scope);
+  if (state.time.gran !== 'auto') add('g', state.time.gran);
+  if (state.time.hour) add('h', state.time.hour);
+  if (state.b4src !== 'bruno') add('b', state.b4src);
+  if (state.fbSrc !== 'fb') add('f', state.fbSrc);
+  if (state.drill.b2aObj) add('d', state.drill.b2aObj === '__other__' ? 'other' : objKey(state.drill.b2aObj));
+  return q.length ? '#' + q.join('&') : '#';
+}
+function syncHash() {
+  if (_hashApplying || !APP_STARTED) { _hashPushNext = false; return; }
+  const h = buildHash();
+  const push = _hashPushNext; _hashPushNext = false;
+  const cur = location.hash || '#';
+  if (!push && h === cur) return;          // ничего не изменилось — не трогаем историю
+  try {
+    const url = location.pathname + location.search + h;
+    if (push && h !== cur) history.pushState(null, '', url);
+    else history.replaceState(null, '', url);
+  } catch (e) { /* file:// в части браузеров запрещает History API — не беда */ }
+}
+function parseHash(str) {
+  const out = {};
+  const body = String(str || '').replace(/^#/, '');
+  if (!body) return out;
+  body.split('&').forEach(pair => {
+    const i = pair.indexOf('=');
+    if (i < 1) return;
+    const k = pair.slice(0, i);
+    if (!HASH_KEYS.includes(k)) return;
+    try { out[k] = decodeURIComponent(pair.slice(i + 1).replace(/\+/g, ' ')); } catch (e) { /* битый %-код — пропускаем */ }
+  });
+  return out;
+}
+// Приводит все элементы управления в соответствие со state — после того как
+// state пришёл из хэша, а не из клика пользователя.
+function syncControlsFromState() {
+  document.getElementById('flt-period-lbl').textContent = periodLabelFor(state.period);
+  setupPeriodMenu();
+  document.querySelectorAll('#menu-object input[value]').forEach(i => { i.checked = state.objects.has(i.value); });
+  const oa = document.getElementById('obj-all'); if (oa) oa.checked = state.objects.size === OBJECTS.length;
+  document.getElementById('flt-object-lbl').textContent = fltLabel(state.objects, OBJECTS.length);
+  // пустое множество ролей = «все», поэтому в меню все галочки стоят
+  const allRoles = state.roles.size === 0;
+  document.querySelectorAll('#menu-role input[value]').forEach(i => { i.checked = allRoles || state.roles.has(i.value); });
+  const ra = document.getElementById('role-all'); if (ra) ra.checked = allRoles || state.roles.size === ROLES.length;
+  document.getElementById('flt-role-lbl').textContent = fltLabel(state.roles, ROLES.length);
+  document.querySelectorAll('#b1-scope-toggle button').forEach(x => x.classList.toggle('active', x.dataset.scope === state.scope));
+  document.querySelectorAll('#gran-toggle button').forEach(x => x.classList.toggle('active', x.dataset.gran === state.time.gran));
+  document.querySelectorAll('#b4-src-toggle button').forEach(x => x.classList.toggle('active', x.dataset.src === state.b4src));
+  if (HAS_FB) document.querySelectorAll('#b1-fb-toggle button').forEach(x => x.classList.toggle('active', x.dataset.fbsrc === state.fbSrc));
+}
+// Читает хэш в state. Всё неузнанное — молча в значение по умолчанию: ссылка,
+// собранная на другой версии модели, должна открываться, а не падать.
+function applyHashState(str) {
+  const q = parseHash(str);
+  _hashApplying = true;
+  try {
+    let from = ARCHIVE_FROM, to = ARCHIVE_TO;
+    const m = /^(\d{4}-\d{2}-\d{2})_(\d{4}-\d{2}-\d{2})$/.exec(q.p || '');
+    if (m && m[1] <= m[2]) { from = clampDate(m[1]); to = clampDate(m[2]); }
+    state.period = { from, to };
+    state.time.stack = [];
+    _grpKey = null;
+
+    const ids = (q.o || '').split(',').map(objByKey).filter(Boolean);
+    state.objects = new Set(ids.length ? ids : OBJECTS.map(o => o.id));
+
+    const rs = (q.r || '').split(',').filter(x => ROLES.includes(x));
+    state.roles = new Set(rs.length === ROLES.length ? [] : rs);
+
+    state.scope = (q.s === 'planned' || q.s === 'unplanned') ? q.s : 'all';
+    state.time.gran = ['month', 'week', 'day'].includes(q.g) ? q.g : 'auto';
+    state.time.hour = /^\d{4}-\d{2}-\d{2}$/.test(q.h || '') ? q.h : null;
+    // Часовой разрез осмыслен только когда окно — ровно этот день (так его и
+    // ставит провал по столбцу). Рассогласованную ссылку чиним, а не рисуем.
+    if (state.time.hour && !(state.period.from === state.time.hour && state.period.to === state.time.hour)) state.time.hour = null;
+    state.b4src = (q.b === 'task') ? 'task' : 'bruno';
+    state.fbSrc = (q.f === 'unplanned' || !HAS_FB) ? 'unplanned' : 'fb';
+    state.drill.b2aObj = q.d ? (q.d === 'other' ? '__other__' : objByKey(q.d)) : null;
+
+    syncControlsFromState();
+  } catch (e) {
+    console.warn('Ссылка со срезом не разобрана, открываю дашборд по умолчанию:', e);
+  } finally { _hashApplying = false; }
+}
+/* «Назад»/«вперёд» браузера должны реально применять состояние: без слушателя
+   адрес менялся бы, а картинка — нет. */
+window.addEventListener('popstate', () => {
+  if (!APP_STARTED) return;
+  applyHashState(location.hash);
+  if (state.time.hour && !CUBES_READY) withCubes(renderAll); else renderAll();
+});
+
+/* Копирование ссылки. navigator.clipboard есть только в защищённом контексте
+   (https или localhost); дашборд иногда открывают файлом с диска — там нужен
+   запасной путь через скрытое поле и execCommand. */
+function fallbackCopy(text) {
+  try {
+    const ta = document.createElement('textarea');
+    ta.value = text; ta.setAttribute('readonly', '');
+    ta.style.cssText = 'position:fixed;top:-1000px;left:-1000px;opacity:0;';
+    document.body.appendChild(ta);
+    ta.select(); ta.setSelectionRange(0, ta.value.length);
+    const ok = document.execCommand('copy');
+    document.body.removeChild(ta);
+    return ok;
+  } catch (e) { return false; }
+}
+let _copyTimer = null;
+function copyShareLink() {
+  const btn = document.getElementById('btn-copy-link');
+  syncHash();
+  const url = location.href.indexOf('#') >= 0 ? location.href : location.href + buildHash();
+  const done = (ok) => {
+    if (!btn) return;
+    clearTimeout(_copyTimer);
+    btn.textContent = ok ? 'Ссылка скопирована' : 'Скопируйте из адресной строки';
+    _copyTimer = setTimeout(() => { btn.textContent = 'Скопировать ссылку'; }, 2400);
+  };
+  if (navigator.clipboard && window.isSecureContext) {
+    navigator.clipboard.writeText(url).then(() => done(true), () => done(fallbackCopy(url)));
+  } else done(fallbackCopy(url));
+}
+
 /* === СТАРТ === */
 let APP_STARTED = false;
 async function startApp() {
@@ -3324,7 +3506,13 @@ async function startApp() {
       }
     }
     setupFilters();
+    // Ссылка на срез (пункт 32): состояние читаем ПОСЛЕ построения меню
+    // фильтров и ДО первого renderAll, иначе дашборд рисуется дважды.
+    applyHashState(location.hash);
     renderAll();
+    // Часовой разрез живёт во второй части модели: если ссылка пришла с ним,
+    // а кубы ещё летят — перерисуем, когда доедут.
+    if (state.time.hour && !CUBES_READY) withCubes(renderAll);
     watchLazyBlocks();
     document.querySelector('.app').classList.remove('loading');
     hideStatus();
