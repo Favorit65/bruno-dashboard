@@ -765,7 +765,8 @@ def main():
     ap.add_argument("--model", default="model.json.gz", help="Путь к model.json.gz")
     ap.add_argument("--from", dest="date_from", help="Начало периода, ГГГГ-ММ-ДД")
     ap.add_argument("--to", dest="date_to", help="Конец периода, ГГГГ-ММ-ДД")
-    ap.add_argument("--preset", choices=["last-month", "last-30", "last-90", "ytd", "all"],
+    ap.add_argument("--preset",
+                    choices=["this-month", "last-month", "last-30", "last-90", "ytd", "all"],
                     help="Готовый период вместо --from/--to")
     ap.add_argument("--out", default="report.pptx", help="Имя выходного файла")
     ap.add_argument("--title", default="Отчёт по эксплуатации объектов")
@@ -781,6 +782,9 @@ def main():
             d_from, d_to = a_from, a_to
         elif args.preset == "ytd":
             d_from, d_to = date(a_to.year, 1, 1), a_to
+        elif args.preset == "this-month":
+            # текущий месяц по последнему дню архива: с 1-го числа по «сегодня»
+            d_from, d_to = a_to.replace(day=1), a_to
         elif args.preset == "last-month":
             first_this = a_to.replace(day=1)
             d_to = first_this - timedelta(days=1)

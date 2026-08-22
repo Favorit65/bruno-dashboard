@@ -8,11 +8,28 @@ name: Отчёт-презентация (PPTX)
 on:
   workflow_dispatch:
     inputs:
-      preset:
-        description: 'Период отчёта'
+      copy_deck:
+        description: 'Копия утверждённой колоды (21 слайд, горизонт 4 месяца)'
+        type: boolean
+        default: true
+      clean_roles:
+        description: 'Кого считать уборщицами в копии колоды'
         type: choice
-        default: 'last-month'
+        default: 'split'
         options:
+          - split       # плановые — роль уборщиц, неплановые — плюс «Менеджер клининга» (согласовано 22.08.2026)
+          - base        # только системная роль employee — как в утверждённой колоде
+          - base+mgr    # обе роли и в плановых, и в неплановых
+      own_deck:
+        description: 'Также собрать разработанный отчёт (7 слайдов)'
+        type: boolean
+        default: false
+      preset:
+        description: 'Период разработанного отчёта (на копию НЕ влияет)'
+        type: choice
+        default: 'this-month'
+        options:
+          - this-month
           - last-month
           - last-30
           - last-90
@@ -28,7 +45,7 @@ on:
         required: false
         type: string
       title:
-        description: 'Заголовок на титульном слайде'
+        description: 'Заголовок титульного слайда разработанного отчёта'
         required: false
         default: 'Отчёт по эксплуатации объектов'
         type: string
@@ -36,18 +53,6 @@ on:
         description: 'Дополнительно сделать PDF'
         type: boolean
         default: true
-      copy_deck:
-        description: 'Также собрать копию утверждённой колоды (22 слайда, горизонт 4 месяца)'
-        type: boolean
-        default: true
-      clean_roles:
-        description: 'Кого считать уборщицами в копии колоды'
-        type: choice
-        default: 'split'
-        options:
-          - split       # плановые — роль уборщиц, неплановые — плюс «Менеджер клининга» (согласовано 22.08.2026)
-          - base        # только системная роль employee — как в утверждённой колоде
-          - base+mgr    # обе роли и в плановых, и в неплановых
 
 permissions:
   contents: read
@@ -61,6 +66,14 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
+      # Обе галочки сняты — собирать нечего. Без этой проверки прогон падал бы
+      # в конце на upload-artifact с невнятным «no files found».
+      - name: Проверка входов
+        if: ${{ !inputs.copy_deck && !inputs.own_deck }}
+        run: |
+          echo "::error::Обе галочки сняты — собирать нечего. Включите копию утверждённой колоды или разработанный отчёт."
+          exit 1
+
       - name: Код проекта (main)
         uses: actions/checkout@v4
 
@@ -79,8 +92,9 @@ jobs:
       - name: Зависимости
         run: pip install -r requirements-report.txt
 
-      - name: Собрать презентацию
+      - name: Собрать разработанный отчёт (7 слайдов)
         id: build
+        if: ${{ inputs.own_deck }}
         env:
           IN_PRESET: ${{ inputs.preset }}
           IN_FROM: ${{ inputs.date_from }}
@@ -108,7 +122,7 @@ jobs:
           echo "out=$OUT" >> "$GITHUB_OUTPUT"
           echo "name=$NAME" >> "$GITHUB_OUTPUT"
 
-      # Копия утверждённой руководством колоды (22 слайда). Её период НЕ зависит
+      # Копия утверждённой руководством колоды (21 слайд). Её период НЕ зависит
       # от выбранного выше пресета: по требованию заказчика горизонт всегда
       # «текущий месяц + 3 предыдущих», а состав приложений — объекты и
       # коменданты, активные в текущем месяце.
@@ -130,22 +144,30 @@ jobs:
         if: ${{ inputs.copy_deck }}
         run: python report_v5_model.py --model _model/model.json.gz --diff-clean | tee clean_diff.log
 
+      # На ubuntu-latest (с версии 24.04) LibreOffice больше НЕ предустановлен —
+      # шаг просто не находил soffice и молча выходил, из-за чего PDF не было,
+      # хотя галочка стояла. Теперь ставим пакет сами, если его нет.
       - name: Конвертировать в PDF
         if: ${{ inputs.pdf }}
         run: |
+          set -e
           if ! command -v soffice >/dev/null; then
-            echo "::warning::LibreOffice не найден на раннере — PDF не будет создан."
-            exit 0
+            echo "LibreOffice на раннере нет — ставлю (займёт около минуты)…"
+            sudo apt-get update -qq
+            sudo apt-get install -y -qq libreoffice-impress fonts-dejavu >/dev/null
           fi
+          soffice --version || true
+          shopt -s nullglob
           for f in Bruno_report_*.pptx; do
             soffice --headless --convert-to pdf "$f" --outdir . || \
               echo "::warning::Конвертация $f в PDF не удалась, PPTX всё равно готов."
           done
+          ls -la *.pdf || echo "::warning::PDF так и не появились."
 
       - name: Выложить файлы
         uses: actions/upload-artifact@v4
         with:
-          name: bruno-report-${{ steps.build.outputs.name }}
+          name: bruno-report-${{ github.run_number }}
           path: |
             Bruno_report_*.pptx
             Bruno_report_*.pdf
@@ -156,10 +178,17 @@ jobs:
         run: |
           {
             echo "### Отчёт готов"
-            echo ""
-            echo '```'
-            tail -4 build.log
-            echo '```'
+            if [ -f build.log ]; then
+              echo ""
+              echo "#### Разработанный отчёт (7 слайдов)"
+              echo ""
+              echo '```'
+              tail -4 build.log
+              echo '```'
+            else
+              echo ""
+              echo "_Разработанный отчёт не собирался — галочка снята._"
+            fi
             if [ -f copy.log ]; then
               echo ""
               echo "### Копия утверждённой колоды"
