@@ -120,6 +120,9 @@
   .kpi-tile .lbl { font-size: 11px; color: var(--text-secondary); margin: 0; }
   .kpi-tile .val { font-family: var(--font-head); font-size: 20px; font-weight: 600; margin: 1px 0 0; letter-spacing: -0.01em; line-height: 1.15; color: var(--vtb-navy); }
   .kpi-tile .delta { font-size: 11px; margin-top: 1px; }
+  /* Плашка величины, которую сейчас рисует график блока «Обращения по объектам»
+     (та, что выбрана тумблером). Остальные три показываются для сравнения. */
+  .kpi-tile.fb-active { background: var(--bg-accent); border-left-color: var(--vtb-navy); }
   .spark { height: 30px; }
   .ok { color: var(--text-success); } .bad { color: var(--text-danger); } .neutral { color: var(--text-muted); }
 
@@ -173,7 +176,10 @@
   /* Каскадная воронка обращений (в одну строку, с конверсией между этапами) */
   .funnel-casc { display: flex; align-items: stretch; gap: 0; margin: 4px 0 2px; }
   .fc-step { display: flex; flex-direction: column; align-items: center; justify-content: center; background: var(--vtb-navy); color: #fff; border-radius: 6px; padding: 7px 6px; min-width: 0; flex: 1 1 0; }
-  .fc-step .fc-name { font-size: 9.5px; opacity: 0.85; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; width: 100%; }
+  /* Подпись этапа переносится по словам: «Задач по обращениям» в узкой колонке
+     не помещается в строку, а обрезанное многоточием название хуже, чем две
+     строки (высота у всех этапов общая — align-items: stretch). */
+  .fc-step .fc-name { font-size: 9.5px; opacity: 0.85; text-align: center; line-height: 1.2; overflow: hidden; width: 100%; }
   .fc-step .fc-val { font-family: var(--font-head); font-size: 15px; font-weight: 600; margin-top: 1px; }
   .fc-arrow { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 0 5px; flex: 0 0 auto; color: var(--text-muted); font-size: 12px; }
   .fc-arrow .fc-conv { font-size: 9.5px; color: var(--text-success); font-weight: 600; margin-top: 1px; white-space: nowrap; }
@@ -254,7 +260,7 @@
     .app { padding: 16px 18px 44px; }
     .row { grid-template-columns: 1fr 1fr !important; }
     .b4-layout { grid-template-columns: 200px 1fr; }
-    #b1-kpi { grid-template-columns: repeat(2, 1fr) !important; }
+    #b1-kpi, #b1-fb-kpi { grid-template-columns: repeat(2, 1fr) !important; }
     .role-tiles { grid-template-columns: repeat(auto-fit, minmax(168px, 1fr)); }
     .section-title { min-width: 260px; }
   }
@@ -268,7 +274,7 @@
     .top-right { width: 100%; justify-content: space-between; }
     .section-title { min-width: 0; width: 100%; font-size: 13px; padding: 8px 30px 8px 14px; }
     .section-title .hint { display: block; margin-left: 0; margin-top: 2px; }
-    #b1-kpi { grid-template-columns: repeat(2, 1fr) !important; }
+    #b1-kpi, #b1-fb-kpi { grid-template-columns: repeat(2, 1fr) !important; }
     .cat-branch-wrap { flex-direction: column; align-items: center; gap: 14px; padding-top: 0; }
     .cat-branch-wrap::before { display: none; }
     .cat-branch::before { top: -14px; height: 14px; }
@@ -280,7 +286,7 @@
     .app { padding: 12px 10px 36px; }
     .filters { gap: 6px; padding: 8px; }
     .flt { padding: 5px 9px; font-size: 11px; }
-    #b1-kpi, #b3-kpi { grid-template-columns: 1fr !important; }
+    #b1-kpi, #b3-kpi, #b1-fb-kpi { grid-template-columns: 1fr !important; }
     .kpi-tile { grid-template-columns: 1fr 40px; }
     .kpi-tile .val { font-size: 18px; }
     .legend { font-size: 10px; }
@@ -596,7 +602,8 @@
   <details class="howto">
     <summary>Как читать дашборд: что на что влияет</summary>
     <div class="howto-body">
-      <p><b>Период</b>, <b>Объекты</b> и <b>Роль</b> пересчитывают весь дашборд (блоки 01–04). Исключение — «Обращения по объектам»: он намеренно реагирует только на период и объект, роль на него не влияет.</p>
+      <p><b>Период</b>, <b>Объекты</b> и <b>Роль</b> пересчитывают весь дашборд (блоки 01–04). Исключение — «Обращения по объектам» и воронка: они намеренно реагируют только на период и объект, роль на них не влияет.</p>
+      <p><b>Обращение ≠ неплановая задача.</b> <b>Обращение</b> — запрос клиента (в данных Bruno у записи заполнен <code>feedbackID</code>); по одному обращению может быть заведено несколько задач. <b>Неплановая задача</b> — любая задача вне регламента, в том числе заведённая персоналом вручную, без всякого обращения — таких большинство. Поэтому чисел три, и они разные: обращений, задач по обращениям и неплановых задач всего. Тумблер <b>«Обращения / Неплановые задачи»</b> в блоке «Обращения по объектам» переключает, что именно рисует график, — и одновременно переключает воронку слева, чтобы на экране не оказалось двух разных «обращений». Плашка с числом объектов следует тумблеру: объектов с неплановыми задачами закономерно больше, чем объектов с обращениями. Уникальность обращения считается в пределах суток и объекта — обращение, задачи по которому шли два дня, попадает в оба дня (та же методика, что в отчётной презентации).</p>
       <p><b>Роль</b> на объектных блоках (01–03) и в «Статистике по ролям» учитывается через апортирование задачи по её исполнителям: задача с командой — по составу команды, задача без команды (например, неплановая) — по своим прямым исполнителям. На топ зон внутри объекта (блок 02) и на часовые разрезы роль не влияет — в этих данных нет разбивки по ролям.</p>
       <p><b>Тумблер «Все / Плановые / Неплановые»</b> действует на блоки 01, 02 и «Статистику по ролям». План–факт (блок 03) всегда считается только по плановым (регулярным) задачам.</p>
       <p><b>Блок 04 «Персонал»</b> умеет считать двумя способами, переключатель — в самом блоке. <b>«Статистика Bruno»</b> (по умолчанию) — нативные посуточные агрегаты Bruno по сотруднику; действуют период, объект и роль, но не тумблер план/внеплан — такого разреза у Bruno нет. <b>«Счёт по задачам»</b> — наш пересчёт по taskPlan с делением задачи между исполнителями; действуют все фильтры, но цифры законно отличаются от нативных.</p>
@@ -623,9 +630,9 @@
     <div class="card">
       <p class="card-title">Категории задач <span class="hint">клик по узлу — фильтр план/внеплан</span></p>
       <div class="cat-tree" id="b1-tree"></div>
-      <p class="card-title" style="margin-top:16px;">Воронка обращений <span class="hint">конверсия по этапам, неплановые задачи</span></p>
+      <p class="card-title" style="margin-top:16px;"><span id="b1-funnel-title">Воронка обращений</span> <span class="hint" id="b1-funnel-hint">конверсия по этапам</span></p>
       <div class="funnel-casc" id="b1-funnel-casc"></div>
-      <p class="card-title" style="margin-top:14px;">Статусы обращений <span class="hint">распределение, накопительно к 100%</span></p>
+      <p class="card-title" style="margin-top:14px;"><span id="b1-status-title">Статусы обращений</span> <span class="hint">распределение, накопительно к 100%</span></p>
       <div class="split-bar" id="b1-funnel-bar"></div>
       <div class="funnel-line-legend" id="b1-funnel-legend"></div>
       <p class="note" id="b1-note"></p>
@@ -638,11 +645,16 @@
     </div>
     <div class="card">
       <div class="card-head-row">
-        <p class="card-title" style="margin:0;">Обращения по объектам <span class="hint" id="b1-fb-hint">по дням, стек по объектам · клик по дню — часы (на месте)</span></p>
+        <p class="card-title" style="margin:0;"><span id="b1-fb-title">Обращения по объектам</span> <span class="hint" id="b1-fb-hint">по дням, стек по объектам · клик по дню — часы (на месте)</span></p>
         <button class="btn-detail" id="b1-fb-detail-btn" type="button">Детализация по объектам</button>
       </div>
+      <div class="toggle" id="b1-fb-toggle" style="margin:2px 0 4px;"
+           title="Обращения — уникальные обращения клиентов (feedbackID). Неплановые задачи — все задачи вне регламента, включая заведённые вручную без обращения. Тумблер действует и на воронку слева.">
+        <button data-fbsrc="fb" class="active">Обращения</button>
+        <button data-fbsrc="unplanned">Неплановые задачи</button>
+      </div>
       <div class="tnav" id="tnav-fb"></div>
-      <div class="kpi-grid" style="grid-template-columns: repeat(3, 1fr);" id="b1-fb-kpi"></div>
+      <div class="kpi-grid" style="grid-template-columns: repeat(4, 1fr);" id="b1-fb-kpi"></div>
       <div id="b1-fb-chart" data-h="200"></div>
       <div class="legend" id="b1-fb-legend"></div>
       <p class="note info" id="b1-fb-note"></p>
@@ -935,6 +947,17 @@ let ROWS_BY_DATE = new Map();   // date -> [{objId, planned, unplanned}]  (то�
 let ROWS_ROLE_BY_DATE = new Map(); // date -> [{objId, role, planned, unplanned}]  (дробные доли по ролевому составу команды)
 let ROWS_HOUR_BY_KEY = new Map();  // "date|HH" -> [{objId, planned, unplanned}]  (точные целые, для часового среза; без роли)
 let ZONE_ROWS_BY_DATE = new Map(); // date -> [{zoneId, objectID, completed, missed}]
+/* ОБРАЩЕНИЯ (проход 14). Раньше блок «Обращения по объектам» и воронка считали
+   обращениями ВСЕ неплановые задачи (записи taskPlan без taskID) — а это разные
+   вещи: за июль 2026 неплановых задач 1622, из них с заполненным feedbackID
+   только 470, а уникальных обращений среди них 387; остальные 1152 — заведённые
+   вручную разовые задачи. Теперь у блока свой источник данных и тумблер.
+     fb    — уникальные feedbackID за сутки по объекту (единица «обращение»);
+     tasks — записи taskPlan с feedbackID (единица «задача по обращению»);
+     статусы — по задачам (у самого обращения статуса нет). */
+let ROWS_FB_BY_DATE = new Map();     // date -> [{objId, fb, tasks, NEW..MISSED}]
+let ROWS_FB_HOUR_BY_KEY = new Map(); // "date|HH" -> [{objId, fb, tasks}]
+let HAS_FB = false;                  // в модели есть куб обращений (в старых моделях его нет)
 let EMPLOYEES = {}, ROLE_OF = {}, ROLES = [];  // empId -> {name, roleName, teamIDs}; empId -> roleName (trimmed); список уникальных ролей
 let EMP_ROWS_BY_DATE = new Map();  // date -> [{empId, ai, ci, at, ct}] — нативная стат. Bruno БЕЗ объекта (старый ключ, оставлен для совместимости)
 let EMP_OBJ_BY_DATE = new Map();   // date -> [{objId, empId, ai, ci, at, ct}] — та же нативная стат. Bruno, но С объектом
@@ -1128,6 +1151,32 @@ function mapCubesV2(cubes) {
     }
   }
   HAS_EMP_TASK = EMP_TASK_BY_DATE.size > 0;
+  // fbByObjectDay: [день, объект, fb, tasks, NEW, WAITING, COMPLETING, COMPLETED, MISSED]
+  const fbd = cubes.fbByObjectDay;
+  if (fbd) {
+    const a = fbd.rows, st = fbd.stride;
+    for (let i = 0; i < a.length; i += st) {
+      const date = days[a[i]];
+      let list = ROWS_FB_BY_DATE.get(date);
+      if (!list) ROWS_FB_BY_DATE.set(date, list = []);
+      list.push({
+        objId: objIds[a[i + 1]], fb: a[i + 2], tasks: a[i + 3],
+        NEW: a[i + 4], WAITING: a[i + 5], COMPLETING: a[i + 6], COMPLETED: a[i + 7], MISSED: a[i + 8]
+      });
+    }
+    HAS_FB = ROWS_FB_BY_DATE.size > 0;
+  }
+  // fbByObjectHour: [день, час, объект, fb, tasks]
+  const fbh = cubes.fbByObjectHour;
+  if (fbh) {
+    const a = fbh.rows, st = fbh.stride;
+    for (let i = 0; i < a.length; i += st) {
+      const hk = days[a[i]] + '|' + String(a[i + 1]).padStart(2, '0');
+      let list = ROWS_FB_HOUR_BY_KEY.get(hk);
+      if (!list) ROWS_FB_HOUR_BY_KEY.set(hk, list = []);
+      list.push({ objId: objIds[a[i + 2]], fb: a[i + 3], tasks: a[i + 4] });
+    }
+  }
 }
 
 function mapLegacy(raw) {
@@ -1173,6 +1222,25 @@ function mapLegacy(raw) {
     const date = key.slice(0, sep), zoneId = key.slice(sep + 1);
     if (!ZONE_ROWS_BY_DATE.has(date)) ZONE_ROWS_BY_DATE.set(date, []);
     ZONE_ROWS_BY_DATE.get(date).push({ zoneId, objectID: String(v.objectID || ''), completed: v.completed || 0, missed: v.missed || 0 });
+  }
+  // Обращения (проход 14) — те же кубы в «широком» формате 1.
+  const fbd = (raw.daily || {}).fbByObjectDay || {};
+  for (const [key, v] of Object.entries(fbd)) {
+    const sep = key.indexOf('|');
+    const date = key.slice(0, sep), objId = key.slice(sep + 1);
+    if (!ROWS_FB_BY_DATE.has(date)) ROWS_FB_BY_DATE.set(date, []);
+    ROWS_FB_BY_DATE.get(date).push({
+      objId, fb: v.fb || 0, tasks: v.tasks || 0,
+      NEW: v.NEW || 0, WAITING: v.WAITING || 0, COMPLETING: v.COMPLETING || 0,
+      COMPLETED: v.COMPLETED || 0, MISSED: v.MISSED || 0
+    });
+  }
+  HAS_FB = ROWS_FB_BY_DATE.size > 0;
+  const fbh = (raw.daily || {}).fbByObjectHour || {};
+  for (const [key, v] of Object.entries(fbh)) {
+    const p = key.split('|'); const hk = p[0] + '|' + p[1];
+    if (!ROWS_FB_HOUR_BY_KEY.has(hk)) ROWS_FB_HOUR_BY_KEY.set(hk, []);
+    ROWS_FB_HOUR_BY_KEY.get(hk).push({ objId: p[2], fb: v.fb || 0, tasks: v.tasks || 0 });
   }
 
   EMPLOYEES = dir.employees || {};
@@ -1226,6 +1294,10 @@ const state = {
   roles: new Set(),   // пусто = все роли; фильтрует ВЕСЬ дашборд (см. objectRowsForDate)
   scope: 'all',   // all | planned | unplanned — влияет на блоки 01 и 02 (блок 03 — всегда план; блок 04 — только в режиме «Счёт по задачам»)
   b4src: 'bruno', // bruno | task — источник блока 04, см. empRowsForDate()
+  // fb | unplanned — что показывает блок «Обращения по объектам» И воронка:
+  // реальные обращения (уникальные feedbackID) или все неплановые задачи.
+  // Тумблер один на два блока — у воронки своего нет (решение 22.08.2026).
+  fbSrc: 'fb',
   drill: { b2aObj: null },
   /* ЕДИНАЯ МАШИНА ВРЕМЕНИ (правка П2, 21.08.2026).
      Раньше время было размазано по трём независимым состояниям: state.period
@@ -1945,11 +2017,65 @@ function applyScope(scope) {
   renderB1(); if (SEEN.b2a) renderB2a(); if (SEEN.b4) renderB4();
 }
 
+/* ОБРАЩЕНИЯ vs НЕПЛАНОВЫЕ ЗАДАЧИ (проход 14, 22.08.2026).
+
+   Найденная пользователем фактическая ошибка: блок «Обращения по объектам» и
+   воронка считали обращениями ВСЕ неплановые задачи. Это разные величины:
+   неплановая задача — любая запись taskPlan без taskID, в том числе заведённая
+   вручную; обращение — запись с заполненным feedbackID. За июль 2026:
+   1622 неплановых задачи, из них 470 по обращениям, уникальных обращений 387.
+
+   Теперь у блока два режима (state.fbSrc), тумблер общий с воронкой:
+     'fb'        — уникальные обращения (feedbackID), куб fbByObjectDay.fb;
+     'unplanned' — все неплановые задачи, как раньше (byObjectDay.unplanned).
+
+   Роль ни в одном режиме не действует: у обращения нет ролевого разреза (в кубе
+   его нет), а блок «Обращения по объектам» и раньше намеренно реагировал только
+   на период и объект. Чтобы воронка не расходилась с блоком, она теперь считает
+   по тем же данным (раньше брала dayAgg, то есть с учётом роли). */
+const FB_ST = ['NEW', 'WAITING', 'COMPLETING', 'COMPLETED', 'MISSED'];
+function fbSelObjects() {
+  return (state.objects.size === 0 || state.objects.size === OBJECTS.length) ? null : state.objects;
+}
+// Все числа блока за набор дат: обращения, задачи по обращениям, неплановые
+// задачи, число объектов в каждом из смыслов и статусные разрезы для воронки.
+function fbTotals(dates) {
+  const sel = fbSelObjects();
+  const objFb = new Set(), objUnpl = new Set();
+  let fb = 0, tasks = 0, unpl = 0;
+  const st = { NEW: 0, WAITING: 0, COMPLETING: 0, COMPLETED: 0, MISSED: 0 };
+  const stUn = { NEW: 0, WAITING: 0, COMPLETING: 0, COMPLETED: 0, MISSED: 0 };
+  dates.forEach(date => {
+    (ROWS_FB_BY_DATE.get(date) || []).forEach(r => {
+      if (sel && !sel.has(r.objId)) return;
+      fb += r.fb; tasks += r.tasks;
+      if (r.fb > 0) objFb.add(r.objId);
+      FB_ST.forEach(k => st[k] += r[k] || 0);
+    });
+    (ROWS_BY_DATE.get(date) || []).forEach(r => {
+      if (sel && !sel.has(r.objId)) return;
+      const v = bucketAll(r.unplanned);
+      if (v <= 0) return;
+      unpl += v; objUnpl.add(r.objId);
+      FB_ST.forEach(k => stUn[k] += r.unplanned[k] || 0);
+    });
+  });
+  return { fb, tasks, unpl, objFb: objFb.size, objUnpl: objUnpl.size, st, stUn };
+}
+const FB_MODE_FB = () => state.fbSrc === 'fb' && HAS_FB;
+// Единица счёта текущего режима — словами, для подписей.
+function fbWords() {
+  return FB_MODE_FB()
+    ? { one: 'обращение', many: 'обращений', title: 'Обращения по объектам', funnel: 'Воронка обращений', status: 'Статусы задач по обращениям' }
+    : { one: 'неплановая задача', many: 'неплановых задач', title: 'Неплановые задачи по объектам', funnel: 'Воронка неплановых задач', status: 'Статусы неплановых задач' };
+}
 function b1FeedbackBucket() {
-  const rows = periodDates().map(dayAgg);
-  const u = emptyBucket();
-  rows.forEach(r => addBucket(u, r.unplanned));
-  return { u, total: bucketAll(u) };
+  const t = fbTotals(periodDates());
+  // В режиме обращений воронка считается по ЗАДАЧАМ по обращениям: у самого
+  // обращения статуса нет, статус есть только у порождённой им задачи.
+  const src = FB_MODE_FB() ? t.st : t.stUn;
+  const u = Object.assign(emptyBucket(), src);
+  return { u, total: bucketAll(u), t };
 }
 
 // Каскадная воронка конверсии (логика v4): каждый этап — подмножество предыдущего,
@@ -1965,7 +2091,7 @@ function renderB1FunnelCascade(u, total) {
   const started = u.COMPLETING + u.COMPLETED;
   const completed = u.COMPLETED;
   const stages = [
-    { name: 'Обращений', val: total },
+    { name: FB_MODE_FB() ? 'Задач по обращениям' : 'Неплановых задач', val: total },
     { name: 'Взято в работу', val: taken },
     { name: 'Начато', val: started },
     { name: 'Завершено', val: completed },
@@ -1978,18 +2104,37 @@ function renderB1FunnelCascade(u, total) {
       const cls = conv == null ? '' : conv >= 0.7 ? '' : 'bad';
       html += `<div class="fc-arrow">→<div class="fc-conv ${cls}">${conv == null ? '—' : pct(conv, 0)}</div></div>`;
     }
-    html += `<div class="fc-step"><div class="fc-name">${s.name}</div><div class="fc-val">${fmt(s.val)}</div></div>`;
+    // title — потому что первый этап («Задач по обращениям») в узкой колонке
+    // обрезается многоточием, а число под ним без подписи читается неоднозначно
+    html += `<div class="fc-step" title="${s.name}: ${fmt(s.val)}"><div class="fc-name">${s.name}</div><div class="fc-val">${fmt(s.val)}</div></div>`;
   });
   host.innerHTML = html;
 }
 
 function renderB1Funnel() {
-  const { u, total } = b1FeedbackBucket();
+  const { u, total, t } = b1FeedbackBucket();
+  const w = fbWords();
+  // Заголовки следуют тумблеру блока «Обращения по объектам» — своего у воронки
+  // нет намеренно, иначе на экране оказалось бы два несогласованных источника.
+  const titleEl = document.getElementById('b1-funnel-title');
+  const hintEl = document.getElementById('b1-funnel-hint');
+  const statusEl2 = document.getElementById('b1-status-title');
+  if (titleEl) titleEl.textContent = w.funnel;
+  if (hintEl) hintEl.textContent = FB_MODE_FB()
+    ? 'конверсия по этапам · задачи, заведённые по обращениям'
+    : 'конверсия по этапам · все задачи вне регламента';
+  if (statusEl2) statusEl2.textContent = w.status;
   renderB1FunnelCascade(u, total);
   const bar = document.getElementById('b1-funnel-bar');
   const legend = document.getElementById('b1-funnel-legend');
   const note = document.getElementById('b1-note');
-  if (!total) { bar.innerHTML = ''; legend.innerHTML = ''; note.textContent = 'Нет обращений (неплановых задач) в выбранном периоде.'; return; }
+  if (!total) {
+    bar.innerHTML = ''; legend.innerHTML = '';
+    note.textContent = FB_MODE_FB()
+      ? 'Нет задач по обращениям в выбранном периоде.'
+      : 'Нет неплановых задач в выбранном периоде.';
+    return;
+  }
   const steps = [
     { name: 'Ожидание', val: u.NEW + u.WAITING, bg: '#667EB4' },
     { name: 'В работе', val: u.COMPLETING, bg: '#00AAFF' },
@@ -2004,7 +2149,9 @@ function renderB1Funnel() {
     return `<div class="fll-item" style="flex:${w} 1 0;" title="${s.name}: ${fmt(s.val)} (${pct(s.val / total, 1)})"><span class="fll-name"><span class="sw" style="background:${s.bg}"></span>${s.name}</span><span class="fll-val"><b>${fmt(s.val)}</b> ${pct(s.val / total, 1)}</span></div>`;
   }).join('');
   const conv = total ? u.COMPLETED / total : 0;
-  note.textContent = `Конверсия обращений в завершённые: ${pct(conv, 1)} · всего обращений за период: ${fmt(total)}.`;
+  note.textContent = FB_MODE_FB()
+    ? `Конверсия в завершённые: ${pct(conv, 1)} · за период ${fmt(t.fb)} обращений, по ним заведено ${fmt(total)} задач. У обращения своего статуса нет, поэтому воронка считается по задачам. Фильтр «Роль» здесь не действует.`
+    : `Конверсия в завершённые: ${pct(conv, 1)} · всего неплановых задач за период: ${fmt(total)}, из них по обращениям — ${fmt(t.tasks)}. Фильтр «Роль» здесь не действует.`;
 }
 
 /* ==============================================================
@@ -2154,17 +2301,18 @@ const FB_PALETTE = ['#002882', '#00AAFF', '#23A75B', '#F5A623', '#667EB4', '#E62
 function b1FeedbackSeries(topN = 5) {
   const groups = timeGroups();
   if (!groups.length) return { rows: [], series: [], totalAll: 0, maxBucket: 0, objectsWithFb: 0 };
-  const allSel = state.objects.size === 0 || state.objects.size === OBJECTS.length;
+  const sel = fbSelObjects();
+  const fbMode = FB_MODE_FB();
   const perGroup = groups.map(() => new Map());   // индекс группы -> Map(objId -> кол-во)
   const objTotals = new Map();
   groups.forEach((g, gi) => {
     g.dates.forEach(date => {
       // Блок учитывает ТОЛЬКО период и объект — роль сюда по требованию
       // пользователя не влияет, поэтому берём сырые строки (не objectRowsForDate).
-      const rows = ROWS_BY_DATE.get(date) || [];
+      const rows = fbMode ? (ROWS_FB_BY_DATE.get(date) || []) : (ROWS_BY_DATE.get(date) || []);
       rows.forEach(r => {
-        if (!allSel && !state.objects.has(r.objId)) return;
-        const v = bucketAll(r.unplanned);
+        if (sel && !sel.has(r.objId)) return;
+        const v = fbMode ? r.fb : bucketAll(r.unplanned);
         if (v <= 0) return;
         const m = perGroup[gi];
         m.set(r.objId, (m.get(r.objId) || 0) + v);
@@ -2194,11 +2342,25 @@ function b1FeedbackSeries(topN = 5) {
 // нечитаем, поэтому в часах показываем статусный разрез, как в блоке 01.
 function fbHourBuckets(date) {
   const out = [];
+  const fbMode = FB_MODE_FB();
+  const sel = fbSelObjects();
   for (let h = 0; h < 24; h++) {
     const hh = String(h).padStart(2, '0');
-    const { unplanned } = hourRowsForDateHour(date, hh);
-    const all = bucketAll(unplanned);
-    out.push({ key: hh, label: hh + ':00', completed: unplanned.COMPLETED, missed: unplanned.MISSED, other: Math.max(0, all - unplanned.COMPLETED - unplanned.MISSED), all });
+    if (fbMode) {
+      // У обращения статуса нет — в часах показываем просто количество.
+      // Уникальность feedbackID здесь считается в пределах ЧАСА, поэтому сумма
+      // по 24 столбикам может быть чуть больше дневного числа обращений.
+      let fb = 0, tasks = 0;
+      (ROWS_FB_HOUR_BY_KEY.get(date + '|' + hh) || []).forEach(r => {
+        if (sel && !sel.has(r.objId)) return;
+        fb += r.fb; tasks += r.tasks;
+      });
+      out.push({ key: hh, label: hh + ':00', fb, tasks, all: fb });
+    } else {
+      const { unplanned } = hourRowsForDateHour(date, hh);
+      const all = bucketAll(unplanned);
+      out.push({ key: hh, label: hh + ':00', completed: unplanned.COMPLETED, missed: unplanned.MISSED, other: Math.max(0, all - unplanned.COMPLETED - unplanned.MISSED), all });
+    }
   }
   return out;
 }
@@ -2243,37 +2405,55 @@ function renderB1Feedback() {
   const note = document.getElementById('b1-fb-note');
   renderTimeNav();
 
+  const fbMode = FB_MODE_FB();
+  const w = fbWords();
+  document.getElementById('b1-fb-title').textContent = w.title;
+  // Плашки одинаковые в обоих режимах — в этом и смысл: видно, что обращений,
+  // задач по ним и неплановых задач РАЗНОЕ количество. По тумблеру меняется
+  // только последняя (объекты) и то, что рисует график.
+  const drawTiles = (t, objLbl, objVal) => {
+    const tiles = [
+      { lbl: 'Обращений (всего)', val: fmt(t.fb), hi: fbMode },
+      { lbl: 'Задач по обращениям', val: fmt(t.tasks), hi: false },
+      { lbl: 'Неплановых задач (всего)', val: fmt(t.unpl), hi: !fbMode },
+      { lbl: objLbl, val: fmt(objVal), hi: false },
+    ];
+    kpiWrap.innerHTML = '';
+    tiles.forEach(x => {
+      const el = document.createElement('div');
+      el.className = 'kpi-tile solo' + (x.hi ? ' fb-active' : '');
+      el.innerHTML = `<div><p class="lbl">${x.lbl}</p><p class="val">${x.val}</p></div>`;
+      kpiWrap.appendChild(el);
+    });
+  };
+
   if (timeLevel() === 'hour') {
     const buckets = fbHourBuckets(state.time.hour);
     const total = buckets.reduce((a, b) => a + b.all, 0);
-    kpiWrap.innerHTML = '';
-    [{ lbl: 'Обращений за день', val: fmt(total) }, { lbl: 'Макс. за час', val: fmt(Math.max(0, ...buckets.map(b => b.all))) }].forEach(t => {
-      const el = document.createElement('div'); el.className = 'kpi-tile solo'; el.innerHTML = `<div><p class="lbl">${t.lbl}</p><p class="val">${t.val}</p></div>`; kpiWrap.appendChild(el);
-    });
+    const t = fbTotals([state.time.hour]);
+    drawTiles(t, fbMode ? 'Объектов с обращениями' : 'Объектов с неплановыми', fbMode ? t.objFb : t.objUnpl);
     document.getElementById('b1-fb-hint').textContent = 'часы дня · роль здесь не действует';
-    if (!total) { chartHost.innerHTML = '<p class="note empty">Нет обращений в этот день (или всё отфильтровано выбранным объектом).</p>'; legend.innerHTML = ''; note.textContent = ''; return; }
-    const series = [
-      { key: 'completed', label: 'Выполнено', color: '#002882' },
-      { key: 'other', label: 'В работе / прочее', color: '#00AAFF' },
-      { key: 'missed', label: 'Пропущено', color: '#E62632' },
-    ];
+    if (!total) { chartHost.innerHTML = `<p class="note empty">Нет ${fbMode ? 'обращений' : 'неплановых задач'} в этот день (или всё отфильтровано выбранным объектом).</p>`; legend.innerHTML = ''; note.textContent = ''; return; }
+    const series = fbMode
+      ? [{ key: 'fb', label: 'Обращений', color: '#002882' }]
+      : [
+        { key: 'completed', label: 'Выполнено', color: '#002882' },
+        { key: 'other', label: 'В работе / прочее', color: '#00AAFF' },
+        { key: 'missed', label: 'Пропущено', color: '#E62632' },
+      ];
     renderSeries(chartHost, buckets, series, { shape: 'bars', maxLabels: 24 });
     renderPickLegend(legend, series, {});
-    note.textContent = 'Распределение обращений по часам суток внутри дня. Фильтр «Роль» здесь не действует.';
+    note.textContent = fbMode
+      ? 'Распределение обращений по часам суток внутри дня (по времени задачи, заведённой по обращению). Статусов у обращения нет, поэтому здесь только количество. Фильтр «Роль» не действует.'
+      : 'Распределение неплановых задач по часам суток внутри дня. Фильтр «Роль» здесь не действует.';
     return;
   }
 
   const { rows, series, totalAll, maxBucket, objectsWithFb } = b1FeedbackSeries();
-  const lvlWord = { year: 'за год', month: 'за месяц', week: 'за неделю', day: 'за день' }[timeLevel()] || 'за период';
-  const tiles = [
-    { lbl: 'Обращений всего', val: fmt(totalAll) },
-    { lbl: 'Макс. ' + lvlWord, val: fmt(maxBucket) },
-    { lbl: 'Объектов с обращениями', val: fmt(objectsWithFb) },
-  ];
-  kpiWrap.innerHTML = '';
-  tiles.forEach(t => { const el = document.createElement('div'); el.className = 'kpi-tile solo'; el.innerHTML = `<div><p class="lbl">${t.lbl}</p><p class="val">${t.val}</p></div>`; kpiWrap.appendChild(el); });
+  const t = fbTotals(periodDates());
+  drawTiles(t, fbMode ? 'Объектов с обращениями' : 'Объектов с неплановыми', objectsWithFb);
   document.getElementById('b1-fb-hint').textContent = 'стек по объектам · ' + GRAN_WORD[timeLevel()] + ' · клик по подписи объекта — фильтр';
-  if (!rows.length || !totalAll) { chartHost.innerHTML = '<p class="note empty">Нет обращений (неплановых задач) в выбранном периоде.</p>'; legend.innerHTML = ''; note.textContent = ''; return; }
+  if (!rows.length || !totalAll) { chartHost.innerHTML = `<p class="note empty">Нет ${w.many} в выбранном периоде.</p>`; legend.innerHTML = ''; note.textContent = ''; return; }
   renderSeries(chartHost, rows, series, {
     shape: seriesShape(rows.length),
     onClick: (b) => timeDrillDown(b),
@@ -2284,30 +2464,42 @@ function renderB1Feedback() {
     isOn: s => selAll || !s.objId || state.objects.has(s.objId),
     onPick: s => toggleObjectFilter(s.objId),
   });
-  note.textContent = 'Резкие скачки стоит сверять с внешними причинами (кампании, инструктаж, сезонность), а не сразу трактовать как ухудшение качества обслуживания.';
+  note.textContent = (fbMode
+    ? `Обращение — запрос клиента (feedbackID); одно обращение может породить несколько задач, поэтому «задач по обращениям» (${fmt(t.tasks)}) больше, чем самих обращений (${fmt(t.fb)}). Неплановых задач ещё больше (${fmt(t.unpl)}): в них входят и заведённые вручную, без обращения. `
+    : `Неплановая задача — любая задача вне регламента, включая заведённые вручную: по обращениям из них только ${fmt(t.tasks)} из ${fmt(t.unpl)}. Поэтому объектов с неплановыми задачами может быть больше, чем с обращениями (${fmt(t.objUnpl)} против ${fmt(t.objFb)}). `)
+    + 'Резкие скачки стоит сверять с внешними причинами (кампании, инструктаж, сезонность), а не сразу трактовать как ухудшение качества обслуживания.';
 }
 function renderB1FeedbackObjDetail() {
   const dates = periodDates();
-  const allSel = state.objects.size === 0 || state.objects.size === OBJECTS.length;
-  const totals = new Map();
+  const sel = fbSelObjects();
+  const fbMode = FB_MODE_FB();
+  // Таблица показывает оба числа сразу — так видно, на каких объектах неплановые
+  // задачи заводят вручную, а не по обращениям (там второй столбец сильно меньше).
+  const totals = new Map();   // objId -> {fb, tasks, unpl}
+  const slot = id => { let s = totals.get(id); if (!s) totals.set(id, s = { fb: 0, tasks: 0, unpl: 0 }); return s; };
   dates.forEach(date => {
     // См. b1FeedbackSeries() — этот блок тоже только период+объект, без роли.
-    const rows = ROWS_BY_DATE.get(date) || [];
-    rows.forEach(r => {
-      if (!allSel && !state.objects.has(r.objId)) return;
+    (ROWS_FB_BY_DATE.get(date) || []).forEach(r => {
+      if (sel && !sel.has(r.objId)) return;
+      if (!r.fb && !r.tasks) return;
+      const s = slot(r.objId); s.fb += r.fb; s.tasks += r.tasks;
+    });
+    (ROWS_BY_DATE.get(date) || []).forEach(r => {
+      if (sel && !sel.has(r.objId)) return;
       const v = bucketAll(r.unplanned);
       if (v <= 0) return;
-      totals.set(r.objId, (totals.get(r.objId) || 0) + v);
+      slot(r.objId).unpl += v;
     });
   });
-  const rows = [...totals.entries()].sort((a, b) => b[1] - a[1]);
-  const total = rows.reduce((a, [, v]) => a + v, 0);
-  const body = !rows.length ? '<p class="note empty">Нет обращений в выбранном периоде.</p>' : `
+  const key = fbMode ? 'fb' : 'unpl';
+  const rows = [...totals.entries()].sort((a, b) => b[1][key] - a[1][key]);
+  const total = rows.reduce((a, [, v]) => a + v[key], 0);
+  const body = !rows.length || !total ? `<p class="note empty">Нет ${fbMode ? 'обращений' : 'неплановых задач'} в выбранном периоде.</p>` : `
     <table class="detail-table">
-      <thead><tr><th>Объект</th><th>Обращений</th><th>Доля</th></tr></thead>
-      <tbody>${rows.map(([id, v]) => `<tr><td>${objById[id] ? esc(objById[id].name) : '—'}</td><td>${fmt(v)}</td><td>${pct(v / total, 1)}</td></tr>`).join('')}</tbody>
+      <thead><tr><th>Объект</th><th>Обращений</th><th>Задач по обращениям</th><th>Неплановых задач</th><th>Доля${fbMode ? ' обращений' : ' неплановых'}</th></tr></thead>
+      <tbody>${rows.map(([id, v]) => `<tr><td>${objById[id] ? esc(objById[id].name) : '—'}</td><td>${fmt(v.fb)}</td><td>${fmt(v.tasks)}</td><td>${fmt(v.unpl)}</td><td>${pct(v[key] / total, 1)}</td></tr>`).join('')}</tbody>
     </table>`;
-  showModal('Обращения по объектам — детализация', body);
+  showModal((fbMode ? 'Обращения' : 'Неплановые задачи') + ' по объектам — детализация', body);
 }
 
 /* ==============================================================
@@ -2964,6 +3156,10 @@ function setupFilters() {
     state.roles = new Set();
     state.scope = 'all';
     state.b4src = 'bruno';
+    if (HAS_FB) {
+      state.fbSrc = 'fb';
+      document.querySelectorAll('#b1-fb-toggle button').forEach(x => x.classList.toggle('active', x.dataset.fbsrc === 'fb'));
+    }
     state.time.gran = 'auto';
     resetTimeNav();
     document.querySelectorAll('#gran-toggle button').forEach(x => x.classList.toggle('active', x.dataset.gran === 'auto'));
@@ -2993,6 +3189,15 @@ function setupFilters() {
     b.classList.add('active'); state.b4src = b.dataset.src;
     // источник влияет и на плашки ролей (их мини-графики), поэтому перерисовываем оба
     renderB1Roles(); renderB4();
+  });
+  // Тумблер «Обращения / Неплановые задачи». Один на два блока: и график по
+  // объектам, и воронка слева переключаются вместе (решение 22.08.2026), иначе
+  // на одном экране оказались бы два разных числа «обращений».
+  document.querySelectorAll('#b1-fb-toggle button').forEach(b => b.onclick = () => {
+    if (b.dataset.fbsrc === 'fb' && !HAS_FB) return;
+    document.querySelectorAll('#b1-fb-toggle button').forEach(x => x.classList.remove('active'));
+    b.classList.add('active'); state.fbSrc = b.dataset.fbsrc;
+    renderB1Funnel(); renderB1Feedback();
   });
 }
 // Клик по ячейке треймапа сужает фильтр «Объекты» до одного объекта, поэтому крестик
@@ -3104,6 +3309,20 @@ async function startApp() {
     applyYTD();
     state.objects = new Set(OBJECTS.map(o => o.id));
     document.getElementById('sub-lbl').textContent = `Система Bruno · ${OBJECTS.length} объектов · архив ${ARCHIVE_FROM} — ${ARCHIVE_TO}`;
+    // Старая модель (собрана до прохода 14) куба обращений не содержит —
+    // тогда честнее показать один режим «неплановые задачи», чем рисовать нули.
+    if (!HAS_FB) {
+      state.fbSrc = 'unplanned';
+      const tgl = document.getElementById('b1-fb-toggle');
+      if (tgl) {
+        tgl.title = 'В загруженной модели нет куба обращений (она собрана старой версией build_model.py) — доступны только неплановые задачи.';
+        tgl.querySelectorAll('button').forEach(x => {
+          const isFb = x.dataset.fbsrc === 'fb';
+          x.classList.toggle('active', !isFb);
+          if (isFb) { x.disabled = true; x.style.opacity = '.45'; x.style.cursor = 'not-allowed'; x.textContent = 'Обращения (нет в модели)'; }
+        });
+      }
+    }
     setupFilters();
     renderAll();
     watchLazyBlocks();

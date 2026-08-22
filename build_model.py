@@ -475,6 +475,28 @@ def process_archive(archive, manifest, employee_dir, team_membership, feedback_c
     # см. комментарий у CLEAN_BASE_ROLE_IDS. Уходят в model["report"].
     role_id_of_employee = role_id_of_employee or {}
     feedback_ids_by_object_day = defaultdict(set)     # "дата|объект" -> {feedbackID}
+
+    # НОВОЕ (проход 14): РАЗДЕЛЕНИЕ «обращения» и «неплановые задачи».
+    # Найденная пользователем ошибка дашборда: блок «Обращения по объектам»
+    # показывал ВСЕ неплановые задачи (записи без taskID), а это не одно и то же.
+    # По архиву за июль 2026: неплановых задач 1622, из них с feedbackID только
+    # 470 (29%), уникальных обращений — 387. Остальные 1152 — заведённые вручную
+    # разовые задачи, к обращениям отношения не имеющие.
+    # Поэтому в model["daily"] уезжают два новых куба (дашборд читает их
+    # напрямую; старые ключи не тронуты — обратная совместимость):
+    #   fbByObjectDay  "дата|объект"     -> {fb, tasks, NEW..MISSED}
+    #   fbByObjectHour "дата|час|объект" -> {fb, tasks}
+    # fb — число УНИКАЛЬНЫХ feedbackID (единица «обращение»), tasks — число
+    # записей taskPlan с feedbackID (единица «задача по обращению»), статусы —
+    # по задачам (у самого обращения статуса нет, поэтому воронка считается
+    # только по задачам). Уникальность fb — в пределах суток и объекта:
+    # обращение, задачи по которому шли два дня, попадёт в оба дня (та же
+    # методика, что в feedbackByObjectDay для презентации, иначе числа дашборда
+    # и колоды разъедутся).
+    feedback_ids_by_object_hour = defaultdict(set)    # "дата|час|объект" -> {feedbackID}
+    fb_tasks_by_object_day = defaultdict(
+        lambda: {"tasks": 0, "NEW": 0, "WAITING": 0, "COMPLETING": 0, "COMPLETED": 0, "MISSED": 0})
+    fb_tasks_by_object_hour = defaultdict(int)
     by_komendant_day = defaultdict(empty_pu_int)      # "дата|сотрудник"
     by_clean_object_day = defaultdict(empty_pu_int)   # "дата|объект|группа" (base|mgr)
     # "дата|объект|группа|вид|смена", вид = p (плановые) | u (неплановые).
@@ -646,6 +668,18 @@ def process_archive(archive, manifest, employee_dir, team_membership, feedback_c
                     fid = str(rec.get("feedbackID") or "")
                     if fid:
                         feedback_ids_by_object_day[d + "|" + obj].add(fid)
+                    # --- проход 14: куб задач по обращениям (см. комментарий
+                    # у feedback_ids_by_object_hour выше) ---
+                    fb_bucket = fb_tasks_by_object_day[d + "|" + obj]
+                    fb_bucket["tasks"] += 1
+                    if status in STATUSES:
+                        fb_bucket[status] += 1
+                    hh_fb = hour_of(rec)
+                    if hh_fb is not None:
+                        fb_hkey = d + "|" + hh_fb + "|" + obj
+                        fb_tasks_by_object_hour[fb_hkey] += 1
+                        if fid:
+                            feedback_ids_by_object_hour[fb_hkey].add(fid)
                     text = extract_feedback_text(rec.get("feedback"))
                     if text:
                         feedback_examples.append({
@@ -751,6 +785,19 @@ def process_archive(archive, manifest, employee_dir, team_membership, feedback_c
             "unplanned": by_object_hour_unplanned.get(k, empty_bucket()),
         }
 
+    # --- проход 14: кубы обращений для дашборда (см. комментарий у объявления) ---
+    fb_by_object_day = {}
+    for key in set(fb_tasks_by_object_day) | set(feedback_ids_by_object_day):
+        b = fb_tasks_by_object_day.get(key) or {}
+        row = {"fb": len(feedback_ids_by_object_day.get(key, ())), "tasks": b.get("tasks", 0)}
+        for s in STATUSES:
+            row[s] = b.get(s, 0)
+        fb_by_object_day[key] = row
+    fb_by_object_hour = {
+        key: {"fb": len(feedback_ids_by_object_hour.get(key, ())), "tasks": n}
+        for key, n in fb_tasks_by_object_hour.items()
+    }
+
     feedback_examples = feedback_examples[-feedback_cap:] if feedback_cap else feedback_examples
 
     # дробные доли храним с 3 знаками — как и в кубе ролей, иначе float-хвосты
@@ -778,7 +825,8 @@ def process_archive(archive, manifest, employee_dir, team_membership, feedback_c
 
     return (by_object_day_combined, dict(by_zone_day), dict(by_employee_day), feedback_examples, qa,
             by_object_role_day_combined, by_object_hour_combined,
-            by_employee_object_day, by_employee_task_day, report_cubes)
+            by_employee_object_day, by_employee_task_day, report_cubes,
+            fb_by_object_day, fb_by_object_hour)
 
 
 # --------------------------------------------------------------------- main
@@ -821,7 +869,8 @@ def main():
 
     (by_object_day, by_zone_day, by_employee_day, feedback_examples, qa,
      by_object_role_day, by_object_hour,
-     by_employee_object_day, by_employee_task_day, report_cubes) = process_archive(
+     by_employee_object_day, by_employee_task_day, report_cubes,
+     fb_by_object_day, fb_by_object_hour) = process_archive(
         archive, manifest, employee_dir, team_membership, args.feedback_cap,
         role_id_of_employee=role_id_of_employee)
 
@@ -864,6 +913,15 @@ def main():
             # по сотруднику. Дашборд переключает их тумблером «Источник».
             "byEmployeeObjectDay": by_employee_object_day,
             "byEmployeeTaskDay": by_employee_task_day,
+            # НОВОЕ (проход 14): обращения отдельно от неплановых задач.
+            # fbByObjectDay  — "дата|объект"     -> {fb, tasks, NEW..MISSED}
+            # fbByObjectHour — "дата|час|объект" -> {fb, tasks}
+            # fb = уникальные feedbackID (обращения), tasks = записи taskPlan
+            # с feedbackID (задачи по обращениям). Неплановые задачи целиком
+            # по-прежнему лежат в byObjectDay.unplanned — это НЕ одно и то же,
+            # см. развёрнутый комментарий в process_archive().
+            "fbByObjectDay": fb_by_object_day,
+            "fbByObjectHour": fb_by_object_hour,
         },
         "feedbackExamples": feedback_examples,
         # НОВОЕ (проход 13): кубы для презентации-копии утверждённой колоды.
@@ -906,6 +964,11 @@ def main():
     print("  byObjectHour: %d записей ('дата|час|объект')" % len(by_object_hour))
     print("  byEmployeeObjectDay: %d записей ('дата|объект|сотрудник', нативная стат. Bruno)" % len(by_employee_object_day))
     print("  byEmployeeTaskDay:   %d записей ('дата|объект|сотрудник', счёт по taskPlan)" % len(by_employee_task_day))
+    print("  fbByObjectDay:  %d записей ('дата|объект'), обращений: %s, задач по обращениям: %s"
+          % (len(fb_by_object_day),
+             "{:,}".format(sum(v["fb"] for v in fb_by_object_day.values())).replace(",", " "),
+             "{:,}".format(sum(v["tasks"] for v in fb_by_object_day.values())).replace(",", " ")))
+    print("  fbByObjectHour: %d записей ('дата|час|объект')" % len(fb_by_object_hour))
     print("  feedbackExamples: %d текстов сохранено" % len(feedback_examples))
     print("  -- кубы презентации (model['report']) --")
     print("  feedbackByObjectDay: %d записей, обращений всего: %s" % (

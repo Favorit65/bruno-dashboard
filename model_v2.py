@@ -61,6 +61,13 @@ CUBES = {
     # ключ "дата|объект|сотрудник"
     "byEmployeeObjectDay": {"key": ["d", "o", "e"], "val": ("flat", ["ai", "ci", "at", "ct"])},
     "byEmployeeTaskDay":   {"key": ["d", "o", "e"], "val": ("flat", ["pa", "pc", "ua", "uc"])},
+    # НОВОЕ (проход 14): обращения ОТДЕЛЬНО от неплановых задач.
+    # fb — уникальные feedbackID за сутки по объекту (единица «обращение»),
+    # tasks — записи taskPlan с feedbackID (единица «задача по обращению»),
+    # далее статусы этих задач (у самого обращения статуса нет).
+    "fbByObjectDay":       {"key": ["d", "o"],      "val": ("flat", ["fb", "tasks", "NEW", "WAITING",
+                                                                     "COMPLETING", "COMPLETED", "MISSED"])},
+    "fbByObjectHour":      {"key": ["d", "h", "o"], "val": ("flat", ["fb", "tasks"])},
 }
 
 # Что уезжает в первый (лёгкий) файл, что — во второй.
@@ -68,9 +75,12 @@ CUBES = {
 # ролей. В отдельный файл вынесено только то, что нужно ПО КЛИКУ: зоны объекта
 # (панель треймапа) и часовой разрез дня. Их браузер догружает фоном, и к
 # моменту первого клика они, как правило, уже на месте.
+# fbByObjectDay — в core: блок «Обращения по объектам» на первом экране, и он
+# крошечный (сотни записей против сотен тысяч у byObjectDay). fbByObjectHour —
+# в lazy, рядом с byObjectHour: нужен только по клику на столбик дня.
 CORE_CUBES = ["byObjectDay", "byObjectRoleDay", "byEmployeeDay",
-              "byEmployeeObjectDay", "byEmployeeTaskDay"]
-LAZY_CUBES = ["byZoneDay", "byObjectHour"]
+              "byEmployeeObjectDay", "byEmployeeTaskDay", "fbByObjectDay"]
+LAZY_CUBES = ["byZoneDay", "byObjectHour", "fbByObjectHour"]
 
 
 def _stride(spec):
