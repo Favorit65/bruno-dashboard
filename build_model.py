@@ -190,6 +190,67 @@ def empty_bucket_light():
             "completedOnTime": 0.0, "completedLate": 0.0}
 
 
+# ------------------------------------------------------------ кубы презентации
+# Всё, что ниже, нужно ТОЛЬКО конвейеру презентации-копии (build_report_v5.py).
+# Кубы складываются в model["report"], а НЕ в model["daily"], поэтому формат 2
+# (model_v2.py) их не видит и дашборд от их появления не меняется вообще.
+#
+# Методика намеренно повторяет утверждённый июльский отчёт, а не дашборд:
+#  * исполнитель задачи = employeeID, а если он пуст (задача ещё не начата) —
+#    employees[0]. БЕЗ дробного апортирования между всеми исполнителями: в
+#    дашборде оно есть и там оно правильное, но утверждённая колода считалась
+#    по одному исполнителю, и при дробях цифры с ней разойдутся.
+#  * роль уборщиц определяется по roleID, а не по имени: у этой системной роли
+#    Bruno отдаёт нерасшифрованный плейсхолдер вместо названия.
+CLEAN_BASE_ROLE_IDS = {"employee"}      # системная роль Bruno — собственно уборщицы
+KOMENDANT_ROLE_MARK = "комендант"       # подстрока имени роли: Комендант, Комендант 1..5, ...
+CLEAN_MGR_ROLE_MARK = "менеджер клининга"
+SHIFT_THRESHOLD_HOUR = 18               # date_begin < 18:00 МСК -> дневная смена
+MSK_OFFSET_HOURS = 3
+
+
+def empty_bucket_int():
+    return {"NEW": 0, "WAITING": 0, "COMPLETING": 0, "COMPLETED": 0, "MISSED": 0}
+
+
+def empty_pu_int():
+    return {"planned": empty_bucket_int(), "unplanned": empty_bucket_int()}
+
+
+def executor_of(rec):
+    """employeeID, а если пуст — employees[0]. Без фолбэка атрибуция падает до
+    ~4% (employeeID появляется только когда задачу начали), см.
+    ПЕРЕДАЧА_отчет_презентация.md."""
+    eid = str(rec.get("employeeID") or "")
+    if eid:
+        return eid
+    for e in (rec.get("employees") or []):
+        if e:
+            return str(e)
+    return ""
+
+
+def clean_group_of(role_id, role_name):
+    """'base' — собственно уборщицы (системная роль employee),
+    'mgr'  — «Менеджер клининга» (в утверждённой колоде НЕ учитывался, см.
+             ШАГ2_анализ_сырых_данных: это ~15% объёма уборки),
+    None   — все прочие роли."""
+    if str(role_id or "") in CLEAN_BASE_ROLE_IDS:
+        return "base"
+    if CLEAN_MGR_ROLE_MARK in (role_name or "").lower():
+        return "mgr"
+    return None
+
+
+def hour_msk(s):
+    """Час (0..23, МСК) из ISO-времени Bruno; None, если не разобрать."""
+    ts = parse_dt(s)
+    if ts is None:
+        return None
+    from datetime import datetime, timezone, timedelta
+    return datetime.fromtimestamp(ts, tz=timezone(timedelta(hours=MSK_OFFSET_HOURS))).hour
+
+
 def team_role_shares(team_id, team_membership, role_of_employee):
     """teamID -> {roleName: доля от 0..1}, доли участников команды по ролям
     (равный вес на человека, как и в существующей team-share логике
@@ -331,6 +392,10 @@ def build_employee_directory(users, role_lookup, team_membership, project_id_hin
 
     stats = {"ambiguousRole": 0, "noRole": 0, "noTeam": 0, "multiTeam": 0}
     out = {}
+    # roleID сотрудника отдаём отдельным словарём, а не полем внутри out: out
+    # уходит в модель как есть (directories.employees), и добавлять туда поля
+    # ради одного лишь конвейера презентации незачем.
+    role_ids = {}
     for u in users:
         if u.get("deleted"):
             continue
@@ -351,12 +416,14 @@ def build_employee_directory(users, role_lookup, team_membership, project_id_hin
             "roleName": role_name,
             "teamIDs": team_ids,
         }
-    return out, stats
+        role_ids[eid] = str(role_id or "")
+    return out, stats, role_ids
 
 
 # --------------------------------------------------------------- посуточный проход
 
-def process_archive(archive, manifest, employee_dir, team_membership, feedback_cap, days_override=None):
+def process_archive(archive, manifest, employee_dir, team_membership, feedback_cap, days_override=None,
+                    role_id_of_employee=None):
     by_object_day = defaultdict(empty_bucket)          # "date|objectID" -> bucket (planned/unplanned внутри)
     by_object_day_unplanned = defaultdict(empty_bucket)
     by_zone_day = defaultdict(lambda: {"objectID": "", "completed": 0, "missed": 0})
@@ -403,6 +470,22 @@ def process_archive(archive, manifest, employee_dir, team_membership, feedback_c
     #    pa/pc — плановые назначено/выполнено, ua/uc — неплановые.
     by_employee_object_day = defaultdict(lambda: {"ai": 0, "ci": 0, "at": 0.0, "ct": 0.0})
     by_employee_task_day = defaultdict(lambda: {"pa": 0.0, "pc": 0.0, "ua": 0.0, "uc": 0.0})
+
+    # НОВОЕ (проход 13, презентация-копия): кубы, которые нужны только отчёту,
+    # см. комментарий у CLEAN_BASE_ROLE_IDS. Уходят в model["report"].
+    role_id_of_employee = role_id_of_employee or {}
+    feedback_ids_by_object_day = defaultdict(set)     # "дата|объект" -> {feedbackID}
+    by_komendant_day = defaultdict(empty_pu_int)      # "дата|сотрудник"
+    by_clean_object_day = defaultdict(empty_pu_int)   # "дата|объект|группа" (base|mgr)
+    # "дата|объект|группа|вид|смена", вид = p (плановые) | u (неплановые).
+    # factSum/factN — ФАКТИЧЕСКОЕ время работы (date_complete − date_begin);
+    # normSum/normN — НОРМАТИВ (durationMinutes). По спецификации Bruno
+    # durationMinutes — «нормативная длительность» (из неё считается
+    # completionDate), поэтому как «время на задачу» её брать нельзя: она
+    # систематически больше факта. Храним обе, чтобы разницу было видно.
+    clean_speed = defaultdict(lambda: {"tasks": 0, "factSum": 0.0, "factN": 0,
+                                       "normSum": 0.0, "normN": 0})
+    clean_speed_emps = defaultdict(set)               # тот же ключ -> {сотрудник}
 
     if days_override is not None:
         days = days_override  # ручная пересборка порциями (см. rebuild_chunked.py, не часть штатного конвейера)
@@ -516,7 +599,53 @@ def process_archive(archive, manifest, employee_dir, team_membership, feedback_c
                     else:
                         bucket["completedOnTime"] += 1
 
+                # -- новое (проход 13): кубы презентации-копии. Исполнитель —
+                # один (employeeID / employees[0]), без дробей: так считалась
+                # утверждённая колода. --
+                if status in STATUSES:
+                    ex_id = executor_of(rec)
+                    ex_info = employee_dir.get(ex_id) if ex_id else None
+                    ex_role = ex_info["roleName"] if ex_info else ""
+                    ex_role_id = role_id_of_employee.get(ex_id, "")
+                    side = "planned" if is_planned else "unplanned"
+                    if ex_role and KOMENDANT_ROLE_MARK in ex_role.lower():
+                        by_komendant_day[d + "|" + ex_id][side][status] += 1
+                    grp = clean_group_of(ex_role_id, ex_role)
+                    if grp:
+                        by_clean_object_day[d + "|" + obj + "|" + grp][side][status] += 1
+                        # скорость уборки — по завершённым задачам, отдельно
+                        # плановым и неплановым (смена по времени НАЧАЛА работы)
+                        if status == "COMPLETED":
+                            hb = hour_msk(rec.get("date_begin"))
+                            if hb is not None:
+                                shift = "day" if hb < SHIFT_THRESHOLD_HOUR else "evening"
+                                kind = "p" if is_planned else "u"
+                                skey = "|".join((d, obj, grp, kind, shift))
+                                slot = clean_speed[skey]
+                                slot["tasks"] += 1
+                                if ex_id:
+                                    clean_speed_emps[skey].add(ex_id)
+                                # ФАКТ: сколько человек реально работал над задачей
+                                t0 = parse_dt(rec.get("date_begin"))
+                                t1 = parse_dt(rec.get("date_complete") or rec.get("completionDate"))
+                                if t0 is not None and t1 is not None and t1 >= t0:
+                                    fact = (t1 - t0) / 60.0
+                                    # отсекаем мусор: 0 и «висящие» задачи длиной в сутки+
+                                    if 0 < fact <= 24 * 60:
+                                        slot["factSum"] += fact
+                                        slot["factN"] += 1
+                                # НОРМАТИВ — для сверки, в отчёт не идёт
+                                norm = rec.get("durationMinutes")
+                                if norm is not None:
+                                    norm = float(norm)
+                                    if 0 < norm <= 24 * 60:
+                                        slot["normSum"] += norm
+                                        slot["normN"] += 1
+
                 if is_feedback:
+                    fid = str(rec.get("feedbackID") or "")
+                    if fid:
+                        feedback_ids_by_object_day[d + "|" + obj].add(fid)
                     text = extract_feedback_text(rec.get("feedback"))
                     if text:
                         feedback_examples.append({
@@ -631,9 +760,25 @@ def process_archive(archive, manifest, employee_dir, team_membership, feedback_c
     by_employee_task_day = {k: {kk: round(vv, 3) for kk, vv in v.items()}
                             for k, v in by_employee_task_day.items()}
 
+    # --- кубы презентации-копии: множества сворачиваем в счётчики ---
+    report_cubes = {
+        # обращения (block2 утверждённой колоды): считаем УНИКАЛЬНЫЕ feedbackID
+        # за сутки по объекту, а не число задач по обращениям — одно обращение
+        # может порождать задачу повторно на следующей выгрузке.
+        "feedbackByObjectDay": {k: len(v) for k, v in feedback_ids_by_object_day.items()},
+        "byKomendantDay": dict(by_komendant_day),
+        "byCleanObjectDay": dict(by_clean_object_day),
+        "cleanSpeedDay": {
+            k: {"tasks": v["tasks"], "employees": len(clean_speed_emps.get(k, ())),
+                "factSum": round(v["factSum"], 1), "factN": v["factN"],
+                "normSum": round(v["normSum"], 1), "normN": v["normN"]}
+            for k, v in clean_speed.items()
+        },
+    }
+
     return (by_object_day_combined, dict(by_zone_day), dict(by_employee_day), feedback_examples, qa,
             by_object_role_day_combined, by_object_hour_combined,
-            by_employee_object_day, by_employee_task_day)
+            by_employee_object_day, by_employee_task_day, report_cubes)
 
 
 # --------------------------------------------------------------------- main
@@ -668,15 +813,17 @@ def main():
     snap_date, objects, zones, users, teams, roles = load_directories(archive)
     role_lookup = build_role_lookup(roles)
     team_membership = build_team_membership(teams)
-    employee_dir, emp_stats = build_employee_directory(users, role_lookup, team_membership, args.project_id)
+    employee_dir, emp_stats, role_id_of_employee = build_employee_directory(
+        users, role_lookup, team_membership, args.project_id)
 
     log("Сотрудников без роли: %d, с неоднозначной ролью (>1 проект): %d, без команды: %d, в 2+ командах: %d"
         % (emp_stats["noRole"], emp_stats["ambiguousRole"], emp_stats["noTeam"], emp_stats["multiTeam"]), "ok")
 
     (by_object_day, by_zone_day, by_employee_day, feedback_examples, qa,
      by_object_role_day, by_object_hour,
-     by_employee_object_day, by_employee_task_day) = process_archive(
-        archive, manifest, employee_dir, team_membership, args.feedback_cap)
+     by_employee_object_day, by_employee_task_day, report_cubes) = process_archive(
+        archive, manifest, employee_dir, team_membership, args.feedback_cap,
+        role_id_of_employee=role_id_of_employee)
 
     obj_dict = {uid(o): o.get("name") or "" for o in objects if not o.get("deleted")}
     zone_dict = {uid(z): {"name": z.get("name") or "", "objectID": str(z.get("objectID") or "")}
@@ -719,6 +866,10 @@ def main():
             "byEmployeeTaskDay": by_employee_task_day,
         },
         "feedbackExamples": feedback_examples,
+        # НОВОЕ (проход 13): кубы для презентации-копии утверждённой колоды.
+        # Лежат отдельно от "daily" сознательно: model_v2.encode() читает только
+        # "daily", поэтому дашборд и формат 2 этих данных не видят и не растут.
+        "report": report_cubes,
     }
 
     def dump_gz(obj, path):
@@ -756,6 +907,40 @@ def main():
     print("  byEmployeeObjectDay: %d записей ('дата|объект|сотрудник', нативная стат. Bruno)" % len(by_employee_object_day))
     print("  byEmployeeTaskDay:   %d записей ('дата|объект|сотрудник', счёт по taskPlan)" % len(by_employee_task_day))
     print("  feedbackExamples: %d текстов сохранено" % len(feedback_examples))
+    print("  -- кубы презентации (model['report']) --")
+    print("  feedbackByObjectDay: %d записей, обращений всего: %s" % (
+        len(report_cubes["feedbackByObjectDay"]),
+        "{:,}".format(sum(report_cubes["feedbackByObjectDay"].values())).replace(",", " ")))
+    print("  byKomendantDay:  %d записей, комендантов: %d" % (
+        len(report_cubes["byKomendantDay"]),
+        len({k.split("|")[1] for k in report_cubes["byKomendantDay"]})))
+    print("  byCleanObjectDay: %d записей, групп: %s" % (
+        len(report_cubes["byCleanObjectDay"]),
+        ", ".join(sorted({k.split("|")[2] for k in report_cubes["byCleanObjectDay"]})) or "нет"))
+    cs = report_cubes["cleanSpeedDay"]
+    print("  cleanSpeedDay:   %d записей" % len(cs))
+    for kind, label in (("p", "плановые"), ("u", "неплановые")):
+        rows = [v for k, v in cs.items() if k.split("|")[3] == kind]
+        if not rows:
+            continue
+        fs = sum(r["factSum"] for r in rows); fn = sum(r["factN"] for r in rows)
+        ns = sum(r["normSum"] for r in rows); nn = sum(r["normN"] for r in rows)
+        print("     %-11s задач=%-8s факт=%.1f мин (n=%s)  норматив=%.1f мин (n=%s)" % (
+            label, "{:,}".format(sum(r["tasks"] for r in rows)).replace(",", " "),
+            (fs / fn) if fn else 0, "{:,}".format(fn).replace(",", " "),
+            (ns / nn) if nn else 0, "{:,}".format(nn).replace(",", " ")))
+    for grp, label in (("base", "уборщицы (роль employee)"), ("mgr", "менеджеры клининга")):
+        c = m = 0
+        for k, v in report_cubes["byCleanObjectDay"].items():
+            if k.split("|")[2] != grp:
+                continue
+            for side in ("planned", "unplanned"):
+                c += v[side]["COMPLETED"]
+                m += v[side]["MISSED"]
+        if c or m:
+            print("     %-26s выполнено=%s пропущено=%s эфф=%.1f%%" % (
+                label, "{:,}".format(c).replace(",", " "), "{:,}".format(m).replace(",", " "),
+                (c / (c + m) * 100) if (c + m) else 0))
     print("-" * 66)
     print("QA сверка (Bruno statByZone vs сырой taskPlan, должны быть близки):")
     print("  taskPlan:  completed=%s missed=%s" % (

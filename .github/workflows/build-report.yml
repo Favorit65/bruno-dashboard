@@ -36,6 +36,18 @@ on:
         description: 'Дополнительно сделать PDF'
         type: boolean
         default: true
+      copy_deck:
+        description: 'Также собрать копию утверждённой колоды (22 слайда, горизонт 4 месяца)'
+        type: boolean
+        default: true
+      clean_roles:
+        description: 'Кого считать уборщицами в копии колоды'
+        type: choice
+        default: 'split'
+        options:
+          - split       # плановые — роль уборщиц, неплановые — плюс «Менеджер клининга» (согласовано 22.08.2026)
+          - base        # только системная роль employee — как в утверждённой колоде
+          - base+mgr    # обе роли и в плановых, и в неплановых
 
 permissions:
   contents: read
@@ -96,6 +108,28 @@ jobs:
           echo "out=$OUT" >> "$GITHUB_OUTPUT"
           echo "name=$NAME" >> "$GITHUB_OUTPUT"
 
+      # Копия утверждённой руководством колоды (22 слайда). Её период НЕ зависит
+      # от выбранного выше пресета: по требованию заказчика горизонт всегда
+      # «текущий месяц + 3 предыдущих», а состав приложений — объекты и
+      # коменданты, активные в текущем месяце.
+      - name: Собрать копию утверждённой колоды
+        id: copy
+        if: ${{ inputs.copy_deck }}
+        env:
+          IN_CLEAN: ${{ inputs.clean_roles }}
+        run: |
+          set -e
+          OUT="Bruno_report_approved_$(date +%Y-%m-%d).pptx"
+          python build_report_v5.py \
+            --model _model/model.json.gz \
+            --clean "$IN_CLEAN" \
+            --out "$OUT" | tee copy.log
+          echo "out=$OUT" >> "$GITHUB_OUTPUT"
+
+      - name: Разница между вариантами «кто такие уборщицы»
+        if: ${{ inputs.copy_deck }}
+        run: python report_v5_model.py --model _model/model.json.gz --diff-clean | tee clean_diff.log
+
       - name: Конвертировать в PDF
         if: ${{ inputs.pdf }}
         run: |
@@ -103,8 +137,10 @@ jobs:
             echo "::warning::LibreOffice не найден на раннере — PDF не будет создан."
             exit 0
           fi
-          soffice --headless --convert-to pdf "${{ steps.build.outputs.out }}" --outdir . || \
-            echo "::warning::Конвертация в PDF не удалась, PPTX всё равно готов."
+          for f in Bruno_report_*.pptx; do
+            soffice --headless --convert-to pdf "$f" --outdir . || \
+              echo "::warning::Конвертация $f в PDF не удалась, PPTX всё равно готов."
+          done
 
       - name: Выложить файлы
         uses: actions/upload-artifact@v4
@@ -124,6 +160,24 @@ jobs:
             echo '```'
             tail -4 build.log
             echo '```'
+            if [ -f copy.log ]; then
+              echo ""
+              echo "### Копия утверждённой колоды"
+              echo ""
+              echo '```'
+              tail -8 copy.log
+              echo '```'
+            fi
+            if [ -f clean_diff.log ]; then
+              echo ""
+              echo "<details><summary>Уборщицы: роль employee vs. + Менеджер клининга</summary>"
+              echo ""
+              echo '```json'
+              cat clean_diff.log
+              echo '```'
+              echo ""
+              echo "</details>"
+            fi
             echo ""
-            echo "Скачать файл — в разделе **Artifacts** внизу этой страницы."
+            echo "Скачать файлы — в разделе **Artifacts** внизу этой страницы."
           } >> "$GITHUB_STEP_SUMMARY"

@@ -63,6 +63,11 @@
   .flt-menu .preset { font-size: 11px; padding: 5px 10px; background: var(--surface-1); border: 1px solid var(--border); border-radius: 4px; cursor: pointer; font-family: inherit; }
   .flt-menu .preset:hover { background: var(--vtb-navy); color: #fff; border-color: var(--vtb-navy); }
   .flt-reset { font-size: 11px; color: var(--vtb-navy); background: none; border: 0; cursor: pointer; padding: 4px 8px; margin-left: auto; font-family: inherit; font-weight: 500; }
+  /* Кнопка сборки отчёта-презентации. Ведёт на страницу workflow в GitHub
+     Actions: страница Pages статическая, запускать сборку прямо отсюда нельзя —
+     для этого нужен токен с правом на запись, а он в браузере не хранится. */
+  .report-link { font-size: 11px; font-weight: 600; color: #fff; background: var(--vtb-navy); border: 1px solid var(--vtb-navy); border-radius: 999px; padding: 5px 12px; text-decoration: none; white-space: nowrap; }
+  .report-link:hover { background: var(--vtb-blue); border-color: var(--vtb-blue); }
   .toggle { display: inline-flex; gap: 2px; background: var(--surface-1); padding: 3px; border-radius: 8px; font-size: 11px; }
   .toggle button { background: transparent; border: 0; padding: 5px 10px; border-radius: 6px; color: var(--text-secondary); cursor: pointer; font-size: 11px; font-family: inherit; }
   .toggle button.active { background: var(--surface-2); color: var(--vtb-navy); font-weight: 500; box-shadow: 0 1px 3px rgba(0,40,130,0.1); }
@@ -465,6 +470,7 @@
     .filters .flt-menu { position: static; width: 100%; margin-top: 10px; max-height: 42vh; box-shadow: none; border-radius: 8px; }
     .filters .toggle { margin-bottom: 8px; }
     .filters .flt-reset { margin: 4px 0 0; width: 100%; min-height: 44px; border: 1px solid var(--border-strong); border-radius: 10px; }
+    .filters .report-link { margin: 6px 0 0; width: 100%; min-height: 44px; border-radius: 10px; display: flex; align-items: center; justify-content: center; }
     .filters .sheet-lbl { display: block; font-family: var(--font-head); font-size: 11px; color: var(--vtb-navy); text-transform: uppercase; letter-spacing: 0.05em; margin: 12px 0 6px; font-weight: 600; }
 
     /* B-14. Топ зон объекта — тоже шторка снизу, а не панель на 44 % ширины */
@@ -581,6 +587,10 @@
       <button data-gran="day">День</button>
     </div>
     <button class="flt-reset" id="btn-reset">Сбросить всё</button>
+    <a class="report-link" id="report-link"
+       href="https://github.com/Favorit65/bruno-dashboard/actions/workflows/build-report.yml"
+       target="_blank" rel="noopener"
+       title="Открыть GitHub Actions, workflow «Отчёт-презентация (PPTX)»: нажмите Run workflow — через пару минут оба файла (разработанный отчёт и копия утверждённой колоды) появятся в разделе Artifacts">Сформировать отчёт ↗</a>
   </div>
   <div class="active-flt" id="active-flt"></div>
   <details class="howto">
