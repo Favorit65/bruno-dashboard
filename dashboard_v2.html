@@ -523,6 +523,51 @@
     .tnav .arrow { min-width: 40px; min-height: 40px; }
     .flt { min-height: 40px; }
   }
+
+  /* ==============================================================
+     ТАБЛИЧНЫЙ ВИД И ЭКСПОРТ (проход 16, пункт 31)
+     Кнопки в шапке карточки открывают тот же срез таблицей; из таблицы
+     скачивается CSV. Слой поверх дашборда — не отдельная страница: данные
+     уже посчитаны, второй файл потребовал бы своей загрузки модели.
+     ============================================================== */
+  .card-tools { display: inline-flex; gap: 4px; margin-left: 8px; flex-shrink: 0; }
+  .ctool { border: 1px solid var(--border-strong); background: var(--surface-2); color: var(--vtb-navy); border-radius: 6px; font-size: 11px; line-height: 1.1; padding: 4px 7px; cursor: pointer; font-family: inherit; white-space: nowrap; }
+  .ctool:hover { background: var(--bg-accent); border-color: var(--vtb-blue); }
+  .ctool[disabled] { opacity: .45; cursor: default; }
+  .tbl-overlay { display: none; position: fixed; inset: 0; background: rgba(10, 20, 40, 0.45); z-index: 600; align-items: center; justify-content: center; padding: 24px; }
+  .tbl-overlay.on { display: flex; }
+  .tbl-box { background: var(--surface-2); border-radius: 10px; width: 100%; max-width: 1120px; max-height: 88vh; display: flex; flex-direction: column; box-shadow: 0 12px 40px rgba(0,0,0,0.25); }
+  .tbl-head { display: flex; align-items: flex-start; gap: 12px; padding: 13px 16px; border-bottom: 1px solid var(--border); }
+  .tbl-head h4 { margin: 0; font-family: var(--font-head); font-size: 15px; color: var(--vtb-navy); }
+  .tbl-sub { margin: 3px 0 0; font-size: 11px; color: var(--text-muted); max-width: 620px; }
+  .tbl-head .close { background: none; border: 0; line-height: 1; cursor: pointer; color: var(--text-muted); padding: 2px 6px; }
+  .tbl-head .close .ic { width: 15px; height: 15px; }
+  .tbl-head .close:hover { color: var(--vtb-navy); }
+  .tbl-actions { margin-left: auto; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
+  .tbl-actions .toggle:empty { display: none; }
+  .tbl-body { padding: 4px 16px 14px; overflow: auto; }
+  .tbl-body table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  .tbl-body th { position: sticky; top: 0; z-index: 1; background: var(--surface-2); text-align: left; font-weight: 500; color: var(--text-secondary); padding: 8px; border-bottom: 1px solid var(--border-strong); cursor: pointer; white-space: nowrap; user-select: none; }
+  .tbl-body th:hover { color: var(--vtb-navy); }
+  .tbl-body th.num, .tbl-body td.num { text-align: right; }
+  .tbl-body th .sort-ic { color: var(--vtb-blue); margin-left: 3px; }
+  .tbl-body td { padding: 6px 8px; border-bottom: 1px solid var(--border); white-space: nowrap; }
+  .tbl-body tbody tr:hover { background: var(--surface-1); }
+  .tbl-body tfoot td { font-weight: 600; color: var(--vtb-navy); border-top: 1px solid var(--border-strong); border-bottom: 0; background: var(--surface-1); position: sticky; bottom: 0; }
+  .tbl-note { font-size: 11px; color: var(--text-muted); padding: 8px 2px 0; }
+  .modal-csv { margin-top: 12px; text-align: right; }
+  @media (max-width: 820px) {
+    .card-tools { margin-left: auto; }
+    .ctool { min-height: 36px; padding: 6px 10px; font-size: 12px; }
+    .tbl-overlay { padding: 0; align-items: flex-end; }
+    .tbl-box { max-width: none; height: 100dvh; max-height: 100dvh; border-radius: 0; }
+    .tbl-head { position: sticky; top: 0; z-index: 2; flex-wrap: wrap; padding: calc(14px + env(safe-area-inset-top)) 14px 12px; background: var(--surface-2); }
+    .tbl-actions { margin-left: 0; width: 100%; justify-content: flex-start; }
+    .tbl-actions .toggle { width: auto; }
+    .tbl-body { padding: 4px 14px calc(20px + env(safe-area-inset-bottom)); }
+    .tbl-body th, .tbl-body td { padding: 9px 8px; font-size: 12px; }
+  }
+  @media print { .card-tools, .tbl-overlay { display: none !important; } }
 </style>
 </head>
 <body>
@@ -595,6 +640,8 @@
     <button class="flt-reset" id="btn-reset">Сбросить всё</button>
     <button class="flt-reset" id="btn-copy-link" type="button"
       title="Скопировать ссылку на текущий срез: период, объекты, роль, категория задач, детализация и провал во времени. Открыв её, коллега увидит ровно то же, что видите вы.">Скопировать ссылку</button>
+    <button class="flt-reset" id="btn-tables" type="button" style="margin-left:0;"
+      title="Открыть текущий срез таблицей: те же числа, что на карточках, построчно — и кнопка «Скачать CSV» для Excel">Таблицы</button>
     <a class="report-link" id="report-link"
        href="https://github.com/Favorit65/bruno-dashboard/actions/workflows/build-report.yml"
        target="_blank" rel="noopener"
@@ -611,6 +658,7 @@
       <p><b>Блок 04 «Персонал»</b> умеет считать двумя способами, переключатель — в самом блоке. <b>«Статистика Bruno»</b> (по умолчанию) — нативные посуточные агрегаты Bruno по сотруднику; действуют период, объект и роль, но не тумблер план/внеплан — такого разреза у Bruno нет. <b>«Счёт по задачам»</b> — наш пересчёт по taskPlan с делением задачи между исполнителями; действуют все фильтры, но цифры законно отличаются от нативных.</p>
       <p><b>Время — общее для всех графиков.</b> Переключатель <b>Авто / Месяц / Неделя / День</b> в фильтрах задаёт детализацию столбцов сразу в блоке 01, блоке 03 и «Обращениях по объектам». Стрелки <b>‹ ›</b> на любой карточке двигают период у всех рядов одновременно; на краю архива стрелка гаснет.</p>
       <p><b>Клик — это тоже фильтр.</b> Клик по столбцу проваливается внутрь: год → месяц → день → час, синхронно во всех блоках (плашки, дерево и блоки 02/04 пересчитываются на тот же отрезок). Путь показан крошками справа от навигатора — клик по крошке возвращает на этот уровень. Объект в блоке 02 сужает фильтр объектов; плашка роли в блоке 01 — фильтр ролей; узел дерева категорий — то же, что тумблер «Все / Плановые / Неплановые»; подпись в легенде обращений или ролей добавляет и снимает объект/роль. Всё активное перечислено чипами под фильтрами и снимается там же.</p>
+      <p><b>Таблицы и выгрузка.</b> Кнопка <b>⊞</b> в шапке карточки открывает тот же блок таблицей: строки — то, что нарисовано на графике, с учётом всех фильтров. Внутри — кнопка <b>«Скачать CSV»</b> (файл открывается в русском Excel двойным щелчком: разделитель «;», десятичная запятая, в первых строках записан срез — период, объекты, роль). Кнопка <b>«Таблицы»</b> в панели фильтров открывает список всех шести таблиц сразу. Кнопка <b>PNG</b> рядом с ⊞ сохраняет сам график картинкой; треймап объектов, воронку, плашки и дерево категорий так снять нельзя — для них используйте <b>«Печать → Сохранить в PDF»</b> в браузере. В таблице строки только «живые»: объект или сотрудник без задач за период в неё не попадает; клик по заголовку столбца сортирует.</p>
       <p><b>Ссылка на срез.</b> Всё, что вы выбрали — период, объекты, роль, категория задач, детализация, провал в конкретный день или час, режим блока 04 и тумблер обращений — записывается прямо в адрес страницы. Кнопка <b>«Скопировать ссылку»</b> рядом со «Сбросить всё» кладёт адрес в буфер: открыв его, коллега увидит ровно тот же срез. Кнопки браузера <b>«назад» и «вперёд»</b> работают как шаги по времени: «назад» после провала возвращает на уровень выше. Если ссылка сделана на другой версии данных и какого-то объекта в модели больше нет — он молча пропускается, страница всё равно откроется.</p>
     </div>
   </details>
@@ -621,7 +669,7 @@
   <div class="tnav" id="tnav-b1"></div>
   <div class="row" style="grid-template-columns: 1.7fr 1fr;">
     <div class="card">
-      <p class="card-title">Задачи по статусам во времени <span class="hint" id="b1-chart-hint"></span></p>
+      <p class="card-title">Задачи по статусам во времени <span class="hint" id="b1-chart-hint"></span><span class="card-tools" data-tools="b1"></span></p>
       <div class="legend">
         <span><span class="sw" style="background:#002882"></span>Выполнено</span>
         <span><span class="sw" style="background:#00AAFF"></span>В работе / прочее</span>
@@ -643,13 +691,16 @@
   </div>
   <div class="row" style="grid-template-columns: 1fr 1.7fr;">
     <div class="card">
-      <p class="card-title">Статистика по ролям <span class="hint">за выбранный период</span></p>
+      <p class="card-title">Статистика по ролям <span class="hint">за выбранный период</span><span class="card-tools" data-tools="roles"></span></p>
       <div id="b1-roles"></div>
     </div>
     <div class="card">
       <div class="card-head-row">
         <p class="card-title" style="margin:0;"><span id="b1-fb-title">Обращения по объектам</span> <span class="hint" id="b1-fb-hint">по дням, стек по объектам · клик по дню — часы (на месте)</span></p>
-        <button class="btn-detail" id="b1-fb-detail-btn" type="button">Детализация по объектам</button>
+        <span style="display:inline-flex;align-items:center;gap:6px;flex-shrink:0;">
+          <button class="btn-detail" id="b1-fb-detail-btn" type="button">Детализация по объектам</button>
+          <span class="card-tools" data-tools="fb" style="margin-left:0;"></span>
+        </span>
       </div>
       <div class="toggle" id="b1-fb-toggle" style="margin:2px 0 4px;"
            title="Обращения — уникальные обращения клиентов (feedbackID). Неплановые задачи — все задачи вне регламента, включая заведённые вручную без обращения. Тумблер действует и на воронку слева.">
@@ -678,7 +729,7 @@
   <div class="section-title"><span class="snum">02</span>Структура<span class="hint" id="b2-sec-hint">клик по объекту — топ зон</span></div>
   <div class="row" style="grid-template-columns: 1.35fr 1fr;">
     <div class="card">
-      <p class="card-title" id="b2a-title">Объекты <span class="hint">площадь = объём задач, цвет = эффективность</span></p>
+      <p class="card-title" id="b2a-title">Объекты <span class="hint">площадь = объём задач, цвет = эффективность</span><span class="card-tools" data-tools="b2"></span></p>
       <div id="b2a-treemap">
         <div class="zones-panel" id="b2a-zones">
           <h4><span id="b2a-zones-title">Топ зон объекта</span><button class="close" id="b2a-zones-close" type="button" aria-label="Закрыть панель зон"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8" /></svg></button></h4>
@@ -699,7 +750,7 @@
   <div class="tnav" id="tnav-b3"></div>
   <div class="row" style="grid-template-columns: 1.5fr 1fr;">
     <div class="card">
-      <p class="card-title">Вовремя / с опозданием / пропущено <span class="hint" id="b3-period-lbl"></span></p>
+      <p class="card-title">Вовремя / с опозданием / пропущено <span class="hint" id="b3-period-lbl"></span><span class="card-tools" data-tools="b3"></span></p>
       <div class="legend">
         <span><span class="sw" style="background:#E4E8F0;border:1px solid #C9D3E4"></span>План</span>
         <span><span class="sw" style="background:#002882"></span>Вовремя</span>
@@ -731,7 +782,7 @@
       <p class="note info" style="margin-top:10px;" id="b4-src-note"></p>
     </div>
     <div class="card">
-      <p class="card-title">Сотрудники по бинам эффективности <span class="hint" id="b4-chart-hint"></span></p>
+      <p class="card-title">Сотрудники по бинам эффективности <span class="hint" id="b4-chart-hint"></span><span class="card-tools" data-tools="b4"></span></p>
       <div id="b4-chart" data-h="220"></div>
       <div class="legend" id="b4-legend"></div>
       <p class="note" id="b4-note"></p>
@@ -756,6 +807,25 @@
 
   <div class="note warn" style="margin-top: 18px;">
     <strong>Дашборд 2.0 — черновик.</strong> Данные из <code>model.json.gz</code> (собран из полного архива Bruno c 01.01.2026, посуточная + почасовая детализация). Готовы блоки 01–04 (динамика и категории, структура, план–факт, персонал). Блок 05 (замечания и проверки качества) — заглушка, модули недоступны у Bruno по текущему тарифу/токену.
+  </div>
+</div>
+
+<!-- Табличный вид (проход 16). Живёт вне .app, чтобы шапка-стикер фильтров и
+     lazy-блоки не влияли на позиционирование. -->
+<div class="tbl-overlay" id="tbl-overlay">
+  <div class="tbl-box">
+    <div class="tbl-head">
+      <div>
+        <h4 id="tbl-title"></h4>
+        <p class="tbl-sub" id="tbl-sub"></p>
+      </div>
+      <div class="tbl-actions">
+        <div class="toggle" id="tbl-variants"></div>
+        <button class="btn-detail" id="tbl-csv" type="button">Скачать CSV</button>
+        <button class="close" id="tbl-close" type="button" aria-label="Закрыть таблицу"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8" /></svg></button>
+      </div>
+    </div>
+    <div class="tbl-body" id="tbl-body"></div>
   </div>
 </div>
 
@@ -1316,6 +1386,9 @@ const state = {
      Окно времени по-прежнему живёт в state.period — оно же фильтр всего
      дашборда, поэтому провал по столбцу пересчитывает и блоки 02/04. */
   time: { gran: 'auto', hour: null, stack: [] },
+  // Открытый табличный вид (проход 16): {key, variant} или null. Живёт в
+  // состоянии, а не в DOM, потому что пишется в ссылку наравне с фильтрами.
+  table: null,
 };
 
 function inPeriod(date) { return (!state.period.from || date >= state.period.from) && (!state.period.to || date <= state.period.to); }
@@ -2290,7 +2363,13 @@ function showRoleDetail(role) {
       <thead><tr><th>Сотрудник</th><th>Сегодня</th><th>Эфф. (период)</th><th>Динамика</th></tr></thead>
       <tbody>${rows.map((e, i) => `<tr><td>${esc(e.name)}</td><td>${fmt(e.today)}</td><td>${e.assigned ? pct(e.eff, 1) : '—'}</td><td><div class="rt-spark" id="rd-spark-${i}" data-h="20" style="width:56px;"></div></td></tr>`).join('')}</tbody>
     </table>`;
-  showModal(`Роль · ${esc(role)} <span style="font-weight:400;font-size:11px;color:var(--text-muted)">(${rows.length} чел.)</span>`, body);
+  showModal(`Роль · ${esc(role)} <span style="font-weight:400;font-size:11px;color:var(--text-muted)">(${rows.length} чел.)</span>`, body, {
+    slug: 'роль_' + role,
+    cols: [{ h: 'Сотрудник', t: 'txt' }, { h: 'Задач за ' + ARCHIVE_TO, t: 'int' },
+      { h: 'Назначено за период', t: 'num1' }, { h: 'Выполнено за период', t: 'num1' }, { h: 'Эффективность, %', t: 'pct1' }],
+    rows: rows.map(e => [e.name, e.today, e.assigned, e.completed, e.assigned ? e.eff : null]),
+    head: [['Роль', role]],
+  });
   rows.forEach((e, i) => {
     const em = empMonthly.get(e.id);
     const spark = monthKeys.map(ym => { const b = em && em.get(ym); return b && b.a > 0 ? Math.round((b.c / b.a) * 100) : 0; });
@@ -2506,7 +2585,12 @@ function renderB1FeedbackObjDetail() {
       <thead><tr><th>Объект</th><th>Обращений</th><th>Задач по обращениям</th><th>Неплановых задач</th><th>Доля${fbMode ? ' обращений' : ' неплановых'}</th></tr></thead>
       <tbody>${rows.map(([id, v]) => `<tr><td>${objById[id] ? esc(objById[id].name) : '—'}</td><td>${fmt(v.fb)}</td><td>${fmt(v.tasks)}</td><td>${fmt(v.unpl)}</td><td>${pct(v[key] / total, 1)}</td></tr>`).join('')}</tbody>
     </table>`;
-  showModal((fbMode ? 'Обращения' : 'Неплановые задачи') + ' по объектам — детализация', body);
+  showModal((fbMode ? 'Обращения' : 'Неплановые задачи') + ' по объектам — детализация', body, {
+    slug: 'обращения_по-объектам',
+    cols: [{ h: 'Объект', t: 'txt' }, { h: 'Обращений', t: 'int' }, { h: 'Задач по обращениям', t: 'int' },
+      { h: 'Неплановых задач', t: 'int' }, { h: (fbMode ? 'Доля обращений, %' : 'Доля неплановых, %'), t: 'pct1' }],
+    rows: rows.map(([id, v]) => [objById[id] ? objById[id].name : '—', v.fb, v.tasks, v.unpl, total ? v[key] / total : null]),
+  });
 }
 
 /* ==============================================================
@@ -2855,6 +2939,8 @@ function renderAll() {
     renderB1(); renderB3();
     if (SEEN.b2a) renderB2a();
     if (SEEN.b4) renderB4();
+    // Открытая таблица — тот же срез, что и блоки: пересчитываем её вместе с ними
+    if (state.table) renderTableLayer();
   } catch (err) {
     console.error(err);
     showError('Не удалось построить дашборд: ' + esc(err && err.message || err)
@@ -3042,7 +3128,13 @@ function b4ShowBinDetail(bin) {
       <thead><tr><th>Сотрудник</th><th>Роль</th><th>Эфф.</th><th>Вып./Проп.</th></tr></thead>
       <tbody>${rows.map(e => `<tr><td>${esc(e.name)}</td><td>${esc(e.role)}</td><td>${pct(e.eff, 1)}</td><td>${fmt(e.completed)} / ${fmt(e.missed)}</td></tr>`).join('')}</tbody>
     </table>`;
-  showModal(`Сотрудники · эффективность ${bin.label}%`, body);
+  showModal(`Сотрудники · эффективность ${bin.label}%`, body, {
+    slug: 'сотрудники_бин-' + bin.label,
+    cols: [{ h: 'Сотрудник', t: 'txt' }, { h: 'Роль', t: 'txt' }, { h: 'Эффективность, %', t: 'pct1' },
+      { h: 'Выполнено', t: 'num1' }, { h: 'Пропущено', t: 'num1' }],
+    rows: rows.map(e => [e.name, e.role, e.eff, e.completed, e.missed]),
+    head: [['Бин эффективности', bin.label + '%'], ['Источник счёта', B4_SRC_WORD[state.b4src] || state.b4src]],
+  });
 }
 
 /* ==============================================================
@@ -3265,9 +3357,21 @@ document.getElementById('sheet-backdrop').addEventListener('click', closeTopShee
 document.addEventListener('keydown', e => { if (e.key === 'Escape') closeTopSheet(); });
 
 /* === Модальное окно (детализация) === */
-function showModal(title, bodyHtml) {
+/* csv (необязательный) — {slug, cols, rows, head}: в модалках, где и так
+   нарисована таблица, внизу появляется кнопка «Скачать CSV» (проход 16). */
+function showModal(title, bodyHtml, csv) {
   document.getElementById('modal-title').innerHTML = title;
-  document.getElementById('modal-body').innerHTML = bodyHtml;
+  const bodyEl = document.getElementById('modal-body');
+  bodyEl.innerHTML = bodyHtml;
+  if (csv && csv.rows && csv.rows.length) {
+    const wrap = document.createElement('div');
+    wrap.className = 'modal-csv';
+    const b = document.createElement('button');
+    b.type = 'button'; b.className = 'btn-detail'; b.textContent = 'Скачать CSV';
+    b.onclick = () => downloadCsv(csv.slug, csv.cols, csv.rows, csv.head);
+    wrap.appendChild(b);
+    bodyEl.appendChild(wrap);
+  }
   const box = document.getElementById('modal-overlay').querySelector('.modal-box');
   box.style.transform = '';
   document.getElementById('modal-overlay').classList.add('on');
@@ -3335,7 +3439,7 @@ document.getElementById('b1-fb-detail-btn').onclick = () => renderB1FeedbackObjD
    щелчок по чекбоксу в меню объектов), провалы во времени — pushState, потому
    что «назад» пользователь ждёт именно как шаг вверх по пути.
    ============================================================== */
-const HASH_KEYS = ['p', 'o', 'r', 's', 'g', 'h', 'b', 'f', 'd'];
+const HASH_KEYS = ['p', 'o', 'r', 's', 'g', 'h', 'b', 'f', 'd', 't'];
 let _hashApplying = false;   // идёт применение хэша — писать обратно нельзя
 let _hashPushNext = false;   // следующий syncHash() создаёт запись в истории
 
@@ -3360,6 +3464,7 @@ function buildHash() {
   if (state.b4src !== 'bruno') add('b', state.b4src);
   if (state.fbSrc !== 'fb') add('f', state.fbSrc);
   if (state.drill.b2aObj) add('d', state.drill.b2aObj === '__other__' ? 'other' : objKey(state.drill.b2aObj));
+  if (state.table && state.table.key) add('t', state.table.key + (state.table.variant ? '.' + state.table.variant : ''));
   return q.length ? '#' + q.join('&') : '#';
 }
 function syncHash() {
@@ -3433,6 +3538,9 @@ function applyHashState(str) {
     state.b4src = (q.b === 'task') ? 'task' : 'bruno';
     state.fbSrc = (q.f === 'unplanned' || !HAS_FB) ? 'unplanned' : 'fb';
     state.drill.b2aObj = q.d ? (q.d === 'other' ? '__other__' : objByKey(q.d)) : null;
+    // Табличный вид: t=b4 или t=fb.day. Неизвестный ключ — просто без таблицы.
+    const tm = /^([a-z0-9]+)(?:\.([a-z0-9]+))?$/.exec(q.t || '');
+    state.table = (tm && TABLES[tm[1]]) ? { key: tm[1], variant: tm[2] || null } : null;
 
     syncControlsFromState();
   } catch (e) {
@@ -3478,6 +3586,539 @@ function copyShareLink() {
   } else done(fallbackCopy(url));
 }
 
+/* ==============================================================
+   ТАБЛИЧНЫЙ ВИД И ЭКСПОРТ (проход 16, пункт 31)
+   Кнопка ⊞ в шапке карточки открывает ТОТ ЖЕ срез таблицей — полноэкранным
+   слоем поверх дашборда, в том же файле и на тех же уже посчитанных данных
+   (отдельная страница потребовала бы своей загрузки модели, а дашборд
+   намеренно однофайловый). Из таблицы скачивается CSV: сначала видно, что
+   выгружаешь, — «слепой» кнопки «скачать» на карточках нет.
+   Открытая таблица пишется в адрес (#t=b4), поэтому ссылку можно кинуть сразу
+   на таблицу, а «назад» в браузере её закрывает.
+   ============================================================== */
+
+/* -- CSV под русский Excel -------------------------------------------------
+   BOM (иначе кириллица превращается в мусор), разделитель «;» (в русской
+   локали Excel список разделяет именно им), CRLF, десятичная ЗАПЯТАЯ — только
+   в таком виде файл открывается двойным щелчком, без «Мастера импорта». */
+function csvEsc(v) {
+  const s = String(v == null ? '' : v);
+  return /[";\r\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+}
+function csvVal(v, t) {
+  if (v == null || v === '') return '';
+  if (t === 'int') return String(Math.round(v));
+  if (t === 'pct1') return (v * 100).toFixed(1).replace('.', ',');
+  if (t === 'num1') return Number(v).toFixed(1).replace('.', ',');
+  return csvEsc(v);
+}
+function cellHtml(v, t) {
+  if (v == null || v === '') return '—';
+  if (t === 'int') return fmt(v);
+  if (t === 'pct1') return fmt1(v * 100);
+  if (t === 'num1') return fmt1(v);
+  return esc(v);
+}
+function isNumType(t) { return t === 'int' || t === 'pct1' || t === 'num1'; }
+
+function objNamesLabel() {
+  if (state.objects.size === 0 || state.objects.size === OBJECTS.length) return 'все (' + OBJECTS.length + ')';
+  return [...state.objects].map(id => (objById[id] ? objById[id].name : id)).join(', ');
+}
+const SCOPE_WORD = { all: 'все задачи', planned: 'плановые', unplanned: 'неплановые' };
+/* Шапка выгрузки: через неделю по файлу должно быть понятно, какой это срез. */
+function slicePairs(extra) {
+  const pairs = [
+    ['Дашборд', 'Обслуживание объектов 2.0 · Bruno'],
+    ['Выгружено', new Date().toLocaleString('ru-RU')],
+    ['Период', (state.period.from || ARCHIVE_FROM) + ' — ' + (state.period.to || ARCHIVE_TO)],
+    ['Окно', windowLabel()],
+    ['Объекты', objNamesLabel()],
+    ['Роль', roleFilterAllSel() ? 'все' : [...state.roles].join(', ')],
+    ['Категория задач', SCOPE_WORD[state.scope] || state.scope],
+    ['Детализация', GRAN_WORD[timeLevel()] || timeLevel()],
+  ];
+  (extra || []).forEach(p => pairs.push(p));
+  return pairs;
+}
+function buildCsv(cols, rows, headPairs) {
+  const CRLF = '\r\n';
+  const out = [];
+  (headPairs || []).forEach(p => out.push(csvEsc(p[0]) + ';' + csvEsc(p[1])));
+  if (headPairs && headPairs.length) out.push('');
+  out.push(cols.map(c => csvEsc(c.h)).join(';'));
+  rows.forEach(r => out.push(r.map((v, i) => csvVal(v, cols[i] && cols[i].t)).join(';')));
+  return '﻿' + out.join(CRLF) + CRLF;
+}
+function downloadBlob(blob, name) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = name; a.style.display = 'none';
+  document.body.appendChild(a); a.click();
+  setTimeout(() => { URL.revokeObjectURL(url); a.remove(); }, 100);
+}
+function periodSlug() { return (state.period.from || ARCHIVE_FROM) + '_' + (state.period.to || ARCHIVE_TO); }
+/* Имя файла — латиницей. Кириллицу в атрибуте download часть браузеров
+   (в том числе Chromium) отбрасывает целиком, и файл сохраняется как «download»
+   вообще без расширения — Excel такой файл не открывает. Поэтому транслит:
+   «bruno_obekty_2026-01-01_2026-08-22.csv». Русские подписи при этом никуда не
+   деваются — они внутри файла, в шапке среза и заголовках столбцов. */
+const TRANSLIT = { а: 'a', б: 'b', в: 'v', г: 'g', д: 'd', е: 'e', ё: 'e', ж: 'zh', з: 'z', и: 'i', й: 'y', к: 'k', л: 'l', м: 'm', н: 'n', о: 'o', п: 'p', р: 'r', с: 's', т: 't', у: 'u', ф: 'f', х: 'h', ц: 'c', ч: 'ch', ш: 'sh', щ: 'sch', ъ: '', ы: 'y', ь: '', э: 'e', ю: 'yu', я: 'ya' };
+function translit(s) {
+  return String(s).toLowerCase().split('').map(ch => (ch in TRANSLIT) ? TRANSLIT[ch] : ch)
+    .join('').replace(/[^a-z0-9._-]+/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '') || 'export';
+}
+function downloadCsv(slug, cols, rows, headExtra) {
+  downloadBlob(new Blob([buildCsv(cols, rows, slicePairs(headExtra))], { type: 'text/csv;charset=utf-8;' }),
+    'bruno_' + translit(slug) + '_' + periodSlug() + '.csv');
+}
+
+/* -- PNG графика -----------------------------------------------------------
+   Сериализованный SVG теряет связь с CSS страницы, поэтому перед сериализацией
+   всё, что задано классами (.tick-lbl, .axis-line, .grid-line, .bar-val), надо
+   перенести в атрибуты — иначе получится чёрно-белый скелет. Рисуем в canvas
+   с двойным разрешением, чтобы картинку можно было вставить в презентацию. */
+const PNG_PROPS = ['fill', 'stroke', 'stroke-width', 'stroke-dasharray', 'stroke-linecap', 'stroke-linejoin',
+  'font-size', 'font-family', 'font-weight', 'opacity', 'fill-opacity', 'stroke-opacity', 'text-anchor', 'dominant-baseline'];
+function inlineSvgStyles(src, dst) {
+  const a = [src].concat([...src.querySelectorAll('*')]);
+  const b = [dst].concat([...dst.querySelectorAll('*')]);
+  for (let i = 0; i < a.length && i < b.length; i++) {
+    const cs = getComputedStyle(a[i]);
+    PNG_PROPS.forEach(p => {
+      const v = cs.getPropertyValue(p);
+      if (v && v !== 'none' || p === 'fill' || p === 'stroke') b[i].setAttribute(p, v);
+    });
+    b[i].removeAttribute('class');
+  }
+}
+function exportPng(hostId, slug, caption) {
+  const host = document.getElementById(hostId);
+  const src = host && host.querySelector('svg');
+  if (!src) return;
+  const vb = (src.getAttribute('viewBox') || '').split(/\s+/).map(Number);
+  const W = vb.length === 4 ? vb[2] : (src.clientWidth || 600);
+  const H0 = vb.length === 4 ? vb[3] : (src.clientHeight || 220);
+  const PAD = 12, CAP = 34, H = H0 + CAP + PAD;
+  const clone = src.cloneNode(true);
+  inlineSvgStyles(src, clone);
+  const out = document.createElementNS(NS, 'svg');
+  out.setAttribute('xmlns', NS);
+  out.setAttribute('width', W); out.setAttribute('height', H);
+  out.setAttribute('viewBox', '0 0 ' + W + ' ' + H);
+  const bg = document.createElementNS(NS, 'rect');
+  bg.setAttribute('x', 0); bg.setAttribute('y', 0); bg.setAttribute('width', W); bg.setAttribute('height', H);
+  bg.setAttribute('fill', '#FFFFFF');
+  out.appendChild(bg);
+  const ff = 'Arial, Helvetica, sans-serif';
+  const t1 = document.createElementNS(NS, 'text');
+  t1.setAttribute('x', 8); t1.setAttribute('y', 15); t1.setAttribute('fill', '#002882');
+  t1.setAttribute('font-size', '12'); t1.setAttribute('font-weight', '600'); t1.setAttribute('font-family', ff);
+  t1.textContent = caption || '';
+  out.appendChild(t1);
+  const t2 = document.createElementNS(NS, 'text');
+  t2.setAttribute('x', 8); t2.setAttribute('y', 28); t2.setAttribute('fill', '#6A6A6A');
+  t2.setAttribute('font-size', '10'); t2.setAttribute('font-family', ff);
+  t2.textContent = windowLabel() + ' · объекты: ' + objNamesLabel() + ' · ' + (SCOPE_WORD[state.scope] || '');
+  out.appendChild(t2);
+  const g = document.createElementNS(NS, 'g');
+  g.setAttribute('transform', 'translate(0,' + CAP + ')');
+  clone.setAttribute('x', 0); clone.setAttribute('y', 0);
+  clone.setAttribute('width', W); clone.setAttribute('height', H0);
+  g.appendChild(clone);
+  out.appendChild(g);
+  const str = new XMLSerializer().serializeToString(out);
+  const img = new Image();
+  img.onload = () => {
+    const cv = document.createElement('canvas');
+    cv.width = W * 2; cv.height = H * 2;
+    const ctx = cv.getContext('2d');
+    ctx.fillStyle = '#FFFFFF'; ctx.fillRect(0, 0, cv.width, cv.height);
+    ctx.drawImage(img, 0, 0, cv.width, cv.height);
+    cv.toBlob(b => { if (b) downloadBlob(b, 'bruno_' + translit(slug) + '_' + periodSlug() + '.png'); });
+  };
+  img.onerror = () => showError('Не удалось собрать PNG этого графика. Используйте «Печать → Сохранить в PDF».');
+  img.src = 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(str)));
+}
+
+/* -- Данные таблиц ---------------------------------------------------------
+   Каждая таблица строится из ТЕХ ЖЕ агрегатов, что и её блок, поэтому числа
+   в таблице и на графике совпадают по определению. Строки — только активные:
+   объект или сотрудник без единой задачи за период в таблицу не попадает. */
+function tblB3Groups() {
+  if (timeLevel() === 'hour') {
+    return b3HourBuckets(state.time.hour).map(b => ({
+      label: b.label, from: state.time.hour, to: state.time.hour,
+      plan: b.plan, onTime: b.onTime, late: b.late, missed: b.missed, delaySum: 0, delayN: 0,
+    }));
+  }
+  return timeGroups().map(g => {
+    let plan = 0, onTime = 0, late = 0, missed = 0, ds = 0, dn = 0;
+    g.dates.forEach(date => {
+      const p = dayAgg(date).planned;
+      plan += bucketAll(p); onTime += p.completedOnTime; late += p.completedLate; missed += p.MISSED;
+      ds += p.delayHoursSum; dn += p.delayHoursN;
+    });
+    return { label: g.label, from: g.dates[0], to: g.dates[g.dates.length - 1], plan, onTime, late, missed, delaySum: ds, delayN: dn };
+  });
+}
+// Зоны объекта с разбивкой выполнено/пропущено (b2TopZonesOfObject отдаёт
+// только count и eff, а в таблице нужны исходные числа).
+function tblZoneRows(objectID) {
+  const map = new Map();
+  periodDates().forEach(date => {
+    (ZONE_ROWS_BY_DATE.get(date) || []).forEach(r => {
+      if (r.objectID !== objectID) return;
+      if (!map.has(r.zoneId)) map.set(r.zoneId, { completed: 0, missed: 0 });
+      const m = map.get(r.zoneId); m.completed += r.completed; m.missed += r.missed;
+    });
+  });
+  return [...map.entries()].map(([zid, m]) => {
+    const z = zoneById[zid];
+    return { name: z ? z.name : '(без имени)', count: m.completed + m.missed, completed: m.completed, missed: m.missed, eff: effCM(m.completed, m.missed) };
+  }).filter(r => r.count > 0).sort((a, b) => b.count - a.count);
+}
+// Обращения/неплановые по объектам — те же данные, что в модалке «Детализация
+// по объектам», плюс статусный разрез и «задач на обращение».
+function tblFbByObject() {
+  const dates = periodDates(), sel = fbSelObjects(), fbMode = FB_MODE_FB();
+  const totals = new Map();
+  const slot = id => { let s = totals.get(id); if (!s) totals.set(id, s = { fb: 0, tasks: 0, unpl: 0, st: {} }); return s; };
+  dates.forEach(date => {
+    (ROWS_FB_BY_DATE.get(date) || []).forEach(r => {
+      if (sel && !sel.has(r.objId)) return;
+      if (!r.fb && !r.tasks) return;
+      const s = slot(r.objId); s.fb += r.fb; s.tasks += r.tasks;
+      if (fbMode) FB_ST.forEach(k => s.st[k] = (s.st[k] || 0) + (r[k] || 0));
+    });
+    (ROWS_BY_DATE.get(date) || []).forEach(r => {
+      if (sel && !sel.has(r.objId)) return;
+      const v = bucketAll(r.unplanned);
+      if (v <= 0) return;
+      const s = slot(r.objId); s.unpl += v;
+      if (!fbMode) FB_ST.forEach(k => s.st[k] = (s.st[k] || 0) + (r.unplanned[k] || 0));
+    });
+  });
+  const key = fbMode ? 'fb' : 'unpl';
+  return [...totals.entries()]
+    .filter(([, v]) => v.fb > 0 || v.tasks > 0 || v.unpl > 0)
+    .sort((a, b) => b[1][key] - a[1][key])
+    .map(([id, v]) => ({ id, name: objById[id] ? objById[id].name : '—', v }));
+}
+function tblFbByDay() {
+  const sel = fbSelObjects();
+  const out = [];
+  periodDates().forEach(date => {
+    const per = new Map();
+    const slot = id => { let s = per.get(id); if (!s) per.set(id, s = { fb: 0, tasks: 0, unpl: 0 }); return s; };
+    (ROWS_FB_BY_DATE.get(date) || []).forEach(r => {
+      if (sel && !sel.has(r.objId)) return;
+      if (!r.fb && !r.tasks) return;
+      const s = slot(r.objId); s.fb += r.fb; s.tasks += r.tasks;
+    });
+    (ROWS_BY_DATE.get(date) || []).forEach(r => {
+      if (sel && !sel.has(r.objId)) return;
+      const v = bucketAll(r.unplanned);
+      if (v > 0) slot(r.objId).unpl += v;
+    });
+    [...per.entries()].sort((a, b) => b[1].fb + b[1].unpl - (a[1].fb + a[1].unpl))
+      .forEach(([id, v]) => out.push([date, objById[id] ? objById[id].name : '—', v.fb, v.tasks, v.unpl]));
+  });
+  return out;
+}
+function binOfEff(eff) {
+  const b = B4_BINS.find(x => eff * 100 >= x.lo && eff * 100 < x.hi);
+  return b ? b.label + '%' : '—';
+}
+
+const B4_SRC_WORD = { bruno: 'Статистика Bruno', task: 'Счёт по задачам' };
+/* Реестр таблиц. png — id хоста SVG-графика (только там, где график
+   действительно SVG: треймап, воронка, плашки и дерево — это HTML, их
+   снимают «Печатью → Сохранить в PDF»). */
+const TABLES = {
+  b1: {
+    title: 'Динамика задач', slug: 'динамика', png: 'b1-chart', pngTitle: 'Задачи по статусам во времени',
+    build() {
+      const hour = timeLevel() === 'hour';
+      const cols = [
+        { h: hour ? 'Час' : 'Период', t: 'txt' }, { h: 'Дата с', t: 'txt' }, { h: 'Дата по', t: 'txt' },
+        { h: 'Всего задач', t: 'int' }, { h: 'Выполнено', t: 'int' }, { h: 'Пропущено', t: 'int' },
+        { h: 'В работе и новые', t: 'int' }, { h: 'Эффективность, %', t: 'pct1' },
+      ];
+      const rows = b1Buckets().map(b => {
+        const from = hour ? state.time.hour : (b.dates ? b.dates[0] : b.date);
+        const to = hour ? state.time.hour : (b.dates ? b.dates[b.dates.length - 1] : b.date);
+        return [b.label, from, to, b.all, b.completed, b.missed, b.other, effCM(b.completed, b.missed)];
+      });
+      return { cols, rows, note: 'Строка — столбец графика. Эффективность = выполнено / (выполнено + пропущено).' };
+    },
+  },
+  b3: {
+    title: 'План–факт', slug: 'план-факт', png: 'b3-chart', pngTitle: 'План–факт: вовремя, с опозданием, пропущено',
+    build() {
+      const hour = timeLevel() === 'hour';
+      const cols = [
+        { h: hour ? 'Час' : 'Период', t: 'txt' }, { h: 'Дата с', t: 'txt' }, { h: 'Дата по', t: 'txt' },
+        { h: 'План, задач', t: 'int' }, { h: 'Вовремя', t: 'int' }, { h: 'С опозданием', t: 'int' },
+        { h: 'Пропущено', t: 'int' }, { h: 'Доля вовремя, %', t: 'pct1' }, { h: 'Ср. опоздание, ч', t: 'num1' },
+      ];
+      const rows = tblB3Groups().map(g => [
+        g.label, g.from, g.to, g.plan, g.onTime, g.late, g.missed,
+        g.plan > 0 ? g.onTime / g.plan : null,
+        g.delayN > 0 ? g.delaySum / g.delayN : null,
+      ]);
+      return { cols, rows, note: 'Только плановые (регулярные) задачи — тумблер «Все / Плановые / Неплановые» на этот блок не действует. Среднее опоздание — по выполненным с опозданием; в часовом разрезе оно не считается.' };
+    },
+  },
+  b2: {
+    title: 'Объекты', slug: 'объекты',
+    variants() {
+      const z = state.drill.b2aObj;
+      if (!z || z === '__other__') return null;
+      return [{ key: 'obj', label: 'По объектам' }, { key: 'zone', label: 'Зоны объекта' }];
+    },
+    build(variant) {
+      if (variant === 'zone') {
+        const objId = state.drill.b2aObj;
+        const objName = objById[objId] ? objById[objId].name : '—';
+        const cols = [
+          { h: 'Объект', t: 'txt' }, { h: 'Зона', t: 'txt' }, { h: 'Задач', t: 'int' },
+          { h: 'Выполнено', t: 'int' }, { h: 'Пропущено', t: 'int' }, { h: 'Эффективность, %', t: 'pct1' },
+        ];
+        const rows = tblZoneRows(objId).map(z => [objName, z.name, z.count, z.completed, z.missed, z.eff]);
+        return { cols, rows, note: 'Зоны выбранного объекта. Фильтр роли на этот разрез не действует — в данных по зонам нет разбивки по ролям.' };
+      }
+      const list = b2StructureByObject();
+      const total = list.reduce((a, r) => a + r.count, 0) || 1;
+      const cols = [
+        { h: 'Объект', t: 'txt' }, { h: 'Задач', t: 'int' }, { h: 'Выполнено', t: 'int' },
+        { h: 'Пропущено', t: 'int' }, { h: 'Эффективность, %', t: 'pct1' }, { h: 'Доля от всех задач, %', t: 'pct1' },
+      ];
+      const rows = list.map(r => [r.name, r.count, r.completed, r.missed, r.eff, r.count / total]);
+      return { cols, rows, note: 'Только объекты с задачами за период. «Прочие» из треймапа здесь развёрнуты в настоящие объекты — склейка нужна для рисования, в таблице она мешает.' };
+    },
+  },
+  b4: {
+    title: 'Сотрудники', slug: 'сотрудники', png: 'b4-chart', pngTitle: 'Сотрудники по бинам эффективности',
+    build() {
+      const cols = [
+        { h: 'Сотрудник', t: 'txt' }, { h: 'Роль', t: 'txt' }, { h: 'Назначено', t: 'num1' },
+        { h: 'Выполнено', t: 'num1' }, { h: 'Пропущено', t: 'num1' }, { h: 'Эффективность, %', t: 'pct1' }, { h: 'Бин', t: 'txt' },
+      ];
+      const rows = empEfficiencyList().map(e => [e.name, e.role, e.assigned, e.completed, e.missed, e.eff, binOfEff(e.eff)]);
+      return {
+        cols, rows,
+        head: [['Источник счёта', B4_SRC_WORD[state.b4src] || state.b4src]],
+        note: 'Источник: ' + (B4_SRC_WORD[state.b4src] || '') + '. В режиме «Счёт по задачам» задача делится между исполнителями, поэтому числа дробные. Только сотрудники с назначенными задачами за период.',
+      };
+    },
+  },
+  roles: {
+    title: 'Роли', slug: 'роли',
+    build() {
+      const cols = [
+        { h: 'Роль', t: 'txt' }, { h: 'Назначено', t: 'int' }, { h: 'Выполнено', t: 'int' },
+        { h: 'Эффективность, %', t: 'pct1' }, { h: 'Задач за ' + ARCHIVE_TO, t: 'int' },
+      ];
+      const rows = rolesAgg().map(r => [r.role, r.assigned, r.completed, r.eff, r.today]);
+      return { cols, rows, note: 'Последний столбец — задачи за последний день архива (' + ARCHIVE_TO + '), он не зависит от выбранного периода: это та же цифра «сегодня», что на плашках ролей.' };
+    },
+  },
+  fb: {
+    title: 'Обращения и неплановые задачи', slug: 'обращения', png: 'b1-fb-chart',
+    pngTitle() { return fbWords().title; },
+    variants() { return [{ key: 'obj', label: 'По объектам' }, { key: 'day', label: 'По дням' }]; },
+    build(variant) {
+      const fbMode = FB_MODE_FB();
+      if (variant === 'day') {
+        const cols = [
+          { h: 'Дата', t: 'txt' }, { h: 'Объект', t: 'txt' }, { h: 'Обращений', t: 'int' },
+          { h: 'Задач по обращениям', t: 'int' }, { h: 'Неплановых задач', t: 'int' },
+        ];
+        return { cols, rows: tblFbByDay(), note: 'Строка — объект в конкретный день. Уникальность обращения считается в пределах суток и объекта.' };
+      }
+      const list = tblFbByObject();
+      const cols = [
+        { h: 'Объект', t: 'txt' }, { h: 'Обращений', t: 'int' }, { h: 'Задач по обращениям', t: 'int' },
+        { h: 'Неплановых задач', t: 'int' }, { h: 'Задач на обращение', t: 'num1' },
+      ].concat(FB_ST.map(k => ({ h: k, t: 'int' })));
+      const rows = list.map(r => [
+        r.name, r.v.fb, r.v.tasks, r.v.unpl, r.v.fb > 0 ? r.v.tasks / r.v.fb : null,
+      ].concat(FB_ST.map(k => r.v.st[k] || 0)));
+      return {
+        cols, rows,
+        head: [['Разрез статусов', fbMode ? 'по задачам по обращениям' : 'по неплановым задачам']],
+        note: 'Столбцы статусов относятся ' + (fbMode ? 'к задачам по обращениям (у самого обращения статуса нет)' : 'к неплановым задачам')
+          + '. Блок учитывает только период и объект — фильтр роли на него не влияет.',
+      };
+    },
+  },
+};
+const TABLE_ORDER = ['b1', 'b3', 'b2', 'b4', 'roles', 'fb'];
+
+/* -- Слой «Табличный вид» --------------------------------------------------- */
+let _tblSort = null;      // {i, dir} — сортировка колонки, сбрасывается при смене таблицы
+let _tblSortKey = null;
+let _tblLast = null;      // последняя построенная таблица — из неё качается CSV
+
+function tableVariants(def) { return (typeof def.variants === 'function') ? def.variants() : null; }
+function tableVariant(def, want) {
+  const vs = tableVariants(def);
+  if (!vs || !vs.length) return null;
+  return vs.some(v => v.key === want) ? want : vs[0].key;
+}
+function openTable(key, variant) {
+  const def = TABLES[key];
+  if (!def) return;
+  withCubes(() => {
+    state.table = { key, variant: tableVariant(def, variant) };
+    _hashPushNext = true;
+    syncHash();
+    renderTableLayer();
+  });
+}
+function closeTable() {
+  if (!state.table) return;
+  state.table = null;
+  syncHash();
+  renderTableLayer();
+}
+function tableSubtitle(def) {
+  const parts = [windowLabel(), 'объекты: ' + objNamesLabel()];
+  if (!roleFilterAllSel()) parts.push('роль: ' + [...state.roles].join(', '));
+  if (state.scope !== 'all') parts.push(SCOPE_WORD[state.scope]);
+  if (def === TABLES.b4) parts.push(B4_SRC_WORD[state.b4src]);
+  return parts.join(' · ');
+}
+function renderTableLayer() {
+  const ov = document.getElementById('tbl-overlay');
+  const st = state.table;
+  if (!st || !TABLES[st.key]) {
+    ov.classList.remove('on');
+    if (!_sheetOwner) document.body.classList.remove('sheet-lock');
+    _tblLast = null;
+    return;
+  }
+  const def = TABLES[st.key];
+  st.variant = tableVariant(def, st.variant);
+  const data = def.build(st.variant);
+  const sortKey = st.key + '|' + (st.variant || '');
+  if (sortKey !== _tblSortKey) { _tblSortKey = sortKey; _tblSort = null; }
+  _tblLast = { def, data, variant: st.variant };
+
+  document.getElementById('tbl-title').textContent = def.title;
+  document.getElementById('tbl-sub').textContent = tableSubtitle(def);
+
+  const vwrap = document.getElementById('tbl-variants');
+  const vs = tableVariants(def);
+  vwrap.innerHTML = !vs ? '' : vs.map(v =>
+    `<button type="button" data-tvar="${v.key}" class="${v.key === st.variant ? 'active' : ''}">${esc(v.label)}</button>`).join('');
+
+  let rows = data.rows;
+  if (_tblSort) {
+    const i = _tblSort.i, dir = _tblSort.dir;
+    rows = rows.slice().sort((a, b) => {
+      const x = a[i], y = b[i];
+      if (x == null && y == null) return 0;
+      if (x == null) return 1;
+      if (y == null) return -1;
+      const c = (typeof x === 'number' && typeof y === 'number') ? x - y : String(x).localeCompare(String(y), 'ru');
+      return dir > 0 ? c : -c;
+    });
+  }
+  const cols = data.cols;
+  const sums = cols.map((c, i) => c.t === 'int' || c.t === 'num1' ? rows.reduce((a, r) => a + (Number(r[i]) || 0), 0) : null);
+  const body = document.getElementById('tbl-body');
+  if (!rows.length) {
+    body.innerHTML = '<p class="note empty" style="margin:14px 0;">Нет данных в выбранном срезе.</p>';
+  } else {
+    const head = cols.map((c, i) => {
+      const ar = _tblSort && _tblSort.i === i ? `<span class="sort-ic">${_tblSort.dir > 0 ? '▲' : '▼'}</span>` : '';
+      return `<th data-col="${i}" class="${isNumType(c.t) ? 'num' : ''}">${esc(c.h)}${ar}</th>`;
+    }).join('');
+    const trs = rows.map(r => '<tr>' + cols.map((c, i) =>
+      `<td class="${isNumType(c.t) ? 'num' : ''}">${cellHtml(r[i], c.t)}</td>`).join('') + '</tr>').join('');
+    const foot = '<tr><td>Итого · строк: ' + fmt(rows.length) + '</td>' + cols.slice(1).map((c, k) => {
+      const i = k + 1;
+      return `<td class="${isNumType(c.t) ? 'num' : ''}">${sums[i] == null ? '' : cellHtml(sums[i], c.t)}</td>`;
+    }).join('') + '</tr>';
+    body.innerHTML = '<table><thead><tr>' + head + '</tr></thead><tbody>' + trs + '</tbody><tfoot>' + foot + '</tfoot></table>'
+      + (data.note ? '<p class="tbl-note">' + data.note + '</p>' : '');
+  }
+  ov.classList.add('on');
+  if (isPhone()) document.body.classList.add('sheet-lock');
+}
+document.getElementById('tbl-close').onclick = closeTable;
+document.getElementById('tbl-overlay').addEventListener('click', e => { if (e.target.id === 'tbl-overlay') closeTable(); });
+document.getElementById('tbl-variants').addEventListener('click', e => {
+  const b = e.target.closest('button[data-tvar]');
+  if (!b || !state.table) return;
+  state.table.variant = b.dataset.tvar;
+  syncHash();
+  renderTableLayer();
+});
+document.getElementById('tbl-body').addEventListener('click', e => {
+  const th = e.target.closest('th[data-col]');
+  if (!th) return;
+  const i = Number(th.dataset.col);
+  _tblSort = (_tblSort && _tblSort.i === i) ? { i, dir: -_tblSort.dir } : { i, dir: -1 };
+  renderTableLayer();
+});
+document.getElementById('tbl-csv').onclick = () => {
+  if (!_tblLast) return;
+  const { def, data, variant } = _tblLast;
+  const vs = tableVariants(def);
+  const vLabel = vs && variant ? (vs.find(v => v.key === variant) || {}).label : null;
+  const slug = def.slug + (vLabel && vs.length > 1 ? '_' + vLabel.toLowerCase().replace(/\s+/g, '-') : '');
+  downloadCsv(slug, data.cols, data.rows, data.head);
+};
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && state.table) closeTable(); });
+
+/* Кнопки в шапках карточек. Проставляются один раз при старте: ⊞ — открыть
+   блок таблицей, PNG — снять сам график картинкой (только SVG-графики). */
+function setupCardTools() {
+  document.querySelectorAll('.card-tools[data-tools]').forEach(host => {
+    const key = host.dataset.tools;
+    const def = TABLES[key];
+    if (!def) return;
+    const bt = document.createElement('button');
+    bt.type = 'button'; bt.className = 'ctool'; bt.textContent = '⊞';
+    bt.title = 'Открыть таблицей: те же числа построчно, с выгрузкой в CSV';
+    bt.setAttribute('aria-label', 'Открыть таблицей: ' + def.title);
+    bt.onclick = (e) => { e.stopPropagation(); openTable(key); };
+    host.appendChild(bt);
+    if (def.png) {
+      const bp = document.createElement('button');
+      bp.type = 'button'; bp.className = 'ctool'; bp.textContent = 'PNG';
+      bp.title = 'Сохранить график картинкой (PNG, двойное разрешение)';
+      bp.onclick = (e) => {
+        e.stopPropagation();
+        const cap = typeof def.pngTitle === 'function' ? def.pngTitle() : (def.pngTitle || def.title);
+        exportPng(def.png, def.slug, cap);
+      };
+      host.appendChild(bp);
+    }
+  });
+  const all = document.getElementById('btn-tables');
+  if (all) all.onclick = () => showTablesMenu();
+}
+/* Общая кнопка «Таблицы» — список всех шести, если не хочется искать нужный
+   блок глазами. Использует уже существующую модалку. */
+function showTablesMenu() {
+  const items = TABLE_ORDER.map(k => {
+    const def = TABLES[k];
+    return `<tr><td>${esc(def.title)}</td><td style="text-align:right"><button class="btn-detail" data-topen="${k}" type="button">Открыть</button></td></tr>`;
+  }).join('');
+  showModal('Таблицы текущего среза', '<table class="detail-table"><tbody>' + items + '</tbody></table>'
+    + '<p class="tbl-note">Тот же срез, что на экране: период, объекты, роль и категория задач учитываются. Из таблицы скачивается CSV для Excel.</p>');
+  document.getElementById('modal-body').addEventListener('click', e => {
+    const b = e.target.closest('button[data-topen]');
+    if (!b) return;
+    hideModal();
+    openTable(b.dataset.topen);
+  }, { once: true });
+}
+
 /* === СТАРТ === */
 let APP_STARTED = false;
 async function startApp() {
@@ -3506,10 +4147,14 @@ async function startApp() {
       }
     }
     setupFilters();
+    setupCardTools();
     // Ссылка на срез (пункт 32): состояние читаем ПОСЛЕ построения меню
     // фильтров и ДО первого renderAll, иначе дашборд рисуется дважды.
     applyHashState(location.hash);
     renderAll();
+    // Ссылка могла прийти сразу на таблицу (#t=b4) — открываем её после
+    // первого рендера, когда все агрегаты уже прогреты.
+    if (state.table) withCubes(renderTableLayer);
     // Часовой разрез живёт во второй части модели: если ссылка пришла с ним,
     // а кубы ещё летят — перерисуем, когда доедут.
     if (state.time.hour && !CUBES_READY) withCubes(renderAll);
