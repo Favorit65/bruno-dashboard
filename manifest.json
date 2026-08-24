@@ -3930,7 +3930,7 @@
   },
   "2026-08-20": {
    "complete": true,
-   "fetchedAt": "2026-08-23T20:23:54.686271+00:00",
+   "fetchedAt": "2026-08-24T06:42:13.386431+00:00",
    "fields": "slim",
    "counts": {
     "taskPlan": 13946,
@@ -3947,7 +3947,7 @@
   },
   "2026-08-21": {
    "complete": true,
-   "fetchedAt": "2026-08-23T20:24:40.919062+00:00",
+   "fetchedAt": "2026-08-24T06:42:38.473697+00:00",
    "fields": "slim",
    "counts": {
     "taskPlan": 13937,
@@ -3956,7 +3956,7 @@
     "statByTeam": 552
    },
    "bytes": {
-    "taskPlan": 1464926,
+    "taskPlan": 1465027,
     "statByZone": 98127,
     "statByEmployee": 143093,
     "statByTeam": 33310
@@ -3964,7 +3964,7 @@
   },
   "2026-08-22": {
    "complete": true,
-   "fetchedAt": "2026-08-23T20:24:46.677862+00:00",
+   "fetchedAt": "2026-08-24T06:42:44.128927+00:00",
    "fields": "slim",
    "counts": {
     "taskPlan": 1157,
@@ -3973,24 +3973,41 @@
     "statByTeam": 0
    },
    "bytes": {
-    "taskPlan": 80202,
-    "statByZone": 24670,
-    "statByEmployee": 40365,
+    "taskPlan": 80196,
+    "statByZone": 24671,
+    "statByEmployee": 40364,
     "statByTeam": 52
    }
   },
   "2026-08-23": {
    "complete": true,
-   "fetchedAt": "2026-08-23T20:24:50.388368+00:00",
+   "fetchedAt": "2026-08-24T06:43:08.996603+00:00",
    "fields": "slim",
    "counts": {
     "taskPlan": 120,
+    "statByZone": 853,
+    "statByEmployee": 338,
+    "statByTeam": 629
+   },
+   "bytes": {
+    "taskPlan": 9038,
+    "statByZone": 49911,
+    "statByEmployee": 19882,
+    "statByTeam": 40678
+   }
+  },
+  "2026-08-24": {
+   "complete": true,
+   "fetchedAt": "2026-08-24T06:43:30.482248+00:00",
+   "fields": "slim",
+   "counts": {
+    "taskPlan": 16561,
     "statByZone": 0,
     "statByEmployee": 0,
     "statByTeam": 0
    },
    "bytes": {
-    "taskPlan": 9038,
+    "taskPlan": 1068772,
     "statByZone": 52,
     "statByEmployee": 56,
     "statByTeam": 52
@@ -3998,5 +4015,5 @@
   }
  },
  "dirs": {},
- "updatedAt": "2026-08-23T20:24:50.388385+00:00"
+ "updatedAt": "2026-08-24T06:43:30.482264+00:00"
 }
