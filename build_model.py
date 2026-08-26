@@ -251,6 +251,39 @@ def hour_msk(s):
     return datetime.fromtimestamp(ts, tz=timezone(timedelta(hours=MSK_OFFSET_HOURS))).hour
 
 
+def shift_of_planned(rec):
+    """Смена задачи по ПЛАНОВОМУ времени: 'day' | 'evening' | None.
+
+    Берём dateLocal (ГГГГММДДччмм в местном времени объекта) — он заполнен у
+    задачи любого статуса, в отличие от date_begin. Если его нет, падаем на
+    поле date (UTC) через hour_msk."""
+    dl = rec.get("dateLocal")
+    hh = None
+    if dl is not None:
+        try:
+            hh = (int(dl) // 100) % 100
+        except (TypeError, ValueError):
+            hh = None
+    if hh is None:
+        hh = hour_msk(rec.get("date"))
+    if hh is None:
+        return None
+    return "day" if hh < SHIFT_THRESHOLD_HOUR else "evening"
+
+
+# Границы бакетов гистограммы фактической длительности, минуты. Медиана
+# считается интерполяцией внутри бакета — точности «6,9 против 15 минут»
+# для отчёта хватает, а куб от этого растёт на десяток чисел на запись.
+FACT_BUCKETS = [0.25, 0.5, 1, 2, 3, 5, 8, 12, 20, 30, 45, 60, 120, 240, 1440]
+
+
+def fact_bucket(minutes):
+    for i, hi in enumerate(FACT_BUCKETS):
+        if minutes <= hi:
+            return i
+    return len(FACT_BUCKETS) - 1
+
+
 def team_role_shares(team_id, team_membership, role_of_employee):
     """teamID -> {roleName: доля от 0..1}, доли участников команды по ролям
     (равный вес на человека, как и в существующей team-share логике
@@ -505,8 +538,9 @@ def process_archive(archive, manifest, employee_dir, team_membership, feedback_c
     # durationMinutes — «нормативная длительность» (из неё считается
     # completionDate), поэтому как «время на задачу» её брать нельзя: она
     # систематически больше факта. Храним обе, чтобы разницу было видно.
-    clean_speed = defaultdict(lambda: {"tasks": 0, "factSum": 0.0, "factN": 0,
-                                       "normSum": 0.0, "normN": 0})
+    clean_speed = defaultdict(lambda: {"all": 0, "tasks": 0, "factSum": 0.0, "factN": 0,
+                                       "normSum": 0.0, "normN": 0,
+                                       "factHist": [0] * len(FACT_BUCKETS)})
     clean_speed_emps = defaultdict(set)               # тот же ключ -> {сотрудник}
 
     if days_override is not None:
@@ -635,19 +669,29 @@ def process_archive(archive, manifest, employee_dir, team_membership, feedback_c
                     grp = clean_group_of(ex_role_id, ex_role)
                     if grp:
                         by_clean_object_day[d + "|" + obj + "|" + grp][side][status] += 1
-                        # скорость уборки — по завершённым задачам, отдельно
-                        # плановым и неплановым (смена по времени НАЧАЛА работы)
-                        if status == "COMPLETED":
-                            hb = hour_msk(rec.get("date_begin"))
-                            if hb is not None:
-                                shift = "day" if hb < SHIFT_THRESHOLD_HOUR else "evening"
-                                kind = "p" if is_planned else "u"
-                                skey = "|".join((d, obj, grp, kind, shift))
-                                slot = clean_speed[skey]
-                                slot["tasks"] += 1
+                        # --- скорость и НАГРУЗКА уборки (проход 17) ------------
+                        # Смена определяется по ПЛАНОВОМУ времени задачи
+                        # (dateLocal), а не по date_begin. Причина: date_begin
+                        # есть только у завершённых задач, поэтому по нему
+                        # нельзя посчитать, сколько задач было НАЗНАЧЕНО на
+                        # смену, — а именно этого не хватало в колонке
+                        # «Задач/чел.» (см. разбор замечаний 26.08.2026).
+                        # Побочный плюс: вечерняя задача, закрытая после
+                        # полуночи, больше не уезжает в дневную смену.
+                        shift = shift_of_planned(rec)
+                        if shift is not None:
+                            kind = "p" if is_planned else "u"
+                            skey = "|".join((d, obj, grp, kind, shift))
+                            slot = clean_speed[skey]
+                            slot["all"] += 1          # НАЗНАЧЕНО (любой статус)
+                            if status == "COMPLETED":
+                                slot["tasks"] += 1    # ВЫПОЛНЕНО
                                 if ex_id:
                                     clean_speed_emps[skey].add(ex_id)
-                                # ФАКТ: сколько человек реально работал над задачей
+                                # ФАКТ: сколько времени прошло от «начал» до
+                                # «завершил». Копим и сумму (для среднего), и
+                                # гистограмму (для медианы: среднее вытягивают
+                                # единичные «висящие» задачи в несколько часов).
                                 t0 = parse_dt(rec.get("date_begin"))
                                 t1 = parse_dt(rec.get("date_complete") or rec.get("completionDate"))
                                 if t0 is not None and t1 is not None and t1 >= t0:
@@ -656,6 +700,7 @@ def process_archive(archive, manifest, employee_dir, team_membership, feedback_c
                                     if 0 < fact <= 24 * 60:
                                         slot["factSum"] += fact
                                         slot["factN"] += 1
+                                        slot["factHist"][fact_bucket(fact)] += 1
                                 # НОРМАТИВ — для сверки, в отчёт не идёт
                                 norm = rec.get("durationMinutes")
                                 if norm is not None:
@@ -816,8 +861,10 @@ def process_archive(archive, manifest, employee_dir, team_membership, feedback_c
         "byKomendantDay": dict(by_komendant_day),
         "byCleanObjectDay": dict(by_clean_object_day),
         "cleanSpeedDay": {
-            k: {"tasks": v["tasks"], "employees": len(clean_speed_emps.get(k, ())),
+            k: {"all": v["all"], "tasks": v["tasks"],
+                "employees": len(clean_speed_emps.get(k, ())),
                 "factSum": round(v["factSum"], 1), "factN": v["factN"],
+                "factHist": v["factHist"],
                 "normSum": round(v["normSum"], 1), "normN": v["normN"]}
             for k, v in clean_speed.items()
         },
@@ -988,8 +1035,9 @@ def main():
             continue
         fs = sum(r["factSum"] for r in rows); fn = sum(r["factN"] for r in rows)
         ns = sum(r["normSum"] for r in rows); nn = sum(r["normN"] for r in rows)
-        print("     %-11s задач=%-8s факт=%.1f мин (n=%s)  норматив=%.1f мин (n=%s)" % (
-            label, "{:,}".format(sum(r["tasks"] for r in rows)).replace(",", " "),
+        print("     %-11s назначено=%-9s выполнено=%-8s факт=%.1f мин (n=%s)  норматив=%.1f мин (n=%s)" % (
+            label, "{:,}".format(sum(r["all"] for r in rows)).replace(",", " "),
+            "{:,}".format(sum(r["tasks"] for r in rows)).replace(",", " "),
             (fs / fn) if fn else 0, "{:,}".format(fn).replace(",", " "),
             (ns / nn) if nn else 0, "{:,}".format(nn).replace(",", " ")))
     for grp, label in (("base", "уборщицы (роль employee)"), ("mgr", "менеджеры клининга")):

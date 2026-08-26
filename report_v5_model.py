@@ -51,6 +51,10 @@ TOWER_FALLBACK_NAMES = {
 
 KOMENDANT_ROLE_MARK = "комендант"
 
+# Границы бакетов гистограммы фактической длительности (минуты) — должны
+# совпадать с FACT_BUCKETS в build_model.py, иначе медиана поедет.
+FACT_BUCKETS = [0.25, 0.5, 1, 2, 3, 5, 8, 12, 20, 30, 45, 60, 120, 240, 1440]
+
 # Режимы трактовки «уборщиц» -> (группы для ПЛАНОВЫХ, группы для НЕПЛАНОВЫХ).
 # Группы приходят из куба byCleanObjectDay: base = системная роль employee,
 # mgr = «Менеджер клининга».
@@ -258,6 +262,14 @@ def build(model, d_from=None, d_to=None, clean_mode="split", months_back_n=3):
     }
 
     # =================================================== активность и «текущий месяц»
+    # ВАЖНО (проход 17). Раньше здесь считался ОДИН список «активных в текущем
+    # месяце» — по любой задаче объекта/коменданта, — и он же применялся во всех
+    # приложениях. Из-за этого в приложение по НЕПЛАНОВЫМ задачам попадали
+    # объекты и люди, у которых неплановых задач в текущем месяце не было вовсе
+    # (напр. ГО Трубная: неплановая уборка только в мае), и слайд показывал
+    # пустой график и строку из нулей. Теперь каждый блок держит СВОЙ список.
+    cur_active = defaultdict(set)
+
     active_now_objects = set()
     first_activity = {}
     for key, val in daily["byObjectDay"].items():
@@ -277,16 +289,33 @@ def build(model, d_from=None, d_to=None, clean_mode="split", months_back_n=3):
 
     # =================================================== BLOCK 3 — все задачи по объектам
     agg3 = Aggregator(weeks, months)
+    agg3p = Aggregator(weeks, months)   # только плановые  (приложение, проход 17)
+    agg3u = Aggregator(weeks, months)   # только неплановые
     for key, val in daily["byObjectDay"].items():
         ds, oid = key.split("|", 1)
         if ds not in in_range:
             continue
         day = parse_d(ds)
+        p = from_status_bucket(val["planned"])
+        u = from_status_bucket(val["unplanned"])
         tri = zero3()
-        add3(tri, from_status_bucket(val["planned"]))
-        add3(tri, from_status_bucket(val["unplanned"]))
+        add3(tri, p)
+        add3(tri, u)
         agg3.add(oid, day, tri)
+        if p["due"]:
+            agg3p.add(oid, day, p)
+        if u["due"]:
+            agg3u.add(oid, day, u)
+        if ds in cur_month_days:
+            if tri["due"]:
+                cur_active["b3"].add(oid)
+            if p["due"]:
+                cur_active["b3p"].add(oid)
+            if u["due"]:
+                cur_active["b3u"].add(oid)
     out["block3"] = agg3.finish("object")
+    out["block3p"] = agg3p.finish("object")
+    out["block3u"] = agg3u.finish("object")
 
     # плановые/неплановые отдельно — нужны дереву (block «Плановые и неплановые»)
     tree_pl, tree_un = zero3(), zero3()
@@ -320,6 +349,8 @@ def build(model, d_from=None, d_to=None, clean_mode="split", months_back_n=3):
         fb_week[oid][wi] += cnt
         fb_month[oid]["%d-%02d" % (day.year, day.month)] += cnt
         fb_total[oid] += cnt
+        if ds in cur_month_days:
+            cur_active["b2"].add(oid)
     week_total_b2 = [0] * len(weeks)
     for arr in fb_week.values():
         for i, v in enumerate(arr):
@@ -350,8 +381,13 @@ def build(model, d_from=None, d_to=None, clean_mode="split", months_back_n=3):
             agg4.add(eid, day, un)
         if pl["due"]:
             agg4b.add(eid, day, pl)
-        if ds in cur_month_days and (un["due"] or pl["due"]):
-            active_now_koms.add(eid)
+        if ds in cur_month_days:
+            if un["due"] or pl["due"]:
+                active_now_koms.add(eid)
+            if un["due"]:
+                cur_active["b4"].add(eid)
+            if pl["due"]:
+                cur_active["b4b"].add(eid)
     out["block4"] = agg4.finish("komendant")
     out["block4b"] = agg4b.finish("komendant")
     out["active_komendanty_current_month"] = sorted(active_now_koms)
@@ -379,10 +415,14 @@ def build(model, d_from=None, d_to=None, clean_mode="split", months_back_n=3):
             pl = from_status_bucket(val["planned"])
             if pl["due"]:
                 agg5.add(oid, day, pl)
+                if ds in cur_month_days:
+                    cur_active["b5"].add(oid)
         if grp in set_un:
             un = from_status_bucket(val["unplanned"])
             if un["due"]:
                 agg5b.add(oid, day, un)
+                if ds in cur_month_days:
+                    cur_active["b5b"].add(oid)
     out["block5"] = agg5.finish("object")
     out["block5b"] = agg5b.finish("object")
 
@@ -391,6 +431,7 @@ def build(model, d_from=None, d_to=None, clean_mode="split", months_back_n=3):
     # «Мин./задачу» — ФАКТ (date_complete − date_begin). Норматив
     # (durationMinutes) держим рядом справочно: он систематически больше факта,
     # и подменять им факт нельзя.
+    speed_new = True
     if "cleanSpeedDay" in rep:
         sample_key = next(iter(rep["cleanSpeedDay"]), "")
         if sample_key and len(sample_key.split("|")) != 5:
@@ -398,37 +439,71 @@ def build(model, d_from=None, d_to=None, clean_mode="split", months_back_n=3):
                 "ОШИБКА: куб cleanSpeedDay старого формата (без разреза "
                 "плановые/неплановые и без фактического времени). Пересоберите "
                 "model.json.gz свежим build_model.py.")
+        if sample_key and "all" not in rep["cleanSpeedDay"][sample_key]:
+            # Модель собрана build_model.py до прохода 17: нет ни числа
+            # НАЗНАЧЕННЫХ задач, ни гистограммы длительностей. Отчёт собираем,
+            # но колонки «Назначено/чел.» и «Медиана» будут прочерками.
+            speed_new = False
+
+    def hist_median(hist):
+        """Медиана по гистограмме FACT_BUCKETS: линейная интерполяция внутри
+        бакета. Нужна потому, что среднее по факту вытягивают единичные
+        «висящие» задачи в несколько часов (медиана 0,3 мин против среднего 68)."""
+        total = sum(hist)
+        if not total:
+            return None
+        half = total / 2.0
+        lo = 0.0
+        acc = 0
+        for i, cnt in enumerate(hist):
+            hi = FACT_BUCKETS[i]
+            if acc + cnt >= half and cnt:
+                return round(lo + (half - acc) / cnt * (hi - lo), 2)
+            acc += cnt
+            lo = hi
+        return round(FACT_BUCKETS[-1], 2)
 
     def speed_slot(tid, kind, shift, groups):
-        tasks = emps = fact_n = norm_n = 0
+        assigned = tasks = emps = fact_n = norm_n = 0
         fact_sum = norm_sum = 0.0
         n_days = 0
+        hist = [0] * len(FACT_BUCKETS)
         for grp in groups:
             for ds in in_range:
                 v = rep["cleanSpeedDay"].get("|".join((ds, tid, grp, kind, shift)))
                 if not v:
                     continue
                 n_days += 1
+                assigned += v.get("all", 0)
                 tasks += v["tasks"]
                 emps += v["employees"]
                 fact_sum += v["factSum"]
                 fact_n += v["factN"]
                 norm_sum += v["normSum"]
                 norm_n += v["normN"]
+                for i, c in enumerate(v.get("factHist") or ()):
+                    hist[i] += c
         return {
-            "has_data": tasks > 0,
+            "has_data": (tasks > 0 or assigned > 0),
             "n_days": n_days,
+            # НАЗНАЧЕНО — все задачи смены, любой статус (проход 17)
+            "assigned": assigned,
+            # ВЫПОЛНЕНО — только COMPLETED (как было)
             "tasks": tasks,
-            # «задач на человека» — задачи, делённые на сумму человеко-смен
-            # (как в утверждённой колоде: employees там тоже копился по суткам,
-            # а не уникальными людьми за период)
+            # «на человека» — делим на сумму человеко-смен (как в утверждённой
+            # колоде: employees там тоже копился по суткам, а не уникальными
+            # людьми за период). Знаменатель один и тот же у обеих колонок,
+            # поэтому их отношение = эффективность смены.
+            "assigned_per_employee": (round(assigned / emps, 1)
+                                      if (emps and speed_new) else None),
             "avg_tasks_per_employee": round(tasks / emps, 2) if emps else None,
             "avg_duration_min": round(fact_sum / fact_n, 1) if fact_n else None,
+            "median_duration_min": hist_median(hist) if speed_new else None,
             "avg_norm_min": round(norm_sum / norm_n, 1) if norm_n else None,
             "n_measured": fact_n,
             # сырые суммы — для ВЗВЕШЕННОГО среднего по башням (см. tower_avg)
             "employees": emps, "fact_sum": round(fact_sum, 1), "fact_n": fact_n,
-            "norm_sum": round(norm_sum, 1), "norm_n": norm_n,
+            "norm_sum": round(norm_sum, 1), "norm_n": norm_n, "fact_hist": hist,
         }
 
     kinds = {"planned": ("p", set_pl), "unplanned": ("u", set_un)}
@@ -448,14 +523,23 @@ def build(model, d_from=None, d_to=None, clean_mode="split", months_back_n=3):
         башня, а задача."""
         slots = [t["kinds"][kind_name][shift] for t in towers.values()
                  if t["kinds"][kind_name][shift]["has_data"]]
+        assigned = sum(s["assigned"] for s in slots)
         tasks = sum(s["tasks"] for s in slots)
         emps = sum(s["employees"] for s in slots)
         fact_sum = sum(s["fact_sum"] for s in slots)
         fact_n = sum(s["fact_n"] for s in slots)
         norm_sum = sum(s["norm_sum"] for s in slots)
         norm_n = sum(s["norm_n"] for s in slots)
-        return {"avg_tasks_per_employee": round(tasks / emps, 2) if emps else None,
+        hist = [0] * len(FACT_BUCKETS)
+        for s in slots:
+            for i, c in enumerate(s["fact_hist"]):
+                hist[i] += c
+        return {"assigned": assigned,
+                "assigned_per_employee": (round(assigned / emps, 1)
+                                          if (emps and speed_new) else None),
+                "avg_tasks_per_employee": round(tasks / emps, 2) if emps else None,
                 "avg_duration_min": round(fact_sum / fact_n, 1) if fact_n else None,
+                "median_duration_min": hist_median(hist) if speed_new else None,
                 "avg_norm_min": round(norm_sum / norm_n, 1) if norm_n else None,
                 "n_towers_with_data": len(slots),
                 "n_measured": fact_n,
@@ -494,6 +578,10 @@ def build(model, d_from=None, d_to=None, clean_mode="split", months_back_n=3):
         "planned_month_due": [month_pl[m["key"]]["due"] for m in months],
         "unplanned_month_due": [month_un[m["key"]]["due"] for m in months],
     }
+
+    # Поблочные списки «активных в текущем месяце» (проход 17). Ключи —
+    # b2 / b3 / b3p / b3u / b4 / b4b / b5 / b5b, ровно как имена блоков.
+    out["active_current_month"] = {k: sorted(v) for k, v in cur_active.items()}
 
     return out
 
@@ -557,15 +645,18 @@ if __name__ == "__main__":
                 s = b6["towers"][tid]["kinds"][kind][sh]
                 if not s["has_data"]:
                     continue
-                print("     %-30s %-7s задач=%-7s задач/чел=%-6s факт=%-6s норматив=%s" % (
-                    name[:30], "день" if sh == "day" else "вечер", s["tasks"],
-                    s["avg_tasks_per_employee"], s["avg_duration_min"], s["avg_norm_min"]))
+                print("     %-30s %-7s назн=%-7s вып=%-6s назн/чел=%-6s вып/чел=%-6s "
+                      "факт=%-6s медиана=%-6s норматив=%s" % (
+                          name[:30], "день" if sh == "day" else "вечер", s["assigned"],
+                          s["tasks"], s["assigned_per_employee"], s["avg_tasks_per_employee"],
+                          s["avg_duration_min"], s["median_duration_min"], s["avg_norm_min"]))
         for sh in ("day", "evening"):
             a = b6["average"][kind][sh]
-            print("     СРЕДНЕЕ (взвеш.) %-7s задач=%-7s задач/чел=%-6s факт=%-6s норматив=%-6s "
-                  "башен=%d, замеров=%s" % (
-                      "день" if sh == "day" else "вечер", a["tasks"],
-                      a["avg_tasks_per_employee"], a["avg_duration_min"], a["avg_norm_min"],
+            print("     СРЕДНЕЕ (взвеш.) %-7s назн=%-7s вып=%-6s назн/чел=%-6s вып/чел=%-6s "
+                  "факт=%-6s медиана=%-6s норматив=%-6s башен=%d, замеров=%s" % (
+                      "день" if sh == "day" else "вечер", a["assigned"], a["tasks"],
+                      a["assigned_per_employee"], a["avg_tasks_per_employee"],
+                      a["avg_duration_min"], a["median_duration_min"], a["avg_norm_min"],
                       a["n_towers_with_data"], a["n_measured"]))
 
     print("\nТоп-5 объектов приложения (block3):")

@@ -21,6 +21,29 @@
 в API Bruno, они ведутся вручную. По решению заказчика слайд оставлен как есть
 для ручной правки в готовом файле (см. IMPLEMENTATION ниже — правится в одном
 месте).
+
+ПРОХОД 17 (замечания заказчика 26.08.2026):
+  1. Кегль заголовков и значений KPI подбирается под ширину (fit_size) — на
+     слайдах 6/7/8 длинный заголовок и пара «всего/выполнено» переносились на
+     вторую строку и наезжали на подпись.
+  2. Слайд «Уборка»: вместо одной колонки «Задач/чел.» четыре — «Назначено на
+     чел.», «Выполнено на чел.», «Мин./зад. среднее», «Мин./зад. медиана».
+  3. Слайд «Итоги периода»: эффективность уборки стала парой
+     «плановая / неплановая».
+  4. Мини-графики приложений: 3x3 на слайд (было до 4x4) с переносом на
+     следующий слайд, обе шкалы подписаны в каждой ячейке, шкала эффективности
+     подстраивается под объект, месяцы разделены линией и «рисочкой», под
+     каждым месяцем — его эффективность.
+  5. Строки приложений отбираются по ПОБЛОЧНОЙ активности в текущем месяце, а
+     задачи «в работе» (NEW/WAITING/COMPLETING) показаны отдельно — жёлтым
+     сегментом и третьим числом в таблицах.
+  6. Таблица «Все задачи по объектам»: каждый месяц занимает две колонки —
+     объём и эффективность месяца; добавлены такие же таблицы отдельно по
+     плановым и по неплановым задачам.
+
+ВНИМАНИЕ: пункт 2 требует модель, собранную build_model.py прохода 17 и новее
+(в кубе cleanSpeedDay появились поля "all" и "factHist"). На старой модели
+колонки «Назначено на чел.» и «медиана» будут прочерками.
 """
 
 import argparse
@@ -109,6 +132,23 @@ def band_ylim(values, frac_lo, frac_hi):
     height = (vmax - vmin) / (frac_hi - frac_lo)
     lo = vmin - frac_lo * height
     return lo, lo + height
+
+
+def fit_size(text, width_in, base, min_size=9.0, bold=False, factor=None):
+    """Кегль, при котором самая длинная строка ГАРАНТИРОВАННО влезает в ширину.
+
+    Зачем (проход 17). python-pptx не умеет autofit, а текстбокс с word_wrap
+    просто растёт вниз — в PDF из LibreOffice это видно как наезд второй строки
+    заголовка на подзаголовок (слайды 6, 7, 8) и значения KPI на его подпись
+    («47 122/ 8 308»). Ширину глифа оцениваем сверху: у Golos Text цифры и
+    прописные занимают ~0,55 em, поэтому запас есть."""
+    lines = [l for l in str(text).split("\n") if l]
+    if not lines:
+        return base
+    f = factor if factor is not None else (0.56 if bold else 0.52)
+    longest = max(len(l) for l in lines)
+    fits = width_in * 72.0 / (f * longest)
+    return round(max(min_size, min(base, fits)), 1)
 
 
 def cat_color(i):
@@ -242,10 +282,21 @@ class Charts:
         return self._save(fig, name)
 
     # --- 4. сетка мини-графиков (приложения) ---
+    # Оформление согласовано 26.08.2026 (вариант «Б»):
+    #   * шкала количества (слева) и шкала эффективности (справа) подписаны в
+    #     КАЖДОЙ ячейке — раньше правая ось была только у последней колонки;
+    #   * шкала эффективности подстраивается под диапазон объекта, иначе при
+    #     эффективности 1–2% линия ложится на ось и динамики не видно; чтобы
+    #     разный масштаб не вводил в заблуждение, значение подписано числом
+    #     в конце каждого месяца;
+    #   * месяцы разделены вертикальной линией, «рисочкой» под осью и подложкой
+    #     через месяц, названия месяцев — крупные и жирные;
+    #   * третий (жёлтый) сегмент столбца — задачи «в работе»
+    #     (NEW/WAITING/COMPLETING). Без него строки вроде коменданта, у которого
+    #     все задачи месяца ещё открыты, выглядели как пустой график.
     @staticmethod
-    def _mini_timeline(ax, weeks, start_idx=0):
+    def _month_groups(weeks):
         n = len(weeks)
-        ax.set_xlim(start_idx - 0.6, n - 0.4)
         groups, cur, start = [], (weeks[0]["year"], weeks[0]["month"]), 0
         for i in range(1, n + 1):
             key = (weeks[i]["year"], weeks[i]["month"]) if i < n else None
@@ -253,63 +304,112 @@ class Charts:
                 groups.append((start, i - 1, cur))
                 if i < n:
                     cur, start = key, i
-        ax.set_xticks([])
-        for (s, e, (y, m)) in groups:
-            if e < start_idx:
-                continue
-            ax.annotate(MONTHS_SHORT[m], xy=((max(s, start_idx) + e) / 2, 0),
-                        xycoords=("data", "axes fraction"), xytext=(0, -5),
-                        textcoords="offset points", ha="center", va="top",
-                        fontsize=7.6, color=TEXT_MUTED, annotation_clip=False)
-            if s > start_idx:
-                ax.axvline(s - 0.5, color=GRID, linewidth=0.6, zorder=0)
+        return groups
 
     @staticmethod
-    def _compact(v):
-        return f"{v/1000:.0f}к" if v >= 1000 else f"{v:.0f}"
+    def _count_fmt(v, _=None):
+        if v == 0:
+            return "0"
+        if v >= 1000:
+            return ("%.0f тыс." % (v / 1000.0))
+        return "%.0f" % v
 
-    def grid_combo(self, weeks, entities, series_fn, name, ncols=4, nrows=4,
-                   figsize=(19.5, 14.2), start_idx_fn=None):
+    def grid_combo(self, weeks, entities, series_fn, name, ncols=3, nrows=3,
+                   figsize=(12.33, 5.1), start_idx_fn=None):
+        n = len(weeks)
+        groups = self._month_groups(weeks)
         fig, axes = plt.subplots(nrows, ncols, figsize=figsize)
         axes = np.atleast_1d(axes).flatten()
-        x = np.arange(len(weeks))
+        x = np.arange(n)
         for i, ax in enumerate(axes):
-            col = i % ncols
             if i >= len(entities):
                 ax.axis("off")
                 continue
             eid, ename = entities[i]
-            completed, missed, efficiency = series_fn(eid)
-            start_idx = start_idx_fn(eid) if start_idx_fn else 0
-            ax.bar(x, completed, color=GREEN, width=0.75, zorder=3)
-            ax.bar(x, missed, bottom=completed, color=RED, width=0.75, zorder=3)
-            self._clean_ax(ax)
-            ax.tick_params(axis="y", labelsize=6.6)
-            ax.yaxis.set_major_formatter(plt.FuncFormatter(lambda v, _: self._compact(v)))
-            ax.grid(axis="y", color=GRID, linewidth=0.5, zorder=0)
+            completed, missed, completing, efficiency = series_fn(eid)
+            si = start_idx_fn(eid) if start_idx_fn else 0
+            c = np.array(completed, dtype=float)
+            m = np.array(missed, dtype=float)
+            w = np.array(completing, dtype=float)
+
+            for gi, (s, e, (yy, mo)) in enumerate(groups):
+                if gi % 2 == 1:
+                    ax.axvspan(s - 0.5, e + 0.5, color=BG_LIGHT, zorder=0)
+            ax.bar(x, c, color=GREEN, width=0.72, zorder=3)
+            ax.bar(x, m, bottom=c, color=RED, width=0.72, zorder=3)
+            ax.bar(x, w, bottom=c + m, color=AMBER, width=0.72, zorder=3)
+            top = float(max((c + m + w).max(), 1))
+            ax.set_ylim(0, top * 1.16)
+            for sp in ("top", "right"):
+                ax.spines[sp].set_visible(False)
+            ax.spines["left"].set_color(GRID)
+            ax.spines["bottom"].set_color("#C7D0E0")
+            ax.spines["bottom"].set_linewidth(1.0)
+            ax.set_axisbelow(True)
+            ax.tick_params(axis="y", colors=TEXT_MUTED, labelsize=7.4, length=0, pad=2)
+            ax.yaxis.set_major_locator(plt.MaxNLocator(3, integer=True))
+            ax.yaxis.set_major_formatter(plt.FuncFormatter(self._count_fmt))
+            ax.grid(axis="y", color=GRID, linewidth=0.7, zorder=1)
+            ax.set_xlim(si - 0.6, n - 0.4)
+            ax.set_xticks([])
+
+            vals = [v for j, v in enumerate(efficiency) if v is not None and j >= si]
+            emax = max(vals) if vals else 0.0
+            span = max(emax * 1.45, 2.0)
             ax2 = ax.twinx()
-            xs = [j for j, v in enumerate(efficiency) if v is not None and j >= start_idx]
-            ys = [v for j, v in enumerate(efficiency) if v is not None and j >= start_idx]
-            ax2.plot(xs, ys, color=NAVY, linewidth=1.5, zorder=4)
-            ax2.set_ylim(0, 100)
-            if col == ncols - 1:
-                ax2.set_yticks([0, 50, 100])
-                ax2.tick_params(axis="y", labelsize=6.6, colors=NAVY)
-            else:
-                ax2.set_yticks([])
+            ax2.set_ylim(-span * 0.05, span)
+            ax2.axhline(0, color=NAVY, alpha=0.10, linewidth=0.8, zorder=2)
+            xs = [j for j, v in enumerate(efficiency) if v is not None and j >= si]
+            ys = list(vals)
+            if xs:
+                ax2.plot(xs, ys, color=NAVY, linewidth=1.8, marker="o", markersize=2.6,
+                         markerfacecolor="white", markeredgewidth=0.9, zorder=6)
+            ticks = sorted({0.0, round(emax, 1)}) if emax > 0 else [0.0]
+            ax2.set_yticks(ticks)
+            ax2.set_yticklabels([ru("%g" % t) for t in ticks[:-1]] +
+                                [ru("%g%%" % ticks[-1])])
+            ax2.tick_params(axis="y", labelsize=7.0, colors=NAVY, length=0, pad=2)
+            ax2.set_xlim(si - 0.6, n - 0.4)
             for sp in ax2.spines.values():
                 sp.set_visible(False)
-            self._mini_timeline(ax, weeks, start_idx=start_idx)
-            tot_c, tot_m = sum(completed[start_idx:]), sum(missed[start_idx:])
+
+            for (s, e, (yy, mo)) in groups:
+                if e < si:
+                    continue
+                if s > si:
+                    ax.axvline(s - 0.5, color="#C7D0E0", linewidth=0.9, zorder=2)
+                    ax.annotate("", xy=(s - 0.5, 0), xycoords=("data", "axes fraction"),
+                                xytext=(0, -6), textcoords="offset points",
+                                arrowprops=dict(arrowstyle="-", color="#8FA0BC", linewidth=1.0),
+                                annotation_clip=False)
+                ax.annotate(MONTHS_SHORT[mo].capitalize(),
+                            xy=((max(s, si) + e) / 2.0, 0), xycoords=("data", "axes fraction"),
+                            xytext=(0, -13), textcoords="offset points", ha="center", va="top",
+                            fontsize=8.0, fontweight="bold", color=NAVY, annotation_clip=False)
+                # Эффективность месяца подписываем ПОД осью, рядом с названием
+                # месяца, а не на самой линии: у объектов с эффективностью
+                # около нуля подписи на линии наезжали друг на друга.
+                mc = sum(c[max(s, si):e + 1])
+                mm_ = sum(m[max(s, si):e + 1])
+                mv = (mc / (mc + mm_) * 100) if (mc + mm_) else None
+                ax.annotate(ru("%.1f%%" % mv) if mv is not None else "—",
+                            xy=((max(s, si) + e) / 2.0, 0), xycoords=("data", "axes fraction"),
+                            xytext=(0, -22), textcoords="offset points", ha="center", va="top",
+                            fontsize=6.8, color=NAVY, annotation_clip=False)
+
+            tot_c, tot_m, tot_w = float(c[si:].sum()), float(m[si:].sum()), float(w[si:].sum())
             eff_total = round(tot_c / (tot_c + tot_m) * 100, 1) if (tot_c + tot_m) else None
-            title_txt = "\n".join(textwrap.wrap(ename, width=26)[:2])
-            ax.set_title("%s\nвсего %s · эфф. %s" % (
-                title_txt, fmt_n(tot_c + tot_m),
-                ("%.1f%%" % eff_total).replace(".", ",") if eff_total is not None else "—"),
-                fontsize=8.2, color=TEXT_DARK, loc="left", fontweight="bold", pad=4)
+            ax.set_title(textwrap.shorten(ename, width=42, placeholder="…"),
+                         fontsize=8.6, color=TEXT_DARK, loc="left", fontweight="bold", pad=13)
+            sub = "всего %s · вып. %s%s · эфф. %s" % (
+                fmt_n(tot_c + tot_m + tot_w), fmt_n(tot_c),
+                (" · в работе %s" % fmt_n(tot_w)) if tot_w else "",
+                ("%.1f%%" % eff_total).replace(".", ",") if eff_total is not None else "—")
+            ax.annotate(sub, xy=(0, 1.0), xycoords="axes fraction", xytext=(0, 3),
+                        textcoords="offset points", fontsize=7.0, color=TEXT_MUTED, ha="left")
         fig.tight_layout(rect=[0, 0, 1, 1])
-        fig.subplots_adjust(hspace=0.65, wspace=0.32)
-        return self._save(fig, name)
+        fig.subplots_adjust(hspace=1.02, wspace=0.30)
+        return self._save(fig, name, tight=False)
 
     # --- 5. дерево план/неплан (только фигуры, текст — нативный в PPTX) ---
     def tree_shapes(self, model, name="tree_shapes.png", figsize=(13.2, 6.0)):
@@ -395,7 +495,17 @@ def kom_name(koms, kid):
     return "%s (%s)" % (nm, role) if role else nm
 
 
-def build_tables(model, keep_objects, keep_komendanty, kom_min=KOM_MIN_TASKS):
+def build_tables(model, keeps, kom_min=KOM_MIN_TASKS):
+    """Таблицы приложений.
+
+    Изменения прохода 17 (согласованы 26.08.2026):
+      * в ячейке месяца три числа — вып/проп/В РАБОТЕ (было два). Без третьего
+        строка, у которой все задачи месяца ещё открыты, выглядела как «0/0»;
+      * у таблиц по задачам каждый месяц занимает ДВЕ колонки: объём
+        (вып/проп/раб) и эффективность этого месяца — раньше эффективность была
+        только итоговая за период, промежуточных значений видно не было;
+      * состав строк берётся из ПОБЛОЧНЫХ списков активности (см. keeps).
+    """
     months = model["meta"]["months"]
     month_keys = [m["key"] for m in months]
     month_labels = [m["label"] for m in months]
@@ -417,7 +527,7 @@ def build_tables(model, keep_objects, keep_komendanty, kom_min=KOM_MIN_TASKS):
 
     # --- обращения ---
     b2 = model["block2"]
-    ids2 = [o for o in b2["objects_sorted"] if o in keep_objects]
+    ids2 = [o for o in b2["objects_sorted"] if o in keeps["b2"]]
     rows = []
     for oid in ids2:
         mrow = b2["obj_month"].get(oid, {})
@@ -431,44 +541,68 @@ def build_tables(model, keep_objects, keep_komendanty, kom_min=KOM_MIN_TASKS):
                      + [fmt_n(sum(b2["obj_total"][o] for o in ids2))],
     }
 
-    def month_table(block, ids, name_fn, key_field, tot_field, use_first_activity=False):
+    def cell3(mv):
+        return "%s/%s/%s" % (fmt_n(mv.get("completed", 0)), fmt_n(mv.get("missed", 0)),
+                             fmt_n(mv.get("completing", 0)))
+
+    def cell_eff(mv):
+        c, m = mv.get("completed", 0), mv.get("missed", 0)
+        return ru("%.1f%%" % (c / (c + m) * 100)) if (c + m) else "—"
+
+    ZERO = {"completed": 0, "missed": 0, "completing": 0}
+
+    def month_table(block, ids, name_fn, key_field, tot_field,
+                    use_first_activity=False, split_eff=False):
         out = []
         for eid in ids:
             mrow = block[key_field].get(eid, {})
             cells = []
             for mm in months:
-                mv = mrow.get(mm["key"], {"completed": 0, "missed": 0})
-                val = "%s/%s" % (fmt_n(mv["completed"]), fmt_n(mv["missed"]))
+                mv = mrow.get(mm["key"], ZERO)
+                val = cell3(mv)
                 cells.append(month_cell(eid, mm, val) if use_first_activity else val)
+                if split_eff:
+                    cells.append(cell_eff(mv))
             out.append([name_fn(eid)] + cells
                        + [ru("%.1f%%" % block[tot_field][eid]["efficiency"])])
         return out
 
     obj_name = lambda x: objs.get(x, x)
     kname = lambda x: kom_name(koms, x)
-    hdr_obj = ["Объект"] + ["%s (вып/проп)" % m for m in month_labels] + ["Эфф. за период"]
-    hdr_kom = ["Комендант"] + ["%s (вып/проп)" % m for m in month_labels] + ["Эфф. за период"]
+    hdr_kom = ["Комендант"] + ["%s\n(вып/проп/раб)" % m for m in month_labels] + ["Эфф. за период"]
+    hdr_obj_split = ["Объект"]
+    for m in month_labels:
+        hdr_obj_split += ["%s\nвып/проп/раб" % m, "%s\nэфф." % m]
+    hdr_obj_split += ["Эфф. за период"]
+    hdr_obj = ["Объект"] + ["%s\n(вып/проп/раб)" % m for m in month_labels] + ["Эфф. за период"]
 
-    for tkey, block, ids, name_fn, hdr, kf, tf, fa in (
-        ("b3", model["block3"], [o for o in model["block3"]["objects_sorted"] if o in keep_objects],
-         obj_name, hdr_obj, "obj_month", "obj_total", True),
+    for tkey, block, ids, name_fn, hdr, kf, tf, fa, split in (
+        ("b3", model["block3"], [o for o in model["block3"]["objects_sorted"] if o in keeps["b3"]],
+         obj_name, hdr_obj_split, "obj_month", "obj_total", True, True),
+        ("b3p", model.get("block3p", model["block3"]),
+         [o for o in model.get("block3p", model["block3"])["objects_sorted"] if o in keeps["b3p"]],
+         obj_name, hdr_obj_split, "obj_month", "obj_total", True, True),
+        ("b3u", model.get("block3u", model["block3"]),
+         [o for o in model.get("block3u", model["block3"])["objects_sorted"] if o in keeps["b3u"]],
+         obj_name, hdr_obj_split, "obj_month", "obj_total", True, True),
         ("b4", model["block4"],
          [k for k in model["block4"]["komendanty_sorted"]
-          if k in keep_komendanty and model["block4"]["kom_total"][k]["due"] >= kom_min],
-         kname, hdr_kom, "kom_month", "kom_total", False),
+          if k in keeps["b4"] and model["block4"]["kom_total"][k]["due"] >= kom_min],
+         kname, hdr_kom, "kom_month", "kom_total", False, False),
         ("b4b", model["block4b"],
          [k for k in model["block4b"]["komendanty_sorted"]
-          if k in keep_komendanty and model["block4b"]["kom_total"][k]["due"] >= kom_min],
-         kname, hdr_kom, "kom_month", "kom_total", False),
-        ("b5", model["block5"], [o for o in model["block5"]["objects_sorted"] if o in keep_objects],
-         obj_name, hdr_obj, "obj_month", "obj_total", True),
-        ("b5b", model["block5b"], [o for o in model["block5b"]["objects_sorted"] if o in keep_objects],
-         obj_name, hdr_obj, "obj_month", "obj_total", True),
+          if k in keeps["b4b"] and model["block4b"]["kom_total"][k]["due"] >= kom_min],
+         kname, hdr_kom, "kom_month", "kom_total", False, False),
+        ("b5", model["block5"], [o for o in model["block5"]["objects_sorted"] if o in keeps["b5"]],
+         obj_name, hdr_obj, "obj_month", "obj_total", True, False),
+        ("b5b", model["block5b"], [o for o in model["block5b"]["objects_sorted"] if o in keeps["b5b"]],
+         obj_name, hdr_obj, "obj_month", "obj_total", True, False),
     ):
         if not ids:
             continue
         tables[tkey] = {"header": hdr,
-                        "rows": month_table(block, ids, name_fn, kf, tf, use_first_activity=fa)}
+                        "rows": month_table(block, ids, name_fn, kf, tf,
+                                            use_first_activity=fa, split_eff=split)}
     return tables
 
 
@@ -546,9 +680,15 @@ class Deck:
         return sh
 
     def header(self, s, num, title, subtitle):
+        # Ширина под заголовок — вся строка до правого поля (было 9,5"), кегль
+        # подбирается под длину: длинные заголовки слайдов 6/7/8 переносились
+        # на вторую строку и накрывали подзаголовок.
         self.badge(s, MARGIN_IN, 0.42, num)
-        self.text(s, MARGIN_IN + 0.68, 0.35, 9.5, 0.5, title, size=22, bold=True, colorhex=NAVY)
-        self.text(s, MARGIN_IN + 0.68, 0.82, 11.0, 0.4, subtitle, size=12.5, colorhex=TEXT_MUTED)
+        w = SLIDE_W_IN - MARGIN_IN - (MARGIN_IN + 0.68)
+        self.text(s, MARGIN_IN + 0.68, 0.35, w, 0.5, title,
+                  size=fit_size(title, w, 22, 14.5, bold=True), bold=True, colorhex=NAVY, wrap=False)
+        self.text(s, MARGIN_IN + 0.68, 0.82, w, 0.4, subtitle,
+                  size=fit_size(subtitle, w, 12.5, 9.5), colorhex=TEXT_MUTED, wrap=False)
 
     def footer(self, s, dark=False):
         self.page += 1
@@ -559,10 +699,17 @@ class Deck:
                   size=9, colorhex=col, align=PP_ALIGN.RIGHT)
 
     def kpi(self, s, x, y, w, h, value, label, accent=NAVY, size=26):
+        # Значение и подпись — строго в одну строку с подбором кегля: пара
+        # «всего/выполнено» вида «47 122/ 8 308» при 26 pt не влезала в плашку
+        # и второй строкой ложилась на подпись.
         self.round_rect(s, x, y, w, h, BG_LIGHT, radius=0.10)
-        self.text(s, x + 0.15, y + 0.12, w - 0.3, h - 0.55, value, size=size, bold=True, colorhex=accent)
-        self.text(s, x + 0.15, y + h - 0.42, w - 0.3, 0.36, label, size=10.5,
-                  colorhex=TEXT_MUTED, line_spacing=0.95)
+        vw, lw = w - 0.3, w - 0.3
+        self.text(s, x + 0.15, y + 0.12, vw, h - 0.55, value,
+                  size=fit_size(value, vw, size, 12.0, bold=True), bold=True,
+                  colorhex=accent, wrap=False)
+        self.text(s, x + 0.15, y + h - 0.42, lw, 0.36, label,
+                  size=fit_size(label, lw, 10.5, 7.6), colorhex=TEXT_MUTED,
+                  line_spacing=0.95, wrap=False)
 
     def picture(self, s, path, x, y, w, h):
         """Вписывает картинку в бокс с сохранением пропорций; возвращает
@@ -637,15 +784,26 @@ class Deck:
                   colorhex=TEXT_DARK, anchor=MSO_ANCHOR.MIDDLE)
 
     # --- таблицы ---
-    def table(self, s, x, y, w, h, header, rows, col0_ratio=0.24, font_size=9):
+    def table(self, s, x, y, w, h, header, rows, col0_ratio=0.24, font_size=9,
+              col_weights=None):
+        """col_weights — относительные ширины колонок (кроме первой). Нужны
+        таблицам «месяц = объём + эффективность»: колонка с тремя числами
+        («4 829/91 986/1 498») втрое шире колонки с процентом, а при равной
+        ширине она переносилась на две строки."""
         shape = s.shapes.add_table(len(rows) + 1, len(header), Inches(x), Inches(y),
                                    Inches(w), Inches(h))
         tbl = shape.table
         col0 = w * col0_ratio
-        other = (w - col0) / max(len(header) - 1, 1)
+        rest = w - col0
+        n_rest = max(len(header) - 1, 1)
+        if col_weights and len(col_weights) == n_rest:
+            tot = float(sum(col_weights))
+            widths = [rest * cw / tot for cw in col_weights]
+        else:
+            widths = [rest / n_rest] * n_rest
         tbl.columns[0].width = Inches(col0)
         for c in range(1, len(header)):
-            tbl.columns[c].width = Inches(other)
+            tbl.columns[c].width = Inches(widths[c - 1])
         for c, htext in enumerate(header):
             tbl.cell(0, c).text = htext
         for r, row in enumerate(rows):
@@ -682,8 +840,9 @@ class Deck:
 # ================================================================== СБОРКА
 STD_LEGEND = [(GREEN, "Выполнено"), (RED, "Пропущено")]
 STD_LEGEND_NC = [(GREEN, "Выполнено"), (RED, "Не выполнено")]
-GRID_LEGEND = [(GREEN, "Выполнено"), (RED, "Пропущено"), (NAVY, "Эффективность, %")]
-GRID_LEGEND_NC = [(GREEN, "Выполнено"), (RED, "Не выполнено"), (NAVY, "Эффективность, %")]
+GRID_LEGEND = [(GREEN, "Выполнено"), (RED, "Пропущено"), (AMBER, "В работе"),
+               (NAVY, "Эффективность, % (правая шкала своя у каждого графика)")]
+GRID_LEGEND_NC = GRID_LEGEND
 
 
 def combo_legend(has_completing, missed_label="Пропущено"):
@@ -698,21 +857,30 @@ def weekly_eff(week):
             for c, m in zip(week["completed"], week["missed"])]
 
 
+# Сетка приложений — решение заказчика 26.08.2026: 3 колонки, максимум 9
+# графиков на слайд, остальные переносятся на следующий слайд. Раньше было до
+# 16 на слайде, отчего всё и было нечитаемым.
+GRID_COLS = 3
+GRID_ROWS = 3
+GRID_PAGE = GRID_COLS * GRID_ROWS
+# Размер ОДНОЙ ячейки в дюймах. Совпадает с местом на слайде (см. GRID_BOX):
+# фигура делается ровно того размера, в котором ляжет на слайд, поэтому кегли
+# matplotlib = кегли на слайде, ничего не ужимается.
+CELL_W, CELL_H = 4.11, 1.78
+GRID_BOX = (MARGIN_IN, 1.40, CELL_W * GRID_COLS, CELL_H * GRID_ROWS)
+
+
+def grid_pages(entities):
+    return [entities[i:i + GRID_PAGE] for i in range(0, len(entities), GRID_PAGE)] or []
+
+
 def grid_dims(n):
-    """Сетка мини-графиков приложения. В утверждённой колоде объектов всегда
-    было много и сетка была 4 колонки; теперь состав плавающий («активные в
-    текущем месяце»), поэтому при небольшом числе сущностей колонок меньше —
-    иначе половина слайда пустая, а графики мелкие."""
-    ncols = 4 if n > 6 else max(1, min(3, n))
+    ncols = min(GRID_COLS, max(n, 1))
     return ncols, max(math.ceil(n / ncols), 1)
 
 
 def grid_figsize(ncols, nrows):
-    """Пропорции фигуры под фактическую сетку: одна ячейка ~4,875 x 3,55
-    дюйма (те же, что давала исходная фигура 19,5 x 14,2 при сетке 4x4).
-    Без этого картинка 4x4 с двумя занятыми рядами вписывалась в слайд
-    целиком вместе с пустотой и графики выходили крошечными."""
-    return (4.875 * ncols, 3.55 * nrows)
+    return (CELL_W * ncols, CELL_H * nrows)
 
 
 
@@ -740,6 +908,15 @@ def build(model, out_path, imgdir):
     keep_objects = set(model["active_objects_current_month"])
     keep_koms = set(model["active_komendanty_current_month"])
 
+    # Поблочная активность в текущем месяце (проход 17). Раньше во всех
+    # приложениях применялся один общий список, и в приложение по неплановым
+    # задачам попадали строки без единой неплановой задачи в текущем месяце.
+    ACT = model.get("active_current_month") or {}
+
+    def keep(block_key, fallback):
+        s = ACT.get(block_key)
+        return set(s) if s is not None else set(fallback)
+
     b2, b3 = model["block2"], model["block3"]
     b4, b4b = model["block4"], model["block4b"]
     b5, b5b = model["block5"], model["block5b"]
@@ -758,17 +935,20 @@ def build(model, out_path, imgdir):
                 return i
         return 0
 
+    # Ряды для мини-графиков: выполнено / пропущено / В РАБОТЕ / эффективность.
+    # Третий ряд добавлен 26.08.2026: задачи в статусах NEW/WAITING/COMPLETING
+    # раньше нигде не рисовались, и строка, у которой все задачи месяца ещё
+    # открыты (напр. комендант o.duka: 0/0/299 за август), выглядела пустой.
     def obj_series(block):
         def fn(oid):
             w = block["obj_week"][oid]
-            return w["completed"], w["missed"], weekly_eff(w)
+            return w["completed"], w["missed"], w["completing"], weekly_eff(w)
         return fn
 
-    def kom_series(block, not_completed=False):
+    def kom_series(block):
         def fn(kid):
             w = block["kom_week"][kid]
-            miss = [m + c for m, c in zip(w["missed"], w["completing"])] if not_completed else w["missed"]
-            return w["completed"], miss, weekly_eff(w)
+            return w["completed"], w["missed"], w["completing"], weekly_eff(w)
         return fn
 
     def eff(total):
@@ -790,8 +970,11 @@ def build(model, out_path, imgdir):
         weeks, tw4b["completed"], tw4b["missed"], tw4b["completing"],
         b4b["total_efficiency_week"], "b4b_main.png")
     tw4 = b4["total_week"]
-    img["b4_main"] = C.two_part(
-        weeks, tw4["completed"], [m + c for m, c in zip(tw4["missed"], tw4["completing"])],
+    # Было two_part: «в работе» подмешивалось в красное «не выполнено». Теперь
+    # третий сегмент показан отдельно — как во всех остальных графиках колоды
+    # (решение 26.08.2026).
+    img["b4_main"], b4_has_cmp = C.combo(
+        weeks, tw4["completed"], tw4["missed"], tw4["completing"],
         b4["total_efficiency_week"], "b4_main.png")
     tw5 = b5["total_week"]
     img["b5_main"], b5_has_cmp = C.combo(
@@ -802,34 +985,49 @@ def build(model, out_path, imgdir):
         weeks, tw5b["completed"], tw5b["missed"], tw5b["completing"],
         b5b["total_efficiency_week"], "b5b_main.png")
 
-    ent3 = [(o, objs.get(o, o)) for o in b3["objects_sorted"] if o in keep_objects]
+    keep_b3 = keep("b3", keep_objects)
+    keep_b3p = keep("b3p", keep_objects)
+    keep_b3u = keep("b3u", keep_objects)
+    keep_b5 = keep("b5", keep_objects)
+    keep_b5b = keep("b5b", keep_objects)
+    keep_k4 = keep("b4", keep_koms)
+    keep_k4b = keep("b4b", keep_koms)
+
+    ent3 = [(o, objs.get(o, o)) for o in b3["objects_sorted"] if o in keep_b3]
     ent4 = [(k, kom_name(koms, k)) for k in b4["komendanty_sorted"]
-            if k in keep_koms and b4["kom_total"][k]["due"] >= KOM_MIN_TASKS]
+            if k in keep_k4 and b4["kom_total"][k]["due"] >= KOM_MIN_TASKS]
     ent4b = [(k, kom_name(koms, k)) for k in b4b["komendanty_sorted"]
-             if k in keep_koms and b4b["kom_total"][k]["due"] >= KOM_MIN_TASKS]
-    ent5 = [(o, objs.get(o, o)) for o in b5["objects_sorted"] if o in keep_objects]
-    ent5b = [(o, objs.get(o, o)) for o in b5b["objects_sorted"] if o in keep_objects]
+             if k in keep_k4b and b4b["kom_total"][k]["due"] >= KOM_MIN_TASKS]
+    ent5 = [(o, objs.get(o, o)) for o in b5["objects_sorted"] if o in keep_b5]
+    ent5b = [(o, objs.get(o, o)) for o in b5b["objects_sorted"] if o in keep_b5b]
+    # Каждый набор режется на страницы по 9 графиков (3x3) — img[key] хранит
+    # СПИСОК путей к картинкам, по одному на слайд.
     for key, ents, series, sfn in (
         ("b3_grid", ent3, obj_series(b3), start_idx),
-        ("b4_grid", ent4, kom_series(b4, not_completed=True), None),
+        ("b4_grid", ent4, kom_series(b4), None),
         ("b4b_grid", ent4b, kom_series(b4b), None),
         ("b5_grid", ent5, obj_series(b5), start_idx),
         ("b5b_grid", ent5b, obj_series(b5b), start_idx),
     ):
         if not ents:
             continue
-        nc, nr = grid_dims(len(ents))
-        img[key] = C.grid_combo(weeks, ents, series, key + ".png", ncols=nc, nrows=nr,
-                                figsize=grid_figsize(nc, nr), start_idx_fn=sfn)
+        pages = []
+        for pi, chunk in enumerate(grid_pages(ents)):
+            nc, nr = grid_dims(len(chunk))
+            pages.append((C.grid_combo(weeks, chunk, series, "%s_%d.png" % (key, pi),
+                                       ncols=nc, nrows=nr, figsize=grid_figsize(nc, nr),
+                                       start_idx_fn=sfn), nr))
+        img[key] = pages
 
-    tables = build_tables(model, keep_objects, keep_komendanty=keep_koms)
+    tables = build_tables(model, {"b2": keep("b2", keep_objects), "b3": keep_b3,
+                                  "b3p": keep_b3p, "b3u": keep_b3u,
+                                  "b4": keep_k4, "b4b": keep_k4b,
+                                  "b5": keep_b5, "b5b": keep_b5b})
 
     # В утверждённой колоде здесь стоял жёсткий список объектов «со статусом
     # Готово»; по согласованию 21.08.2026 фильтр стал динамическим, поэтому
     # сноска описывает правило, а не перечисляет объекты — иначе она разрастается
     # на две строки и наезжает на футер.
-    obj_note = ("Показаны объекты, активные в текущем месяце (есть хотя бы одна задача) — "
-                "%d из %d в справочнике Bruno." % (len(keep_objects), len(objs)))
 
     # =================================================== 1. Титул
     s = D.slide()
@@ -949,7 +1147,7 @@ def build(model, out_path, imgdir):
              "Справа — неплановые (обращения/заявки)")
     for x, title, block, imgkey, legend in (
         (LX, "Коменданты · плановые", b4b, "b4b_main", combo_legend(b4b_has_cmp)),
-        (RX, "Коменданты · неплановые", b4, "b4_main", STD_LEGEND),
+        (RX, "Коменданты · неплановые", b4, "b4_main", combo_legend(b4_has_cmp)),
     ):
         t = block["total"]
         D.text(s, x, 1.83, HALF_W, 0.30, title, size=13.5, bold=True, colorhex=NAVY)
@@ -992,18 +1190,32 @@ def build(model, out_path, imgdir):
         D.text(s, x, 5.12, HALF_W, 0.24,
                "Скорость работы по 3 башням (с данными: %d из %d)" % (n_tow, b6["n_towers_total"]),
                size=11, bold=True, colorhex=NAVY)
+        # Колонки прохода 17 (решение заказчика 26.08.2026):
+        #   «Назначено/чел.» — ВСЕ задачи смены на одного вышедшего исполнителя;
+        #   «Выполнено/чел.» — то, что было в колоде раньше под именем
+        #   «Задач/чел.» (только завершённые задачи), из-за чего показатель и
+        #   выглядел заниженным в 10-20 раз;
+        #   «мин./задачу» — среднее взвешенное И медиана: среднее вытягивают
+        #   единичные «висящие» задачи, медиана показывает типичный случай.
         rows = []
         for shift, shift_label in (("day", "День"), ("evening", "Вечер")):
             a = avg[shift]
-            rows.append([shift_label, num_cell(a["avg_tasks_per_employee"]),
-                         num_cell(a["avg_duration_min"])])
-        D.table(s, x, 5.42, HALF_W, 1.05, ["Смена", "Задач/чел.", "Мин./задачу"], rows,
-                col0_ratio=0.34, font_size=9)
-    D.text(s, MARGIN_IN, 6.70, 11.30, 0.42,
-           "«Мин./задачу» — фактическое время работы (от начала выполнения до завершения), а не "
-           "норматив; среднее взвешено по числу задач, башни без завершённых задач не учитываются.\n"
-           "Плановые задачи — роль уборщиц; неплановые — вместе с «Менеджером клининга».",
-           size=8.3, italic=True, colorhex=TEXT_MUTED, line_spacing=1.15)
+            rows.append([shift_label,
+                         num_cell(a.get("assigned_per_employee")),
+                         num_cell(a["avg_tasks_per_employee"]),
+                         num_cell(a["avg_duration_min"]),
+                         num_cell(a.get("median_duration_min"))])
+        D.table(s, x, 5.42, HALF_W, 1.05,
+                ["Смена", "Назначено\nна чел.", "Выполнено\nна чел.",
+                 "Мин./зад.\nсреднее", "Мин./зад.\nмедиана"], rows,
+                col0_ratio=0.20, font_size=7.6)
+    D.text(s, MARGIN_IN, 6.62, 12.33, 0.50,
+           "«Назначено/выполнено на человека» — задачи смены, делённые на число исполнителей, "
+           "которые в эту смену закрыли хотя бы одну задачу; смена определяется по плановому "
+           "времени задачи.\n«Мин./задачу» — фактическое время от «начал» до «завершил»: среднее "
+           "взвешено по числу задач, медиана устойчива к единичным «висящим» задачам. "
+           "Плановые — роль уборщиц; неплановые — вместе с «Менеджером клининга».",
+           size=8.0, italic=True, colorhex=TEXT_MUTED, line_spacing=1.12)
     D.footer(s)
 
     # =================================================== 9. Итоги периода
@@ -1019,13 +1231,17 @@ def build(model, out_path, imgdir):
          "эффективность по плановым / неплановым  задачам"),
         (ru("%.1f%%/ %.1f%%" % (eff(b4b["total"]), eff(b4["total"]))),
          "эффективность по плановым / неплановым  задачам комендантов"),
-        (ru("%.1f%%" % eff(b5["total"])), "эффективность плановой уборки"),
+        # Пара «плановая / неплановая», как в двух соседних плашках
+        # (замечание 26.08.2026: неплановой уборки на слайде не хватало).
+        (ru("%.1f%%/ %.1f%%" % (eff(b5["total"]), eff(b5b["total"]))),
+         "эффективность по плановой / неплановой  уборке"),
     ]
     for i, (val, label) in enumerate(summary):
         x = 0.50 + (i % 3) * 4.02
         y = 2.00 + (i // 3) * 2.39
         D.round_rect(s, x, y, 3.78, 2.15, NAVY_DARK, radius=0.08)
-        D.text(s, x + 0.25, y + 0.35, 3.28, 0.90, val, size=30, bold=True, colorhex=BLUE)
+        D.text(s, x + 0.25, y + 0.35, 3.28, 0.90, val,
+               size=fit_size(val, 3.28, 30, 15, bold=True), bold=True, colorhex=BLUE, wrap=False)
         D.text(s, x + 0.25, y + 1.30, 3.28, 0.70, label, size=11.5, colorhex=WHITE, line_spacing=1.1)
     D.page += 1
     D.text(s, MARGIN_IN, 7.10, 8.00, 0.30, "Bruno · ВТБ · %s" % period_short,
@@ -1046,84 +1262,108 @@ def build(model, out_path, imgdir):
 
     # =================================================== приложения
     GRID_NOTE = "Мини-графики упрощены: подписаны только месяцы (без недельных отметок)."
-    KOM_NOTE = ("Показаны коменданты, активные в текущем месяце, у которых за период не менее "
-                "%d задач; остальные учтены в общих цифрах на слайде, но без личной строки."
+    KOM_NOTE = ("Показаны коменданты с задачами ЭТОГО типа в текущем месяце и не менее %d "
+                "задач за период; остальные учтены в общих цифрах слайда, но без личной строки."
                 % KOM_MIN_TASKS)
 
     def grid_slide(num_label, title, subtitle, img_key, legend_items, note=None):
-        if img_key not in img:
-            return
-        sl = D.slide()
-        D.text(sl, MARGIN_IN, 0.35, 11.30, 0.50, num_label, size=12, bold=True, colorhex=BLUE)
-        D.text(sl, MARGIN_IN, 0.68, 11.30, 0.50, title, size=20, bold=True, colorhex=NAVY)
-        D.text(sl, MARGIN_IN, 1.12, 11.30, 0.35, subtitle, size=11.5, colorhex=TEXT_MUTED)
-        rct = D.picture(sl, img[img_key], MARGIN_IN, 1.50, SLIDE_W_IN - 2 * MARGIN_IN, 4.95)
-        D.legend_row(sl, MARGIN_IN, rct[1] + rct[3] + 0.04, SLIDE_W_IN - 2 * MARGIN_IN,
-                     legend_items, fontsize=8.5, row_h=0.2)
-        if note:
-            D.text(sl, MARGIN_IN, 6.84, 11.30, 0.30, note, size=8.3, italic=True, colorhex=TEXT_MUTED)
-        D.footer(sl)
+        pages = img.get(img_key) or []
+        gx, gy, gw, gh = GRID_BOX
+        for pi, (path, nrows) in enumerate(pages):
+            # неполную страницу прижимаем к верху, иначе картинка центрируется
+            # в боксе и над ней зияет пустая полоса
+            box_h = min(gh, CELL_H * nrows)
+            sl = D.slide()
+            suffix = "" if len(pages) == 1 else "  ·  %d из %d" % (pi + 1, len(pages))
+            D.text(sl, MARGIN_IN, 0.26, 11.30, 0.42, num_label + suffix, size=12, bold=True,
+                   colorhex=BLUE)
+            D.text(sl, MARGIN_IN, 0.54, 12.33, 0.42, title, size=19, bold=True, colorhex=NAVY,
+                   wrap=False)
+            D.text(sl, MARGIN_IN, 0.92, 12.33, 0.30, subtitle,
+                   size=fit_size(subtitle, 12.33, 10.5, 8.2), colorhex=TEXT_MUTED, wrap=False)
+            # Легенда — над сеткой: снизу место занято подписями месяцев и
+            # помесячной эффективностью под каждым графиком.
+            D.legend_row(sl, MARGIN_IN, 1.15, SLIDE_W_IN - 2 * MARGIN_IN,
+                         legend_items, fontsize=8.5, row_h=0.2)
+            D.picture(sl, path, gx, gy, gw, box_h)
+            if note:
+                D.text(sl, MARGIN_IN, 6.76, 12.33, 0.34, note, size=8.0, italic=True,
+                       colorhex=TEXT_MUTED, line_spacing=1.1)
+            D.footer(sl)
 
     def table_slide(num_label, title, subtitle, tkey, extra_rows=(), font_size=8.6,
-                    col0_ratio=0.24, note=None):
+                    col0_ratio=0.24, note=None, col_weights=None):
         t = tables.get(tkey)
         if not t or not t["rows"]:
             return
         sl = D.slide()
         D.text(sl, MARGIN_IN, 0.32, 11.30, 0.45, num_label, size=12, bold=True, colorhex=BLUE)
-        D.text(sl, MARGIN_IN, 0.62, 11.30, 0.45, title, size=19, bold=True, colorhex=NAVY)
-        D.text(sl, MARGIN_IN, 1.02, 11.30, 0.30, subtitle, size=10.5, colorhex=TEXT_MUTED)
+        D.text(sl, MARGIN_IN, 0.62, 12.33, 0.45, title, size=fit_size(title, 12.33, 19, 13),
+               bold=True, colorhex=NAVY, wrap=False)
+        D.text(sl, MARGIN_IN, 1.02, 12.33, 0.30, subtitle,
+               size=fit_size(subtitle, 12.33, 10.5, 8.2), colorhex=TEXT_MUTED, wrap=False)
         rows = list(t["rows"]) + list(extra_rows)
         D.table(sl, MARGIN_IN, 1.42, SLIDE_W_IN - 2 * MARGIN_IN, 5.35 if not note else 5.10,
-                t["header"], rows, col0_ratio=col0_ratio, font_size=font_size)
+                t["header"], rows, col0_ratio=col0_ratio, font_size=font_size,
+                col_weights=col_weights)
         if note:
             D.text(sl, MARGIN_IN, 6.84, 11.30, 0.30, note, size=8.3, italic=True, colorhex=TEXT_MUTED)
         D.footer(sl)
+
+    def act_note(keep_set, what="объекты"):
+        return ("Показаны %s с активностью ИМЕННО в этом блоке за текущий месяц — %d из %d "
+                "в справочнике Bruno." % (what, len(keep_set), len(objs)))
+
+    SUB_GRID = ("Выполнено / пропущено / в работе по неделям + эффективность (правая шкала "
+                "своя у каждого графика), ряд стартует с первой активности объекта")
+    SUB_GRID_KOM = ("Выполнено / пропущено / в работе по неделям + эффективность "
+                    "(правая шкала своя у каждого графика)")
+    SUB_TBL = ("Выполнено / пропущено / в работе по месяцам, эффективность каждого месяца "
+               "и за весь период")
+    SUB_TBL_KOM = "Выполнено / пропущено / в работе по месяцам, эффективность за весь период"
+    # объём : эффективность = 3 : 1 на каждый месяц, последняя — итоговая эфф.
+    SPLIT_W = [3.0, 1.05] * len(model["meta"]["months"]) + [1.25]
 
     table_slide("Приложение · Блок 2", "Обращения по объектам — помесячная динамика",
                 "Количество обращений по QR, по месяцам", "b2",
                 extra_rows=[tables["b2"]["total_row"]] if "b2" in tables else (), font_size=10)
     grid_slide("Приложение · Блок 3", "Все задачи — детализация по объектам",
-               "Выполнено/пропущено по неделям + эффективность (правая ось), "
-               "ряд стартует с первой активности объекта",
-               "b3_grid", GRID_LEGEND, obj_note)
+               SUB_GRID, "b3_grid", GRID_LEGEND, act_note(keep_b3))
     table_slide("Приложение · Блок 3", "Все задачи — помесячная динамика по объектам",
-                "Выполнено / пропущено по месяцам, эффективность за весь период", "b3",
-                font_size=8.2, col0_ratio=0.20, note=obj_note)
+                SUB_TBL, "b3", font_size=7.4, col0_ratio=0.17, note=act_note(keep_b3),
+                col_weights=SPLIT_W)
+    # Два новых слайда (замечание 26.08.2026): та же таблица, но отдельно по
+    # плановым и по неплановым задачам — итоговая колонка «все задачи» скрывала,
+    # за счёт чего именно получилась эффективность объекта.
+    table_slide("Приложение · Блок 3", "Плановые задачи — помесячная динамика по объектам",
+                SUB_TBL, "b3p", font_size=7.4, col0_ratio=0.17, note=act_note(keep_b3p),
+                col_weights=SPLIT_W)
+    table_slide("Приложение · Блок 3", "Неплановые задачи — помесячная динамика по объектам",
+                SUB_TBL, "b3u", font_size=7.4, col0_ratio=0.17, note=act_note(keep_b3u),
+                col_weights=SPLIT_W)
     grid_slide("Приложение · Блок 4", "Коменданты (неплановые) — детализация по каждому",
-               "Выполнено/пропущено по неделям + эффективность (правая ось)",
-               "b4_grid", GRID_LEGEND, KOM_NOTE)
+               SUB_GRID_KOM, "b4_grid", GRID_LEGEND, KOM_NOTE)
     table_slide("Приложение · Блок 4", "Коменданты (неплановые) — помесячная динамика",
-                "Выполнено / пропущено по месяцам, эффективность за весь период", "b4",
-                col0_ratio=0.20, note=KOM_NOTE)
+                SUB_TBL_KOM, "b4", col0_ratio=0.20, note=KOM_NOTE)
     grid_slide("Приложение · Блок 4b", "Коменданты (плановые) — детализация по каждому",
-               "Выполнено/пропущено по неделям + эффективность (правая ось)",
-               "b4b_grid", GRID_LEGEND, KOM_NOTE)
+               SUB_GRID_KOM, "b4b_grid", GRID_LEGEND, KOM_NOTE)
     table_slide("Приложение · Блок 4b", "Коменданты (плановые) — помесячная динамика",
-                "Выполнено / пропущено по месяцам, эффективность за весь период", "b4b",
-                col0_ratio=0.20, note=KOM_NOTE)
+                SUB_TBL_KOM, "b4b", col0_ratio=0.20, note=KOM_NOTE)
     grid_slide("Приложение · Блок 5", "Уборка (плановые) — детализация по объектам",
-               "Выполнено/пропущено по неделям + эффективность (правая ось), "
-               "ряд стартует с первой активности объекта",
-               "b5_grid", GRID_LEGEND, obj_note)
+               SUB_GRID, "b5_grid", GRID_LEGEND, act_note(keep_b5))
     table_slide("Приложение · Блок 5", "Уборка (плановые) — помесячная динамика по объектам",
-                "Выполнено / пропущено по месяцам, эффективность за весь период", "b5",
-                font_size=8.2, col0_ratio=0.20, note=obj_note)
+                SUB_TBL_KOM, "b5", font_size=8.2, col0_ratio=0.20, note=act_note(keep_b5))
     # Блок 5b добавлен по согласованию 22.08.2026 — детализация к новому графику
     # неплановой уборки на слайде 6. Состав ролей здесь шире, чем в блоке 5.
-    clean_note = obj_note
+    clean_note = act_note(keep_b5b)
     if meta.get("clean_mode") == "split":
-        # держим сноску в одну строку: две строки налезают на футер
         clean_note = ("Учтены роли уборщиц и «Менеджер клининга» (в блоке 5 — только уборщицы); "
-                      "объекты — активные в текущем месяце, %d из %d."
-                      % (len(keep_objects), len(objs)))
+                      "объекты — с неплановой уборкой в текущем месяце, %d из %d."
+                      % (len(keep_b5b), len(objs)))
     grid_slide("Приложение · Блок 5b", "Уборка (неплановые) — детализация по объектам",
-               "Выполнено/пропущено по неделям + эффективность (правая ось), "
-               "ряд стартует с первой активности объекта",
-               "b5b_grid", GRID_LEGEND, clean_note)
+               SUB_GRID, "b5b_grid", GRID_LEGEND, clean_note)
     table_slide("Приложение · Блок 5b", "Уборка (неплановые) — помесячная динамика по объектам",
-                "Выполнено / пропущено по месяцам, эффективность за весь период", "b5b",
-                font_size=8.2, col0_ratio=0.20, note=clean_note)
+                SUB_TBL_KOM, "b5b", font_size=8.2, col0_ratio=0.20, note=clean_note)
 
     D.prs.save(out_path)
     return len(D.prs.slides._sldIdLst)
