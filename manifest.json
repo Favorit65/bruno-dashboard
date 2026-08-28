@@ -3998,7 +3998,7 @@
   },
   "2026-08-24": {
    "complete": true,
-   "fetchedAt": "2026-08-26T22:48:33.138945+00:00",
+   "fetchedAt": "2026-08-28T04:05:23.640440+00:00",
    "fields": "slim",
    "counts": {
     "taskPlan": 16578,
@@ -4007,7 +4007,7 @@
     "statByTeam": 4973
    },
    "bytes": {
-    "taskPlan": 1688998,
+    "taskPlan": 1699307,
     "statByZone": 189166,
     "statByEmployee": 101206,
     "statByTeam": 317300
@@ -4015,7 +4015,7 @@
   },
   "2026-08-25": {
    "complete": true,
-   "fetchedAt": "2026-08-26T22:49:26.171953+00:00",
+   "fetchedAt": "2026-08-28T04:06:20.697997+00:00",
    "fields": "slim",
    "counts": {
     "taskPlan": 14050,
@@ -4032,24 +4032,41 @@
   },
   "2026-08-26": {
    "complete": true,
-   "fetchedAt": "2026-08-26T22:50:12.237198+00:00",
+   "fetchedAt": "2026-08-28T04:06:49.035669+00:00",
    "fields": "slim",
    "counts": {
     "taskPlan": 13966,
-    "statByZone": 93,
-    "statByEmployee": 142,
-    "statByTeam": 55
+    "statByZone": 3266,
+    "statByEmployee": 1642,
+    "statByTeam": 4940
    },
    "bytes": {
-    "taskPlan": 1423459,
-    "statByZone": 5767,
-    "statByEmployee": 7887,
-    "statByTeam": 3755
+    "taskPlan": 1461178,
+    "statByZone": 189590,
+    "statByEmployee": 96035,
+    "statByTeam": 312097
    }
   },
   "2026-08-27": {
    "complete": true,
-   "fetchedAt": "2026-08-26T22:50:32.978967+00:00",
+   "fetchedAt": "2026-08-28T04:07:35.795956+00:00",
+   "fields": "slim",
+   "counts": {
+    "taskPlan": 13951,
+    "statByZone": 491,
+    "statByEmployee": 578,
+    "statByTeam": 55
+   },
+   "bytes": {
+    "taskPlan": 1442774,
+    "statByZone": 28722,
+    "statByEmployee": 33597,
+    "statByTeam": 3761
+   }
+  },
+  "2026-08-28": {
+   "complete": true,
+   "fetchedAt": "2026-08-28T04:07:54.082253+00:00",
    "fields": "slim",
    "counts": {
     "taskPlan": 13912,
@@ -4058,7 +4075,7 @@
     "statByTeam": 0
    },
    "bytes": {
-    "taskPlan": 830792,
+    "taskPlan": 837083,
     "statByZone": 52,
     "statByEmployee": 56,
     "statByTeam": 52
@@ -4066,5 +4083,5 @@
   }
  },
  "dirs": {},
- "updatedAt": "2026-08-26T22:50:32.978985+00:00"
+ "updatedAt": "2026-08-28T04:07:54.082270+00:00"
 }
