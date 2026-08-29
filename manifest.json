@@ -4015,7 +4015,7 @@
   },
   "2026-08-25": {
    "complete": true,
-   "fetchedAt": "2026-08-29T02:45:08.012172+00:00",
+   "fetchedAt": "2026-08-29T12:04:05.773875+00:00",
    "fields": "slim",
    "counts": {
     "taskPlan": 14050,
@@ -4032,7 +4032,7 @@
   },
   "2026-08-26": {
    "complete": true,
-   "fetchedAt": "2026-08-29T02:45:36.422055+00:00",
+   "fetchedAt": "2026-08-29T12:04:34.275797+00:00",
    "fields": "slim",
    "counts": {
     "taskPlan": 13966,
@@ -4041,7 +4041,7 @@
     "statByTeam": 4940
    },
    "bytes": {
-    "taskPlan": 1461590,
+    "taskPlan": 1461697,
     "statByZone": 189590,
     "statByEmployee": 96035,
     "statByTeam": 312097
@@ -4049,7 +4049,7 @@
   },
   "2026-08-27": {
    "complete": true,
-   "fetchedAt": "2026-08-29T02:46:30.258687+00:00",
+   "fetchedAt": "2026-08-29T12:05:30.338925+00:00",
    "fields": "slim",
    "counts": {
     "taskPlan": 13950,
@@ -4066,24 +4066,24 @@
   },
   "2026-08-28": {
    "complete": true,
-   "fetchedAt": "2026-08-29T02:47:17.576186+00:00",
+   "fetchedAt": "2026-08-29T12:06:19.194758+00:00",
    "fields": "slim",
    "counts": {
     "taskPlan": 13928,
-    "statByZone": 93,
-    "statByEmployee": 142,
-    "statByTeam": 55
+    "statByZone": 1556,
+    "statByEmployee": 2147,
+    "statByTeam": 552
    },
    "bytes": {
-    "taskPlan": 1418490,
-    "statByZone": 5824,
-    "statByEmployee": 7875,
-    "statByTeam": 3767
+    "taskPlan": 1449230,
+    "statByZone": 90451,
+    "statByEmployee": 124859,
+    "statByTeam": 33248
    }
   },
   "2026-08-29": {
    "complete": true,
-   "fetchedAt": "2026-08-29T02:47:21.929897+00:00",
+   "fetchedAt": "2026-08-29T12:06:22.174827+00:00",
    "fields": "slim",
    "counts": {
     "taskPlan": 1155,
@@ -4092,7 +4092,7 @@
     "statByTeam": 0
    },
    "bytes": {
-    "taskPlan": 48579,
+    "taskPlan": 56550,
     "statByZone": 52,
     "statByEmployee": 56,
     "statByTeam": 52
@@ -4100,5 +4100,5 @@
   }
  },
  "dirs": {},
- "updatedAt": "2026-08-29T02:47:21.929913+00:00"
+ "updatedAt": "2026-08-29T12:06:22.174842+00:00"
 }
