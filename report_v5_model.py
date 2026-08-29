@@ -464,8 +464,8 @@ def build(model, d_from=None, d_to=None, clean_mode="split", months_back_n=3):
         return round(FACT_BUCKETS[-1], 2)
 
     def speed_slot(tid, kind, shift, groups):
-        assigned = tasks = emps = fact_n = norm_n = 0
-        fact_sum = norm_sum = 0.0
+        assigned = tasks = closers = roster = fact_n = norm_n = 0
+        fact_sum = norm_sum = norm_all = 0.0
         n_days = 0
         hist = [0] * len(FACT_BUCKETS)
         for grp in groups:
@@ -476,34 +476,41 @@ def build(model, d_from=None, d_to=None, clean_mode="split", months_back_n=3):
                 n_days += 1
                 assigned += v.get("all", 0)
                 tasks += v["tasks"]
-                emps += v["employees"]
+                closers += v["employees"]
+                roster += v.get("roster", 0)
                 fact_sum += v["factSum"]
                 fact_n += v["factN"]
                 norm_sum += v["normSum"]
-                norm_n += v["normN"]
+                norm_all += v.get("normAllSum", 0.0)
                 for i, c in enumerate(v.get("factHist") or ()):
                     hist[i] += c
+        # ЗНАМЕНАТЕЛЬ — наряд (кто назначен на смену), а не «кто отметился».
+        # Деление на закрывших давало абсурд: на Западе и Востоке уборщицы не
+        # закрывают вообще ничего, их задачи попадали в числитель, а в
+        # знаменатель — нет, и «задач на человека» улетало в тысячи.
+        den = roster if speed_new else 0
         return {
             "has_data": (tasks > 0 or assigned > 0),
             "n_days": n_days,
-            # НАЗНАЧЕНО — все задачи смены, любой статус (проход 17)
-            "assigned": assigned,
-            # ВЫПОЛНЕНО — только COMPLETED (как было)
-            "tasks": tasks,
-            # «на человека» — делим на сумму человеко-смен (как в утверждённой
-            # колоде: employees там тоже копился по суткам, а не уникальными
-            # людьми за период). Знаменатель один и тот же у обеих колонок,
-            # поэтому их отношение = эффективность смены.
-            "assigned_per_employee": (round(assigned / emps, 1)
-                                      if (emps and speed_new) else None),
-            "avg_tasks_per_employee": round(tasks / emps, 2) if emps else None,
+            "assigned": assigned,           # НАЗНАЧЕНО (любой статус)
+            "tasks": tasks,                 # ВЫПОЛНЕНО (COMPLETED)
+            "roster": roster,               # человеко-смены по наряду
+            "closers": closers,             # человеко-смены тех, кто закрыл >=1 задачу
+            "people_per_day": round(roster / n_days, 1) if n_days else None,
+            "closers_per_day": round(closers / n_days, 1) if n_days else None,
+            "assigned_per_day": round(assigned / n_days, 0) if n_days else None,
+            "done_per_day": round(tasks / n_days, 1) if n_days else None,
+            "assigned_per_employee": round(assigned / den, 1) if den else None,
+            "done_per_employee": round(tasks / den, 2) if den else None,
+            "norm_hours_per_employee": round(norm_all / 60.0 / den, 1) if den else None,
             "avg_duration_min": round(fact_sum / fact_n, 1) if fact_n else None,
             "median_duration_min": hist_median(hist) if speed_new else None,
             "avg_norm_min": round(norm_sum / norm_n, 1) if norm_n else None,
             "n_measured": fact_n,
             # сырые суммы — для ВЗВЕШЕННОГО среднего по башням (см. tower_avg)
-            "employees": emps, "fact_sum": round(fact_sum, 1), "fact_n": fact_n,
-            "norm_sum": round(norm_sum, 1), "norm_n": norm_n, "fact_hist": hist,
+            "employees": closers, "fact_sum": round(fact_sum, 1), "fact_n": fact_n,
+            "norm_sum": round(norm_sum, 1), "norm_n": norm_n, "norm_all": round(norm_all, 1),
+            "fact_hist": hist,
         }
 
     kinds = {"planned": ("p", set_pl), "unplanned": ("u", set_un)}
@@ -523,8 +530,17 @@ def build(model, d_from=None, d_to=None, clean_mode="split", months_back_n=3):
         башня, а задача."""
         slots = [t["kinds"][kind_name][shift] for t in towers.values()
                  if t["kinds"][kind_name][shift]["has_data"]]
+        # Для «на человека» берём ТОЛЬКО башни с непустым нарядом: башня, у
+        # которой есть задачи, но нет ни одного назначенного человека, иначе
+        # добавляла бы числитель без знаменателя и завышала показатель.
+        with_den = [s for s in slots if s["roster"]]
         assigned = sum(s["assigned"] for s in slots)
         tasks = sum(s["tasks"] for s in slots)
+        a_den = sum(s["assigned"] for s in with_den)
+        t_den = sum(s["tasks"] for s in with_den)
+        roster = sum(s["roster"] for s in with_den)
+        n_days = sum(s["n_days"] for s in with_den)
+        norm_all = sum(s["norm_all"] for s in with_den)
         emps = sum(s["employees"] for s in slots)
         fact_sum = sum(s["fact_sum"] for s in slots)
         fact_n = sum(s["fact_n"] for s in slots)
@@ -534,16 +550,22 @@ def build(model, d_from=None, d_to=None, clean_mode="split", months_back_n=3):
         for s in slots:
             for i, c in enumerate(s["fact_hist"]):
                 hist[i] += c
-        return {"assigned": assigned,
-                "assigned_per_employee": (round(assigned / emps, 1)
-                                          if (emps and speed_new) else None),
+        return {"assigned": assigned, "tasks": tasks,
+                "roster": roster, "closers": emps,
+                "people_per_day": round(roster / n_days, 1) if n_days else None,
+                "closers_per_day": round(emps / n_days, 1) if n_days else None,
+                "assigned_per_day": round(assigned / n_days, 0) if n_days else None,
+                "done_per_day": round(tasks / n_days, 1) if n_days else None,
+                "assigned_per_employee": round(a_den / roster, 1) if roster else None,
+                "done_per_employee": round(t_den / roster, 2) if roster else None,
+                "norm_hours_per_employee": round(norm_all / 60.0 / roster, 1) if roster else None,
                 "avg_tasks_per_employee": round(tasks / emps, 2) if emps else None,
                 "avg_duration_min": round(fact_sum / fact_n, 1) if fact_n else None,
                 "median_duration_min": hist_median(hist) if speed_new else None,
                 "avg_norm_min": round(norm_sum / norm_n, 1) if norm_n else None,
                 "n_towers_with_data": len(slots),
-                "n_measured": fact_n,
-                "tasks": tasks}
+                "n_towers_with_roster": len(with_den),
+                "n_measured": fact_n}
 
     out["block6"] = {
         "towers": towers,
@@ -645,19 +667,21 @@ if __name__ == "__main__":
                 s = b6["towers"][tid]["kinds"][kind][sh]
                 if not s["has_data"]:
                     continue
-                print("     %-30s %-7s назн=%-7s вып=%-6s назн/чел=%-6s вып/чел=%-6s "
-                      "факт=%-6s медиана=%-6s норматив=%s" % (
+                print("     %-30s %-7s назн=%-7s вып=%-6s наряд=%-5s закрыв=%-5s назн/чел=%-6s "
+                      "вып/чел=%-6s норм-ч/чел=%-5s факт=%-6s медиана=%s" % (
                           name[:30], "день" if sh == "day" else "вечер", s["assigned"],
-                          s["tasks"], s["assigned_per_employee"], s["avg_tasks_per_employee"],
-                          s["avg_duration_min"], s["median_duration_min"], s["avg_norm_min"]))
+                          s["tasks"], s["roster"], s["closers"], s["assigned_per_employee"],
+                          s["done_per_employee"], s["norm_hours_per_employee"],
+                          s["avg_duration_min"], s["median_duration_min"]))
         for sh in ("day", "evening"):
             a = b6["average"][kind][sh]
-            print("     СРЕДНЕЕ (взвеш.) %-7s назн=%-7s вып=%-6s назн/чел=%-6s вып/чел=%-6s "
-                  "факт=%-6s медиана=%-6s норматив=%-6s башен=%d, замеров=%s" % (
+            print("     СРЕДНЕЕ %-7s назн=%-7s вып=%-6s наряд=%-5s чел/сутки=%-5s назн/чел=%-6s "
+                  "вып/чел=%-6s норм-ч/чел=%-5s факт=%-6s медиана=%-6s башен_с_нарядом=%d/%d" % (
                       "день" if sh == "day" else "вечер", a["assigned"], a["tasks"],
-                      a["assigned_per_employee"], a["avg_tasks_per_employee"],
-                      a["avg_duration_min"], a["median_duration_min"], a["avg_norm_min"],
-                      a["n_towers_with_data"], a["n_measured"]))
+                      a["roster"], a["people_per_day"], a["assigned_per_employee"],
+                      a["done_per_employee"], a["norm_hours_per_employee"],
+                      a["avg_duration_min"], a["median_duration_min"],
+                      a["n_towers_with_roster"], a["n_towers_with_data"]))
 
     print("\nТоп-5 объектов приложения (block3):")
     for oid in mm["block3"]["objects_sorted"][:5]:

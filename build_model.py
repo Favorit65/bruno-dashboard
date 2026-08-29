@@ -72,6 +72,23 @@ employees[] (равный вес на исполнителя), когда team_r
 задачи по ролям (проверено: Диспетчер/Менеджер клининга/Администратор/
 Комендант — основные получатели, что совпадает с находками из
 ШАГ2_анализ_сырых_данных_11-15авг.md).
+
+ПРОХОД 17 (26.08.2026) — правило «никакого employees[0]» распространено на кубы
+ПРЕЗЕНТАЦИИ (byKomendantDay, byCleanObjectDay, cleanSpeedDay). Раньше они одни
+во всём конвейере ещё считались через executor_of() = employeeID -> employees[0]
+и наследовали ровно ту ошибку, ради которой правило и вводилось: весь объём
+командной задачи записывался первому человеку в ростере. Теперь используется
+executor_shares(): employeeID заполнен -> задача целиком его (у ЗАВЕРШЁННЫХ
+задач это 100% случаев, проверено на выборке 15 дней мая-августа), пуст ->
+делим поровну между employees[]. Цена на той же выборке: плановые задачи
+комендантов -29,6% объёма, плановая уборка -2,0%, эффективность практически не
+меняется (+0,06 п.п.), «выполнено» не меняется вовсе. Значения кубов стали
+дробными и округляются до 3 знаков.
+
+Там же добавлены поля для слайда скорости уборки: cleanSpeedDay.all (сколько
+задач было НАЗНАЧЕНО на смену) и cleanSpeedDay.factHist (гистограмма
+фактической длительности для медианы), а смена считается по ПЛАНОВОМУ времени
+задачи (dateLocal), а не по date_begin.
 """
 
 import argparse
@@ -218,9 +235,12 @@ def empty_pu_int():
 
 
 def executor_of(rec):
-    """employeeID, а если пуст — employees[0]. Без фолбэка атрибуция падает до
-    ~4% (employeeID появляется только когда задачу начали), см.
-    ПЕРЕДАЧА_отчет_презентация.md."""
+    """УСТАРЕЛО (проход 17). employeeID, а если пуст — employees[0].
+
+    Оставлено только для обратной совместимости старых веток кода: фолбэк на
+    employees[0] записывает ВЕСЬ объём командной задачи на одного случайного
+    человека — первого в ростере команды. Правило CLAUDE.md это запрещает,
+    в кубы отчёта теперь идёт executor_shares() ниже."""
     eid = str(rec.get("employeeID") or "")
     if eid:
         return eid
@@ -228,6 +248,33 @@ def executor_of(rec):
         if e:
             return str(e)
     return ""
+
+
+def executor_shares(rec):
+    """[(сотрудник, доля), ...] — честная атрибуция задачи (проход 17).
+
+    * `employeeID` заполнен — задача целиком его. На реальном архиве это
+      выполняется у 100% ЗАВЕРШЁННЫХ задач (проверено на выборке 15 дней
+      мая–августа: 3 517 из 3 517), поэтому «выполнено» и вся статистика
+      скорости уборки остаются целочисленными и точными.
+    * `employeeID` пуст (задачу никто не начинал: MISSED / NEW / WAITING) —
+      делим её ПОРОВНУ между всеми, кто перечислен в `employees[]` самой
+      задачи. Ровно так же, как employees_role_shares() в кубе ролей для
+      дашборда.
+
+    Зачем: прежний фолбэк на employees[0] отдавал весь объём командной задачи
+    первому человеку в ростере. Цена ошибки на выборке 15 дней: плановые
+    задачи комендантов −29,6% объёма, плановая уборка −2,0%, и 945 задач
+    команды «Трубная» (в её ростере нет уборщиц) вообще выпадали из блока
+    уборки, потому что первым в списке стоял комендант или администратор."""
+    eid = str(rec.get("employeeID") or "")
+    if eid:
+        return ((eid, 1.0),)
+    ids = [str(e) for e in (rec.get("employees") or []) if e]
+    if not ids:
+        return ()
+    share = 1.0 / len(ids)
+    return tuple((e, share) for e in ids)
 
 
 def clean_group_of(role_id, role_name):
@@ -539,9 +586,14 @@ def process_archive(archive, manifest, employee_dir, team_membership, feedback_c
     # completionDate), поэтому как «время на задачу» её брать нельзя: она
     # систематически больше факта. Храним обе, чтобы разницу было видно.
     clean_speed = defaultdict(lambda: {"all": 0, "tasks": 0, "factSum": 0.0, "factN": 0,
-                                       "normSum": 0.0, "normN": 0,
+                                       "normSum": 0.0, "normN": 0, "normAllSum": 0.0,
                                        "factHist": [0] * len(FACT_BUCKETS)})
-    clean_speed_emps = defaultdict(set)               # тот же ключ -> {сотрудник}
+    clean_speed_emps = defaultdict(set)               # тот же ключ -> {кто ЗАКРЫЛ задачу}
+    # тот же ключ -> {кто НАЗНАЧЕН на смену}. Знаменатель «задач на человека»
+    # должен быть нарядом, а не списком тех, кто отметился в приложении: на
+    # Западе и Востоке уборщицы не закрывают вообще ничего, и деление на
+    # «закрывших» давало бессмысленные тысячи задач на человека.
+    clean_speed_roster = defaultdict(set)
 
     if days_override is not None:
         days = days_override  # ручная пересборка порциями (см. rebuild_chunked.py, не часть штатного конвейера)
@@ -659,55 +711,78 @@ def process_archive(archive, manifest, employee_dir, team_membership, feedback_c
                 # один (employeeID / employees[0]), без дробей: так считалась
                 # утверждённая колода. --
                 if status in STATUSES:
-                    ex_id = executor_of(rec)
-                    ex_info = employee_dir.get(ex_id) if ex_id else None
-                    ex_role = ex_info["roleName"] if ex_info else ""
-                    ex_role_id = role_id_of_employee.get(ex_id, "")
                     side = "planned" if is_planned else "unplanned"
-                    if ex_role and KOMENDANT_ROLE_MARK in ex_role.lower():
-                        by_komendant_day[d + "|" + ex_id][side][status] += 1
-                    grp = clean_group_of(ex_role_id, ex_role)
-                    if grp:
-                        by_clean_object_day[d + "|" + obj + "|" + grp][side][status] += 1
-                        # --- скорость и НАГРУЗКА уборки (проход 17) ------------
-                        # Смена определяется по ПЛАНОВОМУ времени задачи
-                        # (dateLocal), а не по date_begin. Причина: date_begin
-                        # есть только у завершённых задач, поэтому по нему
-                        # нельзя посчитать, сколько задач было НАЗНАЧЕНО на
-                        # смену, — а именно этого не хватало в колонке
-                        # «Задач/чел.» (см. разбор замечаний 26.08.2026).
-                        # Побочный плюс: вечерняя задача, закрытая после
-                        # полуночи, больше не уезжает в дневную смену.
-                        shift = shift_of_planned(rec)
-                        if shift is not None:
-                            kind = "p" if is_planned else "u"
-                            skey = "|".join((d, obj, grp, kind, shift))
-                            slot = clean_speed[skey]
-                            slot["all"] += 1          # НАЗНАЧЕНО (любой статус)
-                            if status == "COMPLETED":
-                                slot["tasks"] += 1    # ВЫПОЛНЕНО
-                                if ex_id:
-                                    clean_speed_emps[skey].add(ex_id)
-                                # ФАКТ: сколько времени прошло от «начал» до
-                                # «завершил». Копим и сумму (для среднего), и
-                                # гистограмму (для медианы: среднее вытягивают
-                                # единичные «висящие» задачи в несколько часов).
-                                t0 = parse_dt(rec.get("date_begin"))
-                                t1 = parse_dt(rec.get("date_complete") or rec.get("completionDate"))
-                                if t0 is not None and t1 is not None and t1 >= t0:
-                                    fact = (t1 - t0) / 60.0
-                                    # отсекаем мусор: 0 и «висящие» задачи длиной в сутки+
-                                    if 0 < fact <= 24 * 60:
-                                        slot["factSum"] += fact
-                                        slot["factN"] += 1
-                                        slot["factHist"][fact_bucket(fact)] += 1
-                                # НОРМАТИВ — для сверки, в отчёт не идёт
-                                norm = rec.get("durationMinutes")
-                                if norm is not None:
-                                    norm = float(norm)
-                                    if 0 < norm <= 24 * 60:
-                                        slot["normSum"] += norm
-                                        slot["normN"] += 1
+                    # Проход 17: задача распределяется по executor_shares() —
+                    # целиком реальному исполнителю, а если его нет, поровну
+                    # между всеми назначенными. Никакого employees[0].
+                    for ex_id, ex_share in executor_shares(rec):
+                        ex_info = employee_dir.get(ex_id) if ex_id else None
+                        ex_role = ex_info["roleName"] if ex_info else ""
+                        ex_role_id = role_id_of_employee.get(ex_id, "")
+                        if ex_role and KOMENDANT_ROLE_MARK in ex_role.lower():
+                            by_komendant_day[d + "|" + ex_id][side][status] += ex_share
+                        grp = clean_group_of(ex_role_id, ex_role)
+                        if grp:
+                            by_clean_object_day[d + "|" + obj + "|" + grp][side][status] += ex_share
+                            # --- скорость и НАГРУЗКА уборки (проход 17) ----
+                            # Смена определяется по ПЛАНОВОМУ времени задачи
+                            # (dateLocal), а не по date_begin: date_begin есть
+                            # только у завершённых задач, а без него нельзя
+                            # посчитать, сколько задач было НАЗНАЧЕНО на смену.
+                            # Побочный плюс — вечерняя задача, закрытая после
+                            # полуночи, больше не уезжает в дневную смену.
+                            shift = shift_of_planned(rec)
+                            if shift is not None:
+                                kind = "p" if is_planned else "u"
+                                skey = "|".join((d, obj, grp, kind, shift))
+                                slot = clean_speed[skey]
+                                slot["all"] += ex_share       # НАЗНАЧЕНО, любой статус
+                                if status == "COMPLETED":
+                                    slot["tasks"] += ex_share  # ВЫПОЛНЕНО
+                                    if ex_id:
+                                        clean_speed_emps[skey].add(ex_id)
+                                    # Замеры времени привязаны к ЗАПИСИ, а не к
+                                    # доле, поэтому берём их только у цельного
+                                    # исполнителя (ex_share == 1). У завершённых
+                                    # задач employeeID заполнен всегда, так что
+                                    # на практике сюда попадают все замеры.
+                                    if ex_share >= 1.0:
+                                        t0 = parse_dt(rec.get("date_begin"))
+                                        t1 = parse_dt(rec.get("date_complete")
+                                                      or rec.get("completionDate"))
+                                        if t0 is not None and t1 is not None and t1 >= t0:
+                                            fact = (t1 - t0) / 60.0
+                                            # отсекаем мусор: 0 и «висяки» длиной в сутки+
+                                            if 0 < fact <= 24 * 60:
+                                                slot["factSum"] += fact
+                                                slot["factN"] += 1
+                                                slot["factHist"][fact_bucket(fact)] += 1
+                                        # НОРМАТИВ — для сверки, в отчёт не идёт
+                                        norm = rec.get("durationMinutes")
+                                        if norm is not None:
+                                            norm = float(norm)
+                                            if 0 < norm <= 24 * 60:
+                                                slot["normSum"] += norm
+                                                slot["normN"] += 1
+
+                # НАРЯД смены: все, кто вообще назначен на задачу, по своим
+                # группам ролей. Считается отдельно от executor_shares(), иначе
+                # у завершённой задачи в наряд попадал бы только тот, кто её
+                # закрыл, и знаменатель схлопывался бы до горстки людей.
+                if status in STATUSES:
+                    _shift = shift_of_planned(rec)
+                    if _shift is not None:
+                        _kind = "p" if is_planned else "u"
+                        _people = set(str(e) for e in (rec.get("employees") or []) if e)
+                        _eid = str(rec.get("employeeID") or "")
+                        if _eid:
+                            _people.add(_eid)
+                        for _e in _people:
+                            _info = employee_dir.get(_e)
+                            _g = clean_group_of(role_id_of_employee.get(_e, ""),
+                                                _info["roleName"] if _info else "")
+                            if _g:
+                                clean_speed_roster["|".join((d, obj, _g, _kind, _shift))].add(_e)
 
                 if is_feedback:
                     fid = str(rec.get("feedbackID") or "")
@@ -858,11 +933,19 @@ def process_archive(archive, manifest, employee_dir, team_membership, feedback_c
         # за сутки по объекту, а не число задач по обращениям — одно обращение
         # может порождать задачу повторно на следующей выгрузке.
         "feedbackByObjectDay": {k: len(v) for k, v in feedback_ids_by_object_day.items()},
-        "byKomendantDay": dict(by_komendant_day),
-        "byCleanObjectDay": dict(by_clean_object_day),
+        # Значения стали ДРОБНЫМИ (проход 17): незавершённая командная задача
+        # делится поровну между назначенными. Округляем до 3 знаков — иначе
+        # float-хвосты раздувают JSON на мегабайты без всякой пользы.
+        "byKomendantDay": {k: {side: round_bucket(v[side]) for side in ("planned", "unplanned")}
+                           for k, v in by_komendant_day.items()},
+        "byCleanObjectDay": {k: {side: round_bucket(v[side]) for side in ("planned", "unplanned")}
+                             for k, v in by_clean_object_day.items()},
         "cleanSpeedDay": {
-            k: {"all": v["all"], "tasks": v["tasks"],
+            k: {"all": round(v["all"], 3), "tasks": round(v["tasks"], 3),
+                # employees — КТО ЗАКРЫЛ, roster — КТО БЫЛ НАЗНАЧЕН на смену
                 "employees": len(clean_speed_emps.get(k, ())),
+                "roster": len(clean_speed_roster.get(k, ())),
+                "normAllSum": round(v["normAllSum"], 1),
                 "factSum": round(v["factSum"], 1), "factN": v["factN"],
                 "factHist": v["factHist"],
                 "normSum": round(v["normSum"], 1), "normN": v["normN"]}
@@ -1036,8 +1119,8 @@ def main():
         fs = sum(r["factSum"] for r in rows); fn = sum(r["factN"] for r in rows)
         ns = sum(r["normSum"] for r in rows); nn = sum(r["normN"] for r in rows)
         print("     %-11s назначено=%-9s выполнено=%-8s факт=%.1f мин (n=%s)  норматив=%.1f мин (n=%s)" % (
-            label, "{:,}".format(sum(r["all"] for r in rows)).replace(",", " "),
-            "{:,}".format(sum(r["tasks"] for r in rows)).replace(",", " "),
+            label, "{:,.0f}".format(sum(r["all"] for r in rows)).replace(",", " "),
+            "{:,.0f}".format(sum(r["tasks"] for r in rows)).replace(",", " "),
             (fs / fn) if fn else 0, "{:,}".format(fn).replace(",", " "),
             (ns / nn) if nn else 0, "{:,}".format(nn).replace(",", " ")))
     for grp, label in (("base", "уборщицы (роль employee)"), ("mgr", "менеджеры клининга")):
@@ -1050,7 +1133,7 @@ def main():
                 m += v[side]["MISSED"]
         if c or m:
             print("     %-26s выполнено=%s пропущено=%s эфф=%.1f%%" % (
-                label, "{:,}".format(c).replace(",", " "), "{:,}".format(m).replace(",", " "),
+                label, "{:,.0f}".format(c).replace(",", " "), "{:,.0f}".format(m).replace(",", " "),
                 (c / (c + m) * 100) if (c + m) else 0))
     print("-" * 66)
     print("QA сверка (Bruno statByZone vs сырой taskPlan, должны быть близки):")

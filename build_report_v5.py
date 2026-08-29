@@ -145,7 +145,7 @@ def fit_size(text, width_in, base, min_size=9.0, bold=False, factor=None):
     lines = [l for l in str(text).split("\n") if l]
     if not lines:
         return base
-    f = factor if factor is not None else (0.56 if bold else 0.52)
+    f = factor if factor is not None else (0.62 if bold else 0.56)
     longest = max(len(l) for l in lines)
     fits = width_in * 72.0 / (f * longest)
     return round(max(min_size, min(base, fits)), 1)
@@ -686,9 +686,9 @@ class Deck:
         self.badge(s, MARGIN_IN, 0.42, num)
         w = SLIDE_W_IN - MARGIN_IN - (MARGIN_IN + 0.68)
         self.text(s, MARGIN_IN + 0.68, 0.35, w, 0.5, title,
-                  size=fit_size(title, w, 22, 14.5, bold=True), bold=True, colorhex=NAVY, wrap=False)
+                  size=fit_size(title, w, 22, 14.5, bold=True), bold=True, colorhex=NAVY)
         self.text(s, MARGIN_IN + 0.68, 0.82, w, 0.4, subtitle,
-                  size=fit_size(subtitle, w, 12.5, 9.5), colorhex=TEXT_MUTED, wrap=False)
+                  size=fit_size(subtitle, w, 12.5, 9.5), colorhex=TEXT_MUTED)
 
     def footer(self, s, dark=False):
         self.page += 1
@@ -706,10 +706,10 @@ class Deck:
         vw, lw = w - 0.3, w - 0.3
         self.text(s, x + 0.15, y + 0.12, vw, h - 0.55, value,
                   size=fit_size(value, vw, size, 12.0, bold=True), bold=True,
-                  colorhex=accent, wrap=False)
+                  colorhex=accent)
         self.text(s, x + 0.15, y + h - 0.42, lw, 0.36, label,
                   size=fit_size(label, lw, 10.5, 7.6), colorhex=TEXT_MUTED,
-                  line_spacing=0.95, wrap=False)
+                  line_spacing=0.95)
 
     def picture(self, s, path, x, y, w, h):
         """Вписывает картинку в бокс с сохранением пропорций; возвращает
@@ -785,7 +785,7 @@ class Deck:
 
     # --- таблицы ---
     def table(self, s, x, y, w, h, header, rows, col0_ratio=0.24, font_size=9,
-              col_weights=None):
+              col_weights=None, row_height=None, header_height=None):
         """col_weights — относительные ширины колонок (кроме первой). Нужны
         таблицам «месяц = объём + эффективность»: колонка с тремя числами
         («4 829/91 986/1 498») втрое шире колонки с процентом, а при равной
@@ -804,6 +804,13 @@ class Deck:
         tbl.columns[0].width = Inches(col0)
         for c in range(1, len(header)):
             tbl.columns[c].width = Inches(widths[c - 1])
+        # Высота строк: python-pptx растягивает их под текст, поэтому на
+        # плотных таблицах задаём явно и ужимаем вертикальные поля ячеек.
+        if header_height:
+            tbl.rows[0].height = Inches(header_height)
+        if row_height:
+            for ri in range(1, len(rows) + 1):
+                tbl.rows[ri].height = Inches(row_height)
         for c, htext in enumerate(header):
             tbl.cell(0, c).text = htext
         for r, row in enumerate(rows):
@@ -814,6 +821,8 @@ class Deck:
             cell.fill.fore_color.rgb = self._c(NAVY)
             cell.vertical_anchor = MSO_ANCHOR.MIDDLE
             cell.margin_left = cell.margin_right = Inches(0.06)
+            if row_height:
+                cell.margin_top = cell.margin_bottom = Inches(0.01)
             for p in cell.text_frame.paragraphs:
                 p.alignment = PP_ALIGN.CENTER if ci > 0 else PP_ALIGN.LEFT
                 for r in p.runs:
@@ -827,6 +836,8 @@ class Deck:
                 cell.fill.fore_color.rgb = self._c(BG_LIGHT if ri % 2 == 0 else WHITE)
                 cell.vertical_anchor = MSO_ANCHOR.MIDDLE
                 cell.margin_left = cell.margin_right = Inches(0.06)
+                if row_height:
+                    cell.margin_top = cell.margin_bottom = Inches(0.01)
                 for p in cell.text_frame.paragraphs:
                     p.alignment = PP_ALIGN.LEFT if ci == 0 else PP_ALIGN.CENTER
                     for r in p.runs:
@@ -1143,7 +1154,7 @@ def build(model, out_path, imgdir):
     # =================================================== 7. Коменданты: план + неплан
     s = D.slide()
     D.header(s, 5, "Коменданты: плановые и неплановые задачи",
-             "Слева — плановые задачи, отработанные комендантами лично. "
+             "Слева — плановые задачи, где комендант назначен исполнителем. "
              "Справа — неплановые (обращения/заявки)")
     for x, title, block, imgkey, legend in (
         (LX, "Коменданты · плановые", b4b, "b4b_main", combo_legend(b4b_has_cmp)),
@@ -1158,8 +1169,11 @@ def build(model, out_path, imgdir):
         D.axis_caption(s, x + 3.01, 3.41, 3.01, "Эфф., %", align=PP_ALIGN.RIGHT, colorhex=NAVY)
         r = D.picture(s, img[imgkey], x, 3.61, HALF_W, 1.59)
         D.chart_legend(s, r, legend, y=5.30)
-    D.text(s, MARGIN_IN, 6.86, 11.30, 0.35, "Детализация по каждому коменданту — в приложении.",
-           size=8.6, italic=True, colorhex=TEXT_MUTED)
+    D.text(s, MARGIN_IN, 6.74, 12.33, 0.42,
+           "Задача, начатая исполнителем, засчитывается ему целиком; назначенная на команду и не "
+           "начатая никем — делится\nпоровну между её исполнителями (отсюда дробные доли). "
+           "Детализация по каждому коменданту — в приложении.",
+           size=8.2, italic=True, colorhex=TEXT_MUTED, line_spacing=1.12)
     D.footer(s)
 
     # =================================================== 8. Уборка: план + неплан + скорость
@@ -1200,22 +1214,83 @@ def build(model, out_path, imgdir):
         rows = []
         for shift, shift_label in (("day", "День"), ("evening", "Вечер")):
             a = avg[shift]
+            md = a.get("median_duration_min")
             rows.append([shift_label,
+                         num_cell(a.get("people_per_day")),
                          num_cell(a.get("assigned_per_employee")),
-                         num_cell(a["avg_tasks_per_employee"]),
-                         num_cell(a["avg_duration_min"]),
-                         num_cell(a.get("median_duration_min"))])
+                         num_cell(a.get("done_per_employee")),
+                         num_cell(a.get("norm_hours_per_employee")),
+                         "%s / %s" % (num_cell(a["avg_duration_min"]), num_cell(md))])
         D.table(s, x, 5.42, HALF_W, 1.05,
-                ["Смена", "Назначено\nна чел.", "Выполнено\nна чел.",
-                 "Мин./зад.\nсреднее", "Мин./зад.\nмедиана"], rows,
-                col0_ratio=0.20, font_size=7.6)
+                ["Смена", "Чел. в\nнаряде", "Назначено\nна чел.", "Выполнено\nна чел.",
+                 "Норм-часов\nна чел.", "Мин./зад.\nсред. / медиана"], rows,
+                col0_ratio=0.15, font_size=6.9,
+                col_weights=[1.0, 1.15, 1.15, 1.2, 1.5])
     D.text(s, MARGIN_IN, 6.62, 12.33, 0.50,
-           "«Назначено/выполнено на человека» — задачи смены, делённые на число исполнителей, "
-           "которые в эту смену закрыли хотя бы одну задачу; смена определяется по плановому "
-           "времени задачи.\n«Мин./задачу» — фактическое время от «начал» до «завершил»: среднее "
-           "взвешено по числу задач, медиана устойчива к единичным «висящим» задачам. "
-           "Плановые — роль уборщиц; неплановые — вместе с «Менеджером клининга».",
-           size=8.0, italic=True, colorhex=TEXT_MUTED, line_spacing=1.12)
+           "«Чел. в наряде» — сколько разных сотрудников назначено на задачи смены (в среднем за сутки); "
+           "на него делятся две следующие колонки. «Норм-часов на чел.» — норматив задач смены на одного "
+           "человека наряда: это плановая загрузка, а не факт.\n"
+           "«Мин./задачу» — время от «начал» до «завершил»: среднее взвешено по числу задач, медиана "
+           "устойчива к «висящим» задачам. Смена — по плановому времени задачи.",
+           size=7.9, italic=True, colorhex=TEXT_MUTED, line_spacing=1.1)
+    D.footer(s)
+
+    # ============================== 8b. Уборка: детализация по башням и сменам
+    # Новый слайд (26.08.2026). Показывает знаменатель, из которого получаются
+    # цифры «на человека» со слайда 8: сколько людей в наряде, сколько из них
+    # реально отмечается в приложении, и какая плановая трудоёмкость на одного
+    # человека выходит. Строки сгруппированы по СМЕНЕ, внутри — башни.
+    s = D.slide()
+    D.header(s, 6, "Уборка: детализация по башням и сменам",
+             "Из чего складываются показатели «на человека»: наряд, отметки в приложении "
+             "и плановая трудоёмкость")
+    SPEED_HDR = ["Смена", "Объект", "Задач\nв день", "Выполнено\nв день", "Наряд,\nчел.",
+                 "Отмечались,\nчел.", "Задач\nна чел.", "Норм-часов\nна чел."]
+    SPEED_W = [2.45, 1.05, 1.15, 0.95, 1.15, 1.0, 1.15]
+
+    def speed_rows(kind):
+        rows = []
+        for shift, shift_label in (("day", "День"), ("evening", "Вечер")):
+            first = True
+            for tid in b6["tower_names"]:
+                sl = b6["towers"][tid]["kinds"][kind][shift]
+                if not sl["has_data"]:
+                    continue
+                rows.append([shift_label if first else "",
+                             b6["tower_names"][tid],
+                             num_cell(sl.get("assigned_per_day")),
+                             num_cell(sl.get("done_per_day")),
+                             num_cell(sl.get("people_per_day")),
+                             num_cell(sl.get("closers_per_day")),
+                             num_cell(sl.get("assigned_per_employee")),
+                             num_cell(sl.get("norm_hours_per_employee"))])
+                first = False
+        return rows
+
+    ROW_H, HDR_H = 0.235, 0.36
+    yy = 1.52
+    for kind, klabel in (("planned", "Плановые задачи по уборке"),
+                         ("unplanned", "Неплановые задачи по уборке")):
+        rows = speed_rows(kind)
+        D.text(s, MARGIN_IN, yy, 12.33, 0.26, klabel, size=12, bold=True, colorhex=NAVY)
+        if not rows:
+            D.text(s, MARGIN_IN, yy + 0.28, 12.33, 0.26,
+                   "За период нет ни одной задачи этого типа на башнях.",
+                   size=9.5, italic=True, colorhex=TEXT_MUTED)
+            yy += 0.66
+            continue
+        h = HDR_H + ROW_H * len(rows)
+        D.table(s, MARGIN_IN, yy + 0.26, SLIDE_W_IN - 2 * MARGIN_IN, h,
+                SPEED_HDR, rows, col0_ratio=0.09, font_size=7.8, col_weights=SPEED_W,
+                row_height=ROW_H, header_height=HDR_H)
+        yy += 0.26 + h + 0.42
+    D.text(s, MARGIN_IN, 6.62, 12.33, 0.50,
+           "«Наряд» — сколько разных сотрудников Bruno перечисляет в задачах смены "
+           "(состав команды), в среднем за сутки. «Отмечались» — сколько из них реально "
+           "закрыли хотя бы одну задачу.\n«Норм-часов на чел.» — суммарный норматив задач "
+           "смены на одного человека наряда: это плановая трудоёмкость. Смена определяется "
+           "по плановому времени задачи; «в день» — среднее по суткам, в которые задачи были.",
+           size=7.9, italic=True, colorhex=TEXT_MUTED, line_spacing=1.1)
     D.footer(s)
 
     # =================================================== 9. Итоги периода
@@ -1241,7 +1316,7 @@ def build(model, out_path, imgdir):
         y = 2.00 + (i // 3) * 2.39
         D.round_rect(s, x, y, 3.78, 2.15, NAVY_DARK, radius=0.08)
         D.text(s, x + 0.25, y + 0.35, 3.28, 0.90, val,
-               size=fit_size(val, 3.28, 30, 15, bold=True), bold=True, colorhex=BLUE, wrap=False)
+               size=fit_size(val, 3.28, 30, 15, bold=True), bold=True, colorhex=BLUE)
         D.text(s, x + 0.25, y + 1.30, 3.28, 0.70, label, size=11.5, colorhex=WHITE, line_spacing=1.1)
     D.page += 1
     D.text(s, MARGIN_IN, 7.10, 8.00, 0.30, "Bruno · ВТБ · %s" % period_short,
@@ -1280,7 +1355,7 @@ def build(model, out_path, imgdir):
             D.text(sl, MARGIN_IN, 0.54, 12.33, 0.42, title, size=19, bold=True, colorhex=NAVY,
                    wrap=False)
             D.text(sl, MARGIN_IN, 0.92, 12.33, 0.30, subtitle,
-                   size=fit_size(subtitle, 12.33, 10.5, 8.2), colorhex=TEXT_MUTED, wrap=False)
+                   size=fit_size(subtitle, 12.33, 10.5, 8.2), colorhex=TEXT_MUTED)
             # Легенда — над сеткой: снизу место занято подписями месяцев и
             # помесячной эффективностью под каждым графиком.
             D.legend_row(sl, MARGIN_IN, 1.15, SLIDE_W_IN - 2 * MARGIN_IN,
@@ -1299,9 +1374,9 @@ def build(model, out_path, imgdir):
         sl = D.slide()
         D.text(sl, MARGIN_IN, 0.32, 11.30, 0.45, num_label, size=12, bold=True, colorhex=BLUE)
         D.text(sl, MARGIN_IN, 0.62, 12.33, 0.45, title, size=fit_size(title, 12.33, 19, 13),
-               bold=True, colorhex=NAVY, wrap=False)
+               bold=True, colorhex=NAVY)
         D.text(sl, MARGIN_IN, 1.02, 12.33, 0.30, subtitle,
-               size=fit_size(subtitle, 12.33, 10.5, 8.2), colorhex=TEXT_MUTED, wrap=False)
+               size=fit_size(subtitle, 12.33, 10.5, 8.2), colorhex=TEXT_MUTED)
         rows = list(t["rows"]) + list(extra_rows)
         D.table(sl, MARGIN_IN, 1.42, SLIDE_W_IN - 2 * MARGIN_IN, 5.35 if not note else 5.10,
                 t["header"], rows, col0_ratio=col0_ratio, font_size=font_size,
