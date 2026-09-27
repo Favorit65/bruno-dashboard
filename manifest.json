@@ -4508,7 +4508,7 @@
   },
   "2026-09-23": {
    "complete": true,
-   "fetchedAt": "2026-09-26T22:26:20.974185+00:00",
+   "fetchedAt": "2026-09-27T22:52:57.292435+00:00",
    "fields": "slim",
    "counts": {
     "taskPlan": 12421,
@@ -4525,7 +4525,7 @@
   },
   "2026-09-24": {
    "complete": true,
-   "fetchedAt": "2026-09-26T22:27:15.034581+00:00",
+   "fetchedAt": "2026-09-27T22:54:38.138751+00:00",
    "fields": "slim",
    "counts": {
     "taskPlan": 12409,
@@ -4534,7 +4534,7 @@
     "statByTeam": 5118
    },
    "bytes": {
-    "taskPlan": 1383267,
+    "taskPlan": 1383160,
     "statByZone": 202354,
     "statByEmployee": 51704,
     "statByTeam": 323168
@@ -4542,7 +4542,7 @@
   },
   "2026-09-25": {
    "complete": true,
-   "fetchedAt": "2026-09-26T22:28:04.588427+00:00",
+   "fetchedAt": "2026-09-27T22:55:40.314094+00:00",
    "fields": "slim",
    "counts": {
     "taskPlan": 12402,
@@ -4559,24 +4559,24 @@
   },
   "2026-09-26": {
    "complete": true,
-   "fetchedAt": "2026-09-26T22:28:06.990165+00:00",
+   "fetchedAt": "2026-09-27T22:55:46.139350+00:00",
    "fields": "slim",
    "counts": {
     "taskPlan": 362,
-    "statByZone": 2,
-    "statByEmployee": 2,
-    "statByTeam": 0
+    "statByZone": 682,
+    "statByEmployee": 852,
+    "statByTeam": 141
    },
    "bytes": {
-    "taskPlan": 21061,
-    "statByZone": 410,
-    "statByEmployee": 445,
-    "statByTeam": 52
+    "taskPlan": 21071,
+    "statByZone": 40366,
+    "statByEmployee": 49111,
+    "statByTeam": 9540
    }
   },
   "2026-09-27": {
    "complete": true,
-   "fetchedAt": "2026-09-26T22:28:09.143751+00:00",
+   "fetchedAt": "2026-09-27T22:55:52.318395+00:00",
    "fields": "slim",
    "counts": {
     "taskPlan": 119,
@@ -4585,13 +4585,30 @@
     "statByTeam": 13
    },
    "bytes": {
-    "taskPlan": 6004,
+    "taskPlan": 9141,
     "statByZone": 1084,
     "statByEmployee": 56,
     "statByTeam": 1431
    }
+  },
+  "2026-09-28": {
+   "complete": true,
+   "fetchedAt": "2026-09-27T22:56:56.693316+00:00",
+   "fields": "slim",
+   "counts": {
+    "taskPlan": 16677,
+    "statByZone": 0,
+    "statByEmployee": 0,
+    "statByTeam": 0
+   },
+   "bytes": {
+    "taskPlan": 1079887,
+    "statByZone": 52,
+    "statByEmployee": 56,
+    "statByTeam": 52
+   }
   }
  },
  "dirs": {},
- "updatedAt": "2026-09-26T22:28:09.143766+00:00"
+ "updatedAt": "2026-09-27T22:56:56.693330+00:00"
 }
