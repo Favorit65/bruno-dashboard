@@ -4712,7 +4712,7 @@
   },
   "2026-10-05": {
    "complete": true,
-   "fetchedAt": "2026-10-09T00:11:03.718517+00:00",
+   "fetchedAt": "2026-10-09T23:51:38.448130+00:00",
    "fields": "slim",
    "counts": {
     "taskPlan": 14401,
@@ -4721,7 +4721,7 @@
     "statByTeam": 4161
    },
    "bytes": {
-    "taskPlan": 1525155,
+    "taskPlan": 1530892,
     "statByZone": 213976,
     "statByEmployee": 49511,
     "statByTeam": 275849
@@ -4729,7 +4729,7 @@
   },
   "2026-10-06": {
    "complete": true,
-   "fetchedAt": "2026-10-09T00:11:31.053029+00:00",
+   "fetchedAt": "2026-10-09T23:52:04.262727+00:00",
    "fields": "slim",
    "counts": {
     "taskPlan": 11900,
@@ -4738,7 +4738,7 @@
     "statByTeam": 5016
    },
    "bytes": {
-    "taskPlan": 1352462,
+    "taskPlan": 1352749,
     "statByZone": 228705,
     "statByEmployee": 21751,
     "statByTeam": 333003
@@ -4746,7 +4746,7 @@
   },
   "2026-10-07": {
    "complete": true,
-   "fetchedAt": "2026-10-09T00:12:25.721139+00:00",
+   "fetchedAt": "2026-10-09T23:53:00.853691+00:00",
    "fields": "slim",
    "counts": {
     "taskPlan": 14838,
@@ -4755,7 +4755,7 @@
     "statByTeam": 5084
    },
    "bytes": {
-    "taskPlan": 1702701,
+    "taskPlan": 1702707,
     "statByZone": 239854,
     "statByEmployee": 16505,
     "statByTeam": 341223
@@ -4763,33 +4763,50 @@
   },
   "2026-10-08": {
    "complete": true,
-   "fetchedAt": "2026-10-09T00:13:10.950286+00:00",
+   "fetchedAt": "2026-10-09T23:54:03.821920+00:00",
    "fields": "slim",
    "counts": {
     "taskPlan": 15633,
+    "statByZone": 3892,
+    "statByEmployee": 269,
+    "statByTeam": 5858
+   },
+   "bytes": {
+    "taskPlan": 1767704,
+    "statByZone": 227282,
+    "statByEmployee": 15949,
+    "statByTeam": 384262
+   }
+  },
+  "2026-10-09": {
+   "complete": true,
+   "fetchedAt": "2026-10-09T23:54:51.965965+00:00",
+   "fields": "slim",
+   "counts": {
+    "taskPlan": 14880,
     "statByZone": 456,
     "statByEmployee": 121,
     "statByTeam": 437
    },
    "bytes": {
-    "taskPlan": 1662559,
-    "statByZone": 26812,
-    "statByEmployee": 6624,
-    "statByTeam": 28626
+    "taskPlan": 1578589,
+    "statByZone": 26775,
+    "statByEmployee": 6629,
+    "statByTeam": 28637
    }
   },
-  "2026-10-09": {
+  "2026-10-10": {
    "complete": true,
-   "fetchedAt": "2026-10-09T00:13:30.063515+00:00",
+   "fetchedAt": "2026-10-09T23:54:53.832302+00:00",
    "fields": "slim",
    "counts": {
-    "taskPlan": 14858,
+    "taskPlan": 236,
     "statByZone": 0,
     "statByEmployee": 0,
     "statByTeam": 0
    },
    "bytes": {
-    "taskPlan": 991590,
+    "taskPlan": 9023,
     "statByZone": 52,
     "statByEmployee": 56,
     "statByTeam": 52
@@ -4797,5 +4814,5 @@
   }
  },
  "dirs": {},
- "updatedAt": "2026-10-09T00:13:30.063531+00:00"
+ "updatedAt": "2026-10-09T23:54:53.832316+00:00"
 }
