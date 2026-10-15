@@ -4814,7 +4814,7 @@
   },
   "2026-10-11": {
    "complete": true,
-   "fetchedAt": "2026-10-14T23:00:22.491600+00:00",
+   "fetchedAt": "2026-10-15T22:55:16.165962+00:00",
    "fields": "slim",
    "counts": {
     "taskPlan": 119,
@@ -4831,7 +4831,7 @@
   },
   "2026-10-12": {
    "complete": true,
-   "fetchedAt": "2026-10-14T23:01:24.374351+00:00",
+   "fetchedAt": "2026-10-15T22:56:20.148688+00:00",
    "fields": "slim",
    "counts": {
     "taskPlan": 21127,
@@ -4840,7 +4840,7 @@
     "statByTeam": 4968
    },
    "bytes": {
-    "taskPlan": 2142673,
+    "taskPlan": 2158894,
     "statByZone": 235960,
     "statByEmployee": 23502,
     "statByTeam": 332716
@@ -4848,7 +4848,7 @@
   },
   "2026-10-13": {
    "complete": true,
-   "fetchedAt": "2026-10-14T23:02:21.003546+00:00",
+   "fetchedAt": "2026-10-15T22:57:13.727397+00:00",
    "fields": "slim",
    "counts": {
     "taskPlan": 14963,
@@ -4865,33 +4865,50 @@
   },
   "2026-10-14": {
    "complete": true,
-   "fetchedAt": "2026-10-14T23:03:07.812723+00:00",
+   "fetchedAt": "2026-10-15T22:58:15.244752+00:00",
    "fields": "slim",
    "counts": {
     "taskPlan": 14920,
-    "statByZone": 457,
-    "statByEmployee": 121,
-    "statByTeam": 438
+    "statByZone": 4197,
+    "statByEmployee": 285,
+    "statByTeam": 5154
    },
    "bytes": {
-    "taskPlan": 1580544,
-    "statByZone": 26837,
-    "statByEmployee": 6636,
-    "statByTeam": 28959
+    "taskPlan": 1711763,
+    "statByZone": 243936,
+    "statByEmployee": 17085,
+    "statByTeam": 342319
    }
   },
   "2026-10-15": {
    "complete": true,
-   "fetchedAt": "2026-10-14T23:03:28.094466+00:00",
+   "fetchedAt": "2026-10-15T22:59:01.094035+00:00",
    "fields": "slim",
    "counts": {
-    "taskPlan": 15589,
+    "taskPlan": 15610,
+    "statByZone": 456,
+    "statByEmployee": 121,
+    "statByTeam": 437
+   },
+   "bytes": {
+    "taskPlan": 1612734,
+    "statByZone": 26718,
+    "statByEmployee": 6599,
+    "statByTeam": 28520
+   }
+  },
+  "2026-10-16": {
+   "complete": true,
+   "fetchedAt": "2026-10-15T22:59:19.791795+00:00",
+   "fields": "slim",
+   "counts": {
+    "taskPlan": 14858,
     "statByZone": 0,
     "statByEmployee": 0,
     "statByTeam": 0
    },
    "bytes": {
-    "taskPlan": 1040624,
+    "taskPlan": 990786,
     "statByZone": 52,
     "statByEmployee": 56,
     "statByTeam": 52
@@ -4899,5 +4916,5 @@
   }
  },
  "dirs": {},
- "updatedAt": "2026-10-14T23:03:28.094478+00:00"
+ "updatedAt": "2026-10-15T22:59:19.791809+00:00"
 }
