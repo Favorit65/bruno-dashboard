@@ -135,6 +135,11 @@
   .role-tile .rt-info-btn { flex-shrink: 0; margin-left: auto; padding-left: 6px; background: none; border: 0; color: var(--text-muted); font-size: 13px; cursor: pointer; line-height: 1; }
   .role-tile .rt-info-btn:hover { color: var(--vtb-navy); }
   .role-tile .rt-name { flex: 1 1 auto; min-width: 0; font-size: 13px; font-weight: 600; color: var(--text-primary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .work-wrap { overflow-x: auto; }
+  .work-tbl { width: 100%; border-collapse: collapse; font-size: 12px; }
+  .work-tbl th, .work-tbl td { padding: 4px 6px; text-align: right; border-bottom: 1px solid rgba(0,40,130,0.08); white-space: nowrap; }
+  .work-tbl th:first-child, .work-tbl td:first-child { text-align: left; white-space: normal; }
+  .work-tbl th { font-weight: 600; color: var(--vtb-navy); }
   .role-tile .rt-eff { font-family: var(--font-head); font-size: 16px; font-weight: 600; color: var(--vtb-navy); flex-shrink: 0; }
   .role-tile .rt-today { font-size: 11px; color: var(--text-secondary); margin-top: 2px; }
   .role-tile .rt-today b { color: var(--vtb-navy); font-weight: 600; }
@@ -620,7 +625,7 @@
       <div class="flt-menu" id="menu-object"></div>
     </div>
     <div class="flt" data-flt="role">
-      <span>Роль:</span> <span id="flt-role-lbl">все</span>
+      <span>Функция:</span> <span id="flt-role-lbl">все</span>
       <span class="chev"><svg class="ic ic-chev" viewBox="0 0 16 16" aria-hidden="true"><path d="M4 6.5l4 4 4-4" /></svg></span>
       <div class="flt-menu" id="menu-role"></div>
     </div>
@@ -651,10 +656,11 @@
   <details class="howto">
     <summary>Как читать дашборд: что на что влияет</summary>
     <div class="howto-body">
-      <p><b>Период</b>, <b>Объекты</b> и <b>Роль</b> пересчитывают весь дашборд (блоки 01–04). Исключение — «Обращения по объектам» и воронка: они намеренно реагируют только на период и объект, роль на них не влияет.</p>
+      <p><b>Период</b>, <b>Объекты</b> и <b>Функция</b> пересчитывают весь дашборд (блоки 01–04). Исключение — «Обращения по объектам» и воронка: они намеренно реагируют только на период и объект, роль на них не влияет.</p>
       <p><b>Обращение ≠ неплановая задача.</b> <b>Обращение</b> — запрос клиента (в данных Bruno у записи заполнен <code>feedbackID</code>); по одному обращению может быть заведено несколько задач. <b>Неплановая задача</b> — любая задача вне регламента, в том числе заведённая персоналом вручную, без всякого обращения — таких большинство. Поэтому чисел три, и они разные: обращений, задач по обращениям и неплановых задач всего. Тумблер <b>«Обращения / Неплановые задачи»</b> в блоке «Обращения по объектам» переключает, что именно рисует график, — и одновременно переключает воронку слева, чтобы на экране не оказалось двух разных «обращений». Плашка с числом объектов следует тумблеру: объектов с неплановыми задачами закономерно больше, чем объектов с обращениями. Уникальность обращения считается в пределах суток и объекта — обращение, задачи по которому шли два дня, попадает в оба дня (та же методика, что в отчётной презентации).</p>
-      <p><b>Роль</b> на объектных блоках (01–03) и в «Статистике по ролям» учитывается через апортирование задачи по её исполнителям: задача с командой — по составу команды, задача без команды (например, неплановая) — по своим прямым исполнителям. На топ зон внутри объекта (блок 02) и на часовые разрезы роль не влияет — в этих данных нет разбивки по ролям.</p>
-      <p><b>Тумблер «Все / Плановые / Неплановые»</b> действует на блоки 01, 02 и «Статистику по ролям». План–факт (блок 03) всегда считается только по плановым (регулярным) задачам.</p>
+      <p><b>Функция</b> (с 16.10 вместо роли) — кто выполняет работу: Клининг В/С и Д/С, Админы клининга В/С и Д/С, Коменданты, ММС, Флористы, Администраторы банка, Такелажники, Эксплуатация, Диспетчеры. Определяется по <b>команде</b> задачи (названия команд в Bruno единообразны), а у задачи без команды (обращения, личные задачи) — по роли исполнителя. Задача целиком относится к одной функции. Роли в Bruno сейчас в переходном состоянии, поэтому по ним не группируем.</p>
+      <p><b>Эффективность</b> = выполнено / <b>все</b> задачи периода (решение 21.09). Если в периоде остались задачи «в работе» (их срок ещё не прошёл), цифра <b>предварительная</b> — это помечено на плашке.</p>
+      <p><b>Тумблер «Все / Плановые / Неплановые»</b> действует на блоки 01, 02 и «Статистику по функциям». План–факт (блок 03) всегда считается только по плановым (регулярным) задачам.</p>
       <p><b>Блок 04 «Персонал»</b> умеет считать двумя способами, переключатель — в самом блоке. <b>«Статистика Bruno»</b> (по умолчанию) — нативные посуточные агрегаты Bruno по сотруднику; действуют период, объект и роль, но не тумблер план/внеплан — такого разреза у Bruno нет. <b>«Счёт по задачам»</b> — наш пересчёт по taskPlan с делением задачи между исполнителями; действуют все фильтры, но цифры законно отличаются от нативных.</p>
       <p><b>Время — общее для всех графиков.</b> Переключатель <b>Авто / Месяц / Неделя / День</b> в фильтрах задаёт детализацию столбцов сразу в блоке 01, блоке 03 и «Обращениях по объектам». Стрелки <b>‹ ›</b> на любой карточке двигают период у всех рядов одновременно; на краю архива стрелка гаснет.</p>
       <p><b>Клик — это тоже фильтр.</b> Клик по столбцу проваливается внутрь: год → месяц → день → час, синхронно во всех блоках (плашки, дерево и блоки 02/04 пересчитываются на тот же отрезок). Путь показан крошками справа от навигатора — клик по крошке возвращает на этот уровень. Объект в блоке 02 сужает фильтр объектов; плашка роли в блоке 01 — фильтр ролей; узел дерева категорий — то же, что тумблер «Все / Плановые / Неплановые»; подпись в легенде обращений или ролей добавляет и снимает объект/роль. Всё активное перечислено чипами под фильтрами и снимается там же.</p>
@@ -691,8 +697,10 @@
   </div>
   <div class="row" style="grid-template-columns: 1fr 1.7fr;">
     <div class="card">
-      <p class="card-title">Статистика по ролям <span class="hint">за выбранный период</span><span class="card-tools" data-tools="roles"></span></p>
+      <p class="card-title">Статистика по функциям <span class="hint">за выбранный период</span><span class="card-tools" data-tools="roles"></span></p>
       <div id="b1-roles"></div>
+      <p class="card-title" style="margin-top:16px;">Выработка и численность <span class="hint">по функциям, за период</span><span class="card-tools" data-tools="work"></span></p>
+      <div id="b1-work"></div>
     </div>
     <div class="card">
       <div class="card-head-row">
@@ -1031,6 +1039,7 @@ let ZONE_ROWS_BY_DATE = new Map(); // date -> [{zoneId, objectID, completed, mis
 let ROWS_FB_BY_DATE = new Map();     // date -> [{objId, fb, tasks, NEW..MISSED}]
 let ROWS_FB_HOUR_BY_KEY = new Map(); // "date|HH" -> [{objId, fb, tasks}]
 let HAS_FB = false;                  // в модели есть куб обращений (в старых моделях его нет)
+let WORK_BY_DATE = new Map();  // 16.10: date -> [{objId, empId, role(функция), done}]
 let EMPLOYEES = {}, ROLE_OF = {}, ROLES = [];  // empId -> {name, roleName, teamIDs}; empId -> roleName (trimmed); список уникальных ролей
 let EMP_ROWS_BY_DATE = new Map();  // date -> [{empId, ai, ci, at, ct}] — нативная стат. Bruno БЕЗ объекта (старый ключ, оставлен для совместимости)
 let EMP_OBJ_BY_DATE = new Map();   // date -> [{objId, empId, ai, ci, at, ct}] — та же нативная стат. Bruno, но С объектом
@@ -1095,7 +1104,7 @@ async function loadAndMap() {
 
 /* Общее для обоих форматов: список ролей и цвета. */
 function finishRoles() {
-  for (const [id, e] of Object.entries(EMPLOYEES)) { ROLE_OF[id] = normRole(e && e.roleName); }
+  for (const [id, e] of Object.entries(EMPLOYEES)) { ROLE_OF[id] = normRole(e && (e.func || e.roleName)); }
   const rolesInCube = new Set();
   for (const rows of ROWS_ROLE_BY_DATE.values()) for (const r of rows) rolesInCube.add(r.role);
   ROLES = [...new Set([...Object.values(ROLE_OF), ...rolesInCube])].sort((a, b) => a.localeCompare(b, 'ru'));
@@ -1170,6 +1179,17 @@ function mapCubesV2(cubes) {
       let list = ROWS_ROLE_BY_DATE.get(date);
       if (!list) ROWS_ROLE_BY_DATE.set(date, list = []);
       list.push({ objId: objIds[a[i + 1]], role: roles[a[i + 2]], planned: bucketAt(a, i + 3, false), unplanned: bucketAt(a, i + 10, false) });
+    }
+  }
+  // byWorkerFuncDay (16.10): [день, объект, сотрудник, функция, выполнено]
+  const bwf = cubes.byWorkerFuncDay;
+  if (bwf) {
+    const a = bwf.rows, st = bwf.stride;
+    for (let i = 0; i < a.length; i += st) {
+      const date = days[a[i]];
+      let list = WORK_BY_DATE.get(date);
+      if (!list) WORK_BY_DATE.set(date, list = []);
+      list.push({ objId: objIds[a[i + 1]], empId: empIds[a[i + 2]], role: normRole(roles[a[i + 3]]), done: a[i + 4] });
     }
   }
   const bzd = cubes.byZoneDay;
@@ -1282,6 +1302,12 @@ function mapLegacy(raw) {
     if (!ROWS_ROLE_BY_DATE.has(date)) ROWS_ROLE_BY_DATE.set(date, []);
     ROWS_ROLE_BY_DATE.get(date).push({ objId, role, planned: Object.assign(emptyBucket(), v.planned), unplanned: Object.assign(emptyBucket(), v.unplanned) });
   }
+  const bwf = (raw.daily || {}).byWorkerFuncDay || {};
+  for (const [key, v] of Object.entries(bwf)) {
+    const p = key.split('|');
+    if (!WORK_BY_DATE.has(p[0])) WORK_BY_DATE.set(p[0], []);
+    WORK_BY_DATE.get(p[0]).push({ objId: p[1], empId: p[2], role: normRole(p[3]), done: v.done || 0 });
+  }
   const boh = (raw.daily || {}).byObjectHour || {};
   for (const [key, v] of Object.entries(boh)) {
     const parts = key.split('|'); const date = parts[0], hour = parts[1], objId = parts[2];
@@ -1317,7 +1343,7 @@ function mapLegacy(raw) {
   }
 
   EMPLOYEES = dir.employees || {};
-  for (const [id, e] of Object.entries(EMPLOYEES)) { ROLE_OF[id] = normRole(e && e.roleName); }
+  for (const [id, e] of Object.entries(EMPLOYEES)) { ROLE_OF[id] = normRole(e && (e.func || e.roleName)); }
   // Список ролей = объединение справочника сотрудников и ролей, реально
   // встречающихся в кубе byObjectRoleDay: раньше в справочнике была роль
   // («Наблюдатель»), которой нет в кубе, из-за чего размеры множеств расходились
@@ -1927,11 +1953,18 @@ function b1MonthlyRaw() {
   });
   return [...map.keys()].sort().map(k => map.get(k));
 }
+// Эффективность = выполнено / ВСЕ задачи (решение 21.09, отменяет «вып/(вып+проп)»
+// от 22.08): иначе общее число задач на экране больше вып+проп и проценты не
+// сходятся у читателя. Задачи «в работе» в знаменателе — поэтому для периода,
+// где они есть, цифра помечается как предварительная.
+function effAll(c, all) { return all > 0 ? c / all : 0; }
+// effCM — только для нативной статистики Bruno по зонам (statByZone), где
+// незакрытых задач нет вовсе: там вып/(вып+проп) и есть вып/все.
 function effCM(c, m) { const den = c + m; return den > 0 ? c / den : 0; }
 function b1Kpi() {
   const rows = b1DailyRows();
   const all = rows.reduce((a, r) => a + r.all, 0), completed = rows.reduce((a, r) => a + r.completed, 0), missed = rows.reduce((a, r) => a + r.missed, 0);
-  return { all, completed, missed, other: Math.max(0, all - completed - missed), eff: effCM(completed, missed) };
+  return { all, completed, missed, other: Math.max(0, all - completed - missed), eff: effAll(completed, all) };
 }
 // Последний месяц архива почти всегда НЕПОЛНЫЙ (архив обрывается на дате выгрузки),
 // поэтому сравнение «весь август против всего июля» давало систематический минус по
@@ -1959,11 +1992,11 @@ function b1MoM() {
   const c = b1MoMBuckets(); if (!c) return null;
   const last = c.last, prev = c.prev;
   const rel = (a, p) => p > 0 ? (a - p) / p : null;
-  return { all: rel(last.all, prev.all), completed: rel(last.completed, prev.completed), missed: rel(last.missed, prev.missed), effPP: effCM(last.completed, last.missed) - effCM(prev.completed, prev.missed), dayCut: c.dayCut, prevMonth: c.prevMonth };
+  return { all: rel(last.all, prev.all), completed: rel(last.completed, prev.completed), missed: rel(last.missed, prev.missed), effPP: effAll(last.completed, last.all) - effAll(prev.completed, prev.all), dayCut: c.dayCut, prevMonth: c.prevMonth };
 }
 function b1Sparks() {
   const b = b1MonthlyRaw();
-  return { all: b.map(x => x.all), completed: b.map(x => x.completed), missed: b.map(x => x.missed), eff: b.map(x => Math.round(effCM(x.completed, x.missed) * 100)) };
+  return { all: b.map(x => x.all), completed: b.map(x => x.completed), missed: b.map(x => x.missed), eff: b.map(x => Math.round(effAll(x.completed, x.all) * 100)) };
 }
 
 // Клик по столбику МЕНЯЕТ реальный фильтр периода (не отдельное состояние
@@ -2044,7 +2077,7 @@ function renderB1() {
     { lbl: 'Задач всего', val: fmt(kpi.all), delta: mom ? momTxt(mom.all) : '', cls: mom ? cUp(mom.all) : 'neutral', spark: sp.all, col: '#002882' },
     { lbl: 'Выполнено', val: fmt(kpi.completed), delta: mom ? momTxt(mom.completed) : (kpi.all > 0 ? pct(kpi.completed / kpi.all) + ' от всех' : '—'), cls: mom ? cUp(mom.completed) : 'ok', spark: sp.completed, col: '#00AAFF' },
     { lbl: 'Пропущено', val: fmt(kpi.missed), delta: mom ? momTxt(mom.missed) : (kpi.all > 0 ? pct(kpi.missed / kpi.all, 1) + ' от всех' : '—'), cls: mom ? cDown(mom.missed) : 'bad', spark: sp.missed, col: '#E62632' },
-    { lbl: 'Эффективность', val: pct(kpi.eff, 1), delta: mom ? ppTxt(mom.effPP) : 'вып. / (вып.+проп.)', cls: mom ? cUp(mom.effPP) : 'neutral', spark: sp.eff, col: '#23A75B' },
+    { lbl: 'Эффективность' + (kpi.other > 0 ? ' · предв.' : ''), val: pct(kpi.eff, 1), delta: (mom ? ppTxt(mom.effPP) : 'вып. / все задачи') + (kpi.other > 0 ? ' · ' + fmt(kpi.other) + ' ещё в работе' : ''), cls: mom ? cUp(mom.effPP) : 'neutral', spark: sp.eff, col: '#23A75B' },
   ];
   const wrap = document.getElementById('b1-kpi'); wrap.innerHTML = '';
   tiles.forEach((t, i) => {
@@ -2058,6 +2091,7 @@ function renderB1() {
   renderB1Tree();
   renderB1Funnel();
   renderB1Roles();
+  renderB1Work();
   renderB1Feedback();
 }
 
@@ -2066,7 +2100,7 @@ function renderB1Tree() {
   let planned = emptyBucket(), unplanned = emptyBucket();
   rows.forEach(r => { addBucket(planned, r.planned); addBucket(unplanned, r.unplanned); });
   const plAll = bucketAll(planned), fbAll = bucketAll(unplanned), total = plAll + fbAll;
-  const plEff = effCM(planned.COMPLETED, planned.MISSED), fbEff = effCM(unplanned.COMPLETED, unplanned.MISSED);
+  const plEff = effAll(planned.COMPLETED, plAll), fbEff = effAll(unplanned.COMPLETED, fbAll);
   const host = document.getElementById('b1-tree');
   if (!total) { host.innerHTML = '<p class="note empty">Нет задач в выбранном периоде.</p>'; return; }
   // П1: узлы дерева — те же кнопки, что тумблер «Все / Плановые / Неплановые»
@@ -2282,10 +2316,82 @@ function rolesAgg() {
     .sort((a, b) => b.completed - a.completed);
 }
 
+// ---- Выработка и численность (16.10) --------------------------------------
+// Логика таблиц 10.10: эфф. = выработка на работающего × работающих ÷ назначено в день.
+//  * назначено/выполнено в день — по кубу функций (тот же, что у плашек), ÷ дней,
+//    в которые у функции были задачи (рабочие дни);
+//  * работающие — сотрудники с ≥1 выполненной задачей этой функции за период
+//    (по кубу byWorkerFuncDay: только завершённые задачи, исполнитель точный);
+//  * выработка на работающего в день = выполнено в день ÷ работающих за период;
+//    «на чел.-день» = выполнено ÷ сумма работавших по дням (дневная численность);
+//  * численность — активные учётки в активных командах функции на объекте
+//    (снимок справочника на дату сборки, не историческая).
+const WORK_NOTE = 'Работающий — сделал ≥1 задачу этой функции за период. Выработка на работающего в день = выполнено в день ÷ работающих за период (как в таблицах 10.10); на чел.-день — ÷ работавших в каждый конкретный день. Численность — активные учётки в командах функции на снимок справочника, не историческая. «В день» = ÷ рабочих дней периода (пн–пт) + выходных, в которые у функции были задачи.';
+function workAgg() {
+  const allSelRoles = roleFilterAllSel();
+  const allSelObj = state.objects.size === 0 || state.objects.size === OBJECTS.length;
+  const okObj = id => allSelObj || state.objects.has(id);
+  const okRole = r => allSelRoles || state.roles.has(r);
+  const map = new Map();
+  const get = r => { if (!map.has(r)) map.set(r, { assigned: 0, completed: 0, days: new Set(), workers: new Set(), manDays: 0, done: 0 }); return map.get(r); };
+  periodDates().forEach(date => {
+    (ROWS_ROLE_BY_DATE.get(date) || []).forEach(r => {
+      if (!okRole(r.role) || !okObj(r.objId)) return;
+      const b = emptyBucket(); addBucket(b, r.planned); addBucket(b, r.unplanned);
+      const all = bucketAll(b); if (!all) return;
+      const m = get(r.role); m.assigned += all; m.completed += b.COMPLETED; m.days.add(date);
+    });
+    const seen = new Set();
+    (WORK_BY_DATE.get(date) || []).forEach(w => {
+      if (!okRole(w.role) || !okObj(w.objId)) return;
+      const m = get(w.role); m.workers.add(w.empId); m.done += w.done;
+      const k = w.role + '|' + w.empId; if (!seen.has(k)) { seen.add(k); m.manDays += 1; }
+    });
+  });
+  const roster = (META && META.funcRoster) || {};
+  // Дни-знаменатель: рабочие дни (пн–пт) периода + выходные, в которые у функции
+  // БЫЛИ задачи. Как в таблицах 10.10 («неделя = 5 раб. дней»): иначе циклы,
+  // поставленные пачкой в пн/чт (флористы, коменданты, админы), делились бы на
+  // 2 дня и давали в 2,5 раза завышенное «в день».
+  const pd = periodDates().filter(d => d <= ARCHIVE_TO);
+  const weekdays = pd.filter(d => { const w = new Date(d + 'T12:00:00Z').getUTCDay(); return w >= 1 && w <= 5; }).length;
+  return [...map.entries()].map(([role, m]) => {
+    const wkTaskDays = [...m.days].filter(d => { const w = new Date(d + 'T12:00:00Z').getUTCDay(); return w === 0 || w === 6; }).length;
+    const days = (weekdays + wkTaskDays) || 1;
+    let ros = 0;
+    for (const [k, n] of Object.entries(roster)) {
+      const sep = k.indexOf('|'); const obj = k.slice(0, sep), f = k.slice(sep + 1);
+      if (f === role && okObj(obj)) ros += n;
+    }
+    const donePerDay = m.completed / days;
+    return {
+      role, days, assignedPerDay: m.assigned / days, donePerDay,
+      eff: effAll(m.completed, m.assigned), workers: m.workers.size, roster: ros,
+      workersPerDay: m.manDays / days,
+      outPerWorker: m.workers.size ? donePerDay / m.workers.size : null,
+      outPerManDay: m.manDays ? m.done / m.manDays : null,
+    };
+  }).filter(r => r.assignedPerDay > 0).sort((a, b) => b.assignedPerDay - a.assignedPerDay);
+}
+function renderB1Work() {
+  const host = document.getElementById('b1-work');
+  if (!host) return;
+  const rows = workAgg();
+  if (!rows.length) { host.innerHTML = '<p class="note">Нет данных в выбранном периоде.</p>'; return; }
+  const f1 = x => x == null ? '—' : x.toLocaleString('ru-RU', { maximumFractionDigits: 1, minimumFractionDigits: 1 });
+  host.innerHTML = `<div class="work-wrap"><table class="work-tbl"><thead><tr>
+    <th>Функция</th><th title="Назначено в день">Назн./д</th><th title="Выполнено в день">Вып./д</th><th>Эфф.</th>
+    <th title="Работающих за период / численность команд">Работают</th><th title="Выполнено в день ÷ работающих за период">Выраб./чел</th></tr></thead><tbody>
+    ${rows.map(r => `<tr><td>${esc(r.role)}</td><td>${f1(r.assignedPerDay)}</td><td>${f1(r.donePerDay)}</td><td>${pct(r.eff, 1)}</td>
+      <td title="в среднем в день: ${f1(r.workersPerDay)}">${fmt(r.workers)}${r.roster ? ' / ' + fmt(r.roster) : ''}</td>
+      <td title="на чел.-день: ${f1(r.outPerManDay)}">${f1(r.outPerWorker)}</td></tr>`).join('')}
+    </tbody></table></div><p class="note">${esc(WORK_NOTE)}</p>`;
+}
+
 function renderB1Roles() {
   const roles = rolesAgg();
   const host = document.getElementById('b1-roles');
-  if (!roles.length) { host.innerHTML = '<p class="note">Нет данных по ролям в выбранном периоде.</p>'; return; }
+  if (!roles.length) { host.innerHTML = '<p class="note">Нет данных по функциям в выбранном периоде.</p>'; return; }
   // фиксированное окно (последние 6 месяцев архива) для мини-графика динамики в каждой
   // плашке — не зависит от текущего периода, по той же логике, что и спарклайны блока 01
   const sparkDates = b1SparkDates(6);
@@ -2308,7 +2414,7 @@ function renderB1Roles() {
   host.innerHTML = `<div class="role-tiles">${roles.map((r, i) => {
     const missed = Math.max(0, r.assigned - r.completed);
     return `
-    <div class="role-tile" data-role-idx="${i}" title="Клик — фильтр дашборда по роли «${esc(r.role)}»">
+    <div class="role-tile" data-role-idx="${i}" title="Клик — фильтр дашборда по функции «${esc(r.role)}»">
       <div class="rt-head"><span class="rt-name" title="${esc(r.role)}">${esc(r.role)}</span><span class="rt-eff">${pct(r.eff, 1)}</span><button type="button" class="rt-info-btn" data-role-info="${i}" title="Детализация по сотрудникам">ⓘ</button></div>
       <div class="rt-today">сегодня: <b>${fmt(r.today)}</b> задач</div>
       <div class="rt-body">
@@ -2357,7 +2463,7 @@ function showRoleDetail(role) {
     const m = acc.get(id) || { a: 0, c: 0 };
     return { id, name: info.name || id, today: Math.round(todayByEmp.get(id) || 0), assigned: m.a, completed: m.c, eff: m.a ? m.c / m.a : 0 };
   }).filter(e => e.today > 0 || e.assigned > 0).sort((a, b) => b.eff - a.eff);
-  if (!rows.length) { showModal('Роль · ' + role, '<p class="note">Нет данных по сотрудникам этой роли в выбранном периоде.</p>'); return; }
+  if (!rows.length) { showModal('Функция · ' + role, '<p class="note">Нет данных по сотрудникам этой роли в выбранном периоде.</p>'); return; }
   const body = `
     <table class="detail-table">
       <thead><tr><th>Сотрудник</th><th>Сегодня</th><th>Эфф. (период)</th><th>Динамика</th></tr></thead>
@@ -2368,7 +2474,7 @@ function showRoleDetail(role) {
     cols: [{ h: 'Сотрудник', t: 'txt' }, { h: 'Задач за ' + ARCHIVE_TO, t: 'int' },
       { h: 'Назначено за период', t: 'num1' }, { h: 'Выполнено за период', t: 'num1' }, { h: 'Эффективность, %', t: 'pct1' }],
     rows: rows.map(e => [e.name, e.today, e.assigned, e.completed, e.assigned ? e.eff : null]),
-    head: [['Роль', role]],
+    head: [['Функция', role]],
   });
   rows.forEach((e, i) => {
     const em = empMonthly.get(e.id);
@@ -2695,7 +2801,7 @@ function b2StructureByObject() {
   });
   return OBJECTS.map(o => {
     const m = map.get(o.id) || { completed: 0, missed: 0, count: 0 };
-    return { id: o.id, name: o.name, count: m.count, completed: m.completed, missed: m.missed, eff: effCM(m.completed, m.missed) };
+    return { id: o.id, name: o.name, count: m.count, completed: m.completed, missed: m.missed, eff: effAll(m.completed, m.count) };
   }).filter(r => r.count > 0).sort((a, b) => b.count - a.count);
 }
 
@@ -2711,7 +2817,7 @@ function mergeSmallObjects(rows) {
   const mergedIds = new Set(merged.map(r => r.id));
   const keep = rows.filter(r => !mergedIds.has(r.id));
   const completed = merged.reduce((a, r) => a + r.completed, 0), missed = merged.reduce((a, r) => a + r.missed, 0);
-  const other = { id: '__other__', name: 'Прочие · ' + merged.length + ' об.', count: accum, eff: effCM(completed, missed), completed, missed, _merged: merged.slice().sort((a, b) => b.count - a.count), _share: accum / total };
+  const other = { id: '__other__', name: 'Прочие · ' + merged.length + ' об.', count: accum, eff: effAll(completed, accum), completed, missed, _merged: merged.slice().sort((a, b) => b.count - a.count), _share: accum / total };
   return [...keep, other].sort((a, b) => b.count - a.count);
 }
 
@@ -2904,7 +3010,7 @@ function renderActiveFilters() {
   }
   if (!roleFilterAllSel()) {
     const rs = [...state.roles];
-    chips.push({ k: 'role', txt: 'Роль: ' + (rs.length <= 2 ? rs.map(esc).join(', ') : esc(rs[0]) + ' и ещё ' + (rs.length - 1)) });
+    chips.push({ k: 'role', txt: 'Функция: ' + (rs.length <= 2 ? rs.map(esc).join(', ') : esc(rs[0]) + ' и ещё ' + (rs.length - 1)) });
   }
   if (state.scope !== 'all') chips.push({ k: 'scope', txt: state.scope === 'planned' ? 'Только плановые' : 'Только неплановые' });
   if (state.time.gran !== 'auto') chips.push({ k: 'gran', txt: 'Детализация: ' + { month: 'месяц', week: 'неделя', day: 'день' }[state.time.gran] });
@@ -3125,12 +3231,12 @@ function b4ShowBinDetail(bin) {
   const rows = bin.items.slice().sort((a, b) => b.eff - a.eff);
   const body = `
     <table class="detail-table">
-      <thead><tr><th>Сотрудник</th><th>Роль</th><th>Эфф.</th><th>Вып./Проп.</th></tr></thead>
+      <thead><tr><th>Сотрудник</th><th>Функция</th><th>Эфф.</th><th>Вып./Проп.</th></tr></thead>
       <tbody>${rows.map(e => `<tr><td>${esc(e.name)}</td><td>${esc(e.role)}</td><td>${pct(e.eff, 1)}</td><td>${fmt(e.completed)} / ${fmt(e.missed)}</td></tr>`).join('')}</tbody>
     </table>`;
   showModal(`Сотрудники · эффективность ${bin.label}%`, body, {
     slug: 'сотрудники_бин-' + bin.label,
-    cols: [{ h: 'Сотрудник', t: 'txt' }, { h: 'Роль', t: 'txt' }, { h: 'Эффективность, %', t: 'pct1' },
+    cols: [{ h: 'Сотрудник', t: 'txt' }, { h: 'Функция', t: 'txt' }, { h: 'Эффективность, %', t: 'pct1' },
       { h: 'Выполнено', t: 'num1' }, { h: 'Пропущено', t: 'num1' }],
     rows: rows.map(e => [e.name, e.role, e.eff, e.completed, e.missed]),
     head: [['Бин эффективности', bin.label + '%'], ['Источник счёта', B4_SRC_WORD[state.b4src] || state.b4src]],
@@ -3291,7 +3397,7 @@ function setupFilters() {
     b.classList.add('active'); state.b4src = b.dataset.src;
     syncHash();
     // источник влияет и на плашки ролей (их мини-графики), поэтому перерисовываем оба
-    renderB1Roles(); renderB4();
+    renderB1Roles(); renderB1Work(); renderB4();
   });
   // Тумблер «Обращения / Неплановые задачи». Один на два блока: и график по
   // объектам, и воронка слева переключаются вместе (решение 22.08.2026), иначе
@@ -3634,7 +3740,7 @@ function slicePairs(extra) {
     ['Период', (state.period.from || ARCHIVE_FROM) + ' — ' + (state.period.to || ARCHIVE_TO)],
     ['Окно', windowLabel()],
     ['Объекты', objNamesLabel()],
-    ['Роль', roleFilterAllSel() ? 'все' : [...state.roles].join(', ')],
+    ['Функция', roleFilterAllSel() ? 'все' : [...state.roles].join(', ')],
     ['Категория задач', SCOPE_WORD[state.scope] || state.scope],
     ['Детализация', GRAN_WORD[timeLevel()] || timeLevel()],
   ];
@@ -3848,9 +3954,9 @@ const TABLES = {
       const rows = b1Buckets().map(b => {
         const from = hour ? state.time.hour : (b.dates ? b.dates[0] : b.date);
         const to = hour ? state.time.hour : (b.dates ? b.dates[b.dates.length - 1] : b.date);
-        return [b.label, from, to, b.all, b.completed, b.missed, b.other, effCM(b.completed, b.missed)];
+        return [b.label, from, to, b.all, b.completed, b.missed, b.other, effAll(b.completed, b.all)];
       });
-      return { cols, rows, note: 'Строка — столбец графика. Эффективность = выполнено / (выполнено + пропущено).' };
+      return { cols, rows, note: 'Строка — столбец графика. Эффективность = выполнено / все задачи; если в периоде есть задачи «в работе», цифра предварительная.' };
     },
   },
   b3: {
@@ -3902,7 +4008,7 @@ const TABLES = {
     title: 'Сотрудники', slug: 'сотрудники', png: 'b4-chart', pngTitle: 'Сотрудники по бинам эффективности',
     build() {
       const cols = [
-        { h: 'Сотрудник', t: 'txt' }, { h: 'Роль', t: 'txt' }, { h: 'Назначено', t: 'num1' },
+        { h: 'Сотрудник', t: 'txt' }, { h: 'Функция', t: 'txt' }, { h: 'Назначено', t: 'num1' },
         { h: 'Выполнено', t: 'num1' }, { h: 'Пропущено', t: 'num1' }, { h: 'Эффективность, %', t: 'pct1' }, { h: 'Бин', t: 'txt' },
       ];
       const rows = empEfficiencyList().map(e => [e.name, e.role, e.assigned, e.completed, e.missed, e.eff, binOfEff(e.eff)]);
@@ -3914,14 +4020,29 @@ const TABLES = {
     },
   },
   roles: {
-    title: 'Роли', slug: 'роли',
+    title: 'Функции', slug: 'функции',
     build() {
       const cols = [
-        { h: 'Роль', t: 'txt' }, { h: 'Назначено', t: 'int' }, { h: 'Выполнено', t: 'int' },
+        { h: 'Функция', t: 'txt' }, { h: 'Назначено', t: 'int' }, { h: 'Выполнено', t: 'int' },
         { h: 'Эффективность, %', t: 'pct1' }, { h: 'Задач за ' + ARCHIVE_TO, t: 'int' },
       ];
       const rows = rolesAgg().map(r => [r.role, r.assigned, r.completed, r.eff, r.today]);
-      return { cols, rows, note: 'Последний столбец — задачи за последний день архива (' + ARCHIVE_TO + '), он не зависит от выбранного периода: это та же цифра «сегодня», что на плашках ролей.' };
+      return { cols, rows, note: 'Последний столбец — задачи за последний день архива (' + ARCHIVE_TO + '), он не зависит от выбранного периода: это та же цифра «сегодня», что на плашках функций.' };
+    },
+  },
+  work: {
+    title: 'Выработка и численность', slug: 'выработка',
+    build() {
+      const cols = [
+        { h: 'Функция', t: 'txt' }, { h: 'Дней в расчёте', t: 'int' },
+        { h: 'Назначено в день', t: 'num1' }, { h: 'Выполнено в день', t: 'num1' },
+        { h: 'Эффективность, %', t: 'pct1' }, { h: 'Работающих за период', t: 'int' },
+        { h: 'Численность (учётки в командах)', t: 'int' }, { h: 'Работающих в день, ср.', t: 'num1' },
+        { h: 'Выработка на работающего в день', t: 'num1' }, { h: 'Выработка на чел.-день', t: 'num1' },
+      ];
+      const rows = workAgg().map(r => [r.role, r.days, r.assignedPerDay, r.donePerDay, r.eff, r.workers,
+        r.roster || null, r.workersPerDay, r.outPerWorker, r.outPerManDay]);
+      return { cols, rows, note: WORK_NOTE };
     },
   },
   fb: {

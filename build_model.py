@@ -372,6 +372,118 @@ def employees_role_shares(employees, role_of_employee):
     return {role: c / n for role, c in counts.items()}
 
 
+# ------------------------------------------------- функция исполнителя (16.10)
+# Группа «функция» заменяет роль во всех разрезах дашборда. Почему не роль:
+# реформа ролей (5 ролей + теги «Должность»/«Организация», решение 24.09) в
+# Bruno сделана наполовину — на 15.10 живут и старые роли («Менеджер
+# клининга», «ВБ-Сервис», «Администратор объекта»…), и новые, теги почти не
+# заполнены. А команды названы по единому правилу («Клининг В/С Башня ВТБ»,
+# «Админы Д/С …», «Коменданты …», «ММС Инженеры», «ООО ЭВО»…), и teamID есть
+# у ~85% задач. Поэтому: функция = по названию+описанию КОМАНДЫ задачи, а
+# если команды нет (обращения, личные задачи) — по РОЛИ исполнителя.
+# Задача целиком уходит в одну функцию (целые числа, без дробей).
+FUNC_TEAM_RULES = (            # (подстрока в «название описание» команды, функция)
+    ("ммс", "ММС"),
+    ("такелаж", "Такелажники"),
+    ("флорист", "Флористы"), ("эво", "Флористы"), ("фешн", "Флористы"),
+    ("цвет", "Флористы"),
+    ("комендант", "Коменданты"), ("комендатн", "Коменданты"),
+    ("админы", "Админы клининга"),
+    ("администратор", "Администраторы банка"),
+    ("клининг", "Клининг"), ("уборщ", "Клининг"), ("клинер", "Клининг"),
+    ("уборк", "Клининг"),
+    ("вб-сервис", "Эксплуатация"), ("эксплуатац", "Эксплуатация"),
+    ("инженер", "Эксплуатация"),
+)
+FUNC_ROLE_RULES = (            # (подстрока в имени роли исполнителя, функция)
+    ("ммс", "ММС"),
+    ("такелаж", "Такелажники"),
+    ("флорист", "Флористы"),
+    ("комендант", "Коменданты"),
+    ("менеджер клининга", "Админы клининга"),
+    ("администратор", "Администраторы банка"),
+    ("диспетчер", "Диспетчеры"),
+    ("вб-сервис", "Эксплуатация"), ("инженер", "Эксплуатация"), ("техник", "Эксплуатация"),
+    ("исполнитель", "Клининг"),
+)
+FUNC_WITH_SHIFT = {"Клининг", "Админы клининга"}
+FUNC_NONE = "Без функции"
+
+
+def _shift_tag(text):
+    t = text.replace("c", "с").replace("\\", "/")      # латинская c и обратный слэш
+    if "в/с" in t or "вечер" in t:
+        return "В/С"
+    if "д/с" in t or "днев" in t:
+        return "Д/С"
+    return None
+
+
+def func_of_team(team):
+    """(функция, смена|None) по команде или None, если команда не говорящая."""
+    if not team:
+        return None
+    text = (" ".join((team.get("name") or "", team.get("description") or ""))).lower()
+    for mark, func in FUNC_TEAM_RULES:
+        if mark in text:
+            return func, (_shift_tag(text) if func in FUNC_WITH_SHIFT else None)
+    return None
+
+
+def func_of_role(role_name):
+    r = (role_name or "").lower()
+    for mark, func in FUNC_ROLE_RULES:
+        if mark in r:
+            return func
+    return None
+
+
+def func_label(func, shift):
+    return func + (" " + shift if shift else "")
+
+
+def task_function(rec, team_membership, role_of_employee, team_func_cache):
+    """Подпись функции задачи: «Клининг В/С», «Коменданты», …"""
+    tid = str(rec.get("teamID") or "")
+    if tid:
+        if tid not in team_func_cache:
+            team_func_cache[tid] = func_of_team(team_membership.get(tid))
+        tf = team_func_cache[tid]
+        if tf:
+            func, shift = tf
+            if func in FUNC_WITH_SHIFT and not shift:
+                sp = shift_of_planned(rec)
+                shift = {"day": "Д/С", "evening": "В/С"}.get(sp)
+            return func_label(func, shift)
+    # фолбэк — роль исполнителя: employeeID, иначе большинство в employees[]
+    eid = str(rec.get("employeeID") or "")
+    cands = [eid] if eid else [str(e) for e in (rec.get("employees") or []) if e]
+    votes = defaultdict(int)
+    for e in cands:
+        f = func_of_role(role_of_employee.get(e))
+        if f:
+            votes[f] += 1
+    if not votes:
+        return FUNC_NONE
+    func = max(votes.items(), key=lambda kv: kv[1])[0]
+    shift = None
+    if func in FUNC_WITH_SHIFT:
+        shift = {"day": "Д/С", "evening": "В/С"}.get(shift_of_planned(rec))
+    return func_label(func, shift)
+
+
+def task_deadline_ts(rec):
+    best = None
+    for k in ("deactivationDate", "completionDeadlineDate"):
+        t = parse_dt(rec.get(k))
+        if t is not None and (best is None or t > best):
+            best = t
+    return best
+
+
+STALE_GRACE_SEC = 24 * 3600
+
+
 # --------------------------------------------------------------- справочники
 
 def load_directories(archive):
@@ -438,6 +550,8 @@ def build_team_membership(teams):
         member_ids = [m for m in member_ids if m]
         out[uid(t)] = {
             "name": t.get("name") or "",
+            "description": t.get("description") or "",
+            "active": bool(t.get("active", True)),
             "size": len(member_ids),
             "memberIDs": member_ids,
         }
@@ -605,9 +719,21 @@ def process_archive(archive, manifest, employee_dir, team_membership, feedback_c
     qa = {"taskPlanCompleted": 0, "taskPlanMissed": 0, "statCompleted": 0, "statMissed": 0,
           "recordsTaskPlan": 0, "recordsStatEmployee": 0, "recordsStatTeam": 0, "recordsStatZone": 0}
 
+    qa["staleOpenAsMissed"] = 0
+    team_func_cache = {}
+    # НОВОЕ (16.10): выработка. "дата|объект|сотрудник|функция" -> выполнено
+    # (только завершённые задачи с employeeID — у них исполнитель точный).
+    # Из него дашборд считает работающих (≥1 выполненная), человеко-дни и
+    # выработку на работающего в день по любой функции и периоду.
+    by_worker_func_day = defaultdict(int)
+    # команда -> объект -> число задач: «домашний» объект команды для численности
+    team_object_tasks = defaultdict(lambda: defaultdict(int))
+    team_func_seen = {}
+
     log("Обхожу %d дней архива…" % len(days), "step")
     for i, day in enumerate(days, 1):
         day_dir = archive / "raw" / day
+        fetched_ts = parse_dt((manifest.get("days", {}).get(day) or {}).get("fetchedAt"))
         # --- taskPlan: план/факт, плановые/неплановые, просрочка ---
         tp_path = day_dir / "taskPlan.jsonl.gz"
         if tp_path.exists():
@@ -619,6 +745,14 @@ def process_archive(archive, manifest, employee_dir, team_membership, feedback_c
                     continue
                 obj = str(rec.get("objectID") or "")
                 status = (rec.get("status") or "").upper()
+                # Страховка (16.10): срок задачи прошёл (+1 сутки) ещё до момента
+                # выгрузки, а статус не финальный — Bruno его так и не закрыла.
+                # По факту задача не выполнена -> MISSED (а не вечное «в работе»).
+                if status in ("NEW", "WAITING", "COMPLETING") and fetched_ts is not None:
+                    dl_ts = task_deadline_ts(rec)
+                    if dl_ts is not None and dl_ts + STALE_GRACE_SEC <= fetched_ts:
+                        status = "MISSED"
+                        qa["staleOpenAsMissed"] += 1
                 is_planned = bool(rec.get("taskID"))
                 is_feedback = bool(rec.get("feedbackID"))
                 qa["recordsTaskPlan"] += 1
@@ -652,16 +786,19 @@ def process_archive(archive, manifest, employee_dir, team_membership, feedback_c
                 # employees_role_shares() — это чинит неплановые/feedback
                 # задачи, у которых teamID почти всегда пустой) --
                 if status in STATUSES:
+                    # 16.10: вместо дробной роли — целая ФУНКЦИЯ задачи (см.
+                    # FUNC_TEAM_RULES). Ключ куба прежний (byObjectRoleDay),
+                    # чтобы не ломать формат 2 и фильтр дашборда.
+                    func = task_function(rec, team_membership, role_of_employee, team_func_cache)
+                    shares = {func: 1.0}
                     team_id = str(rec.get("teamID") or "")
-                    shares = None
                     if team_id:
-                        if team_id not in team_role_cache:
-                            team_role_cache[team_id] = team_role_shares(team_id, team_membership, role_of_employee)
-                        shares = team_role_cache[team_id]
-                    if not shares:
-                        shares = employees_role_shares(rec.get("employees"), role_of_employee)
-                    if not shares:
-                        shares = {"Без роли": 1.0}
+                        team_object_tasks[team_id][obj] += 1
+                        team_func_seen[team_id] = func
+                    if status == "COMPLETED":
+                        _w = str(rec.get("employeeID") or "")
+                        if _w:
+                            by_worker_func_day["|".join((d, obj, _w, func))] += 1
                     is_late_role = False
                     if status == "COMPLETED":
                         dl_deadline_r = parse_dt(rec.get("completionDeadlineDate"))
@@ -956,7 +1093,10 @@ def process_archive(archive, manifest, employee_dir, team_membership, feedback_c
     return (by_object_day_combined, dict(by_zone_day), dict(by_employee_day), feedback_examples, qa,
             by_object_role_day_combined, by_object_hour_combined,
             by_employee_object_day, by_employee_task_day, report_cubes,
-            fb_by_object_day, fb_by_object_hour)
+            fb_by_object_day, fb_by_object_hour,
+            {k: {"done": v} for k, v in by_worker_func_day.items()},
+            {tid: {"objects": dict(o), "func": team_func_seen.get(tid)}
+             for tid, o in team_object_tasks.items()})
 
 
 # --------------------------------------------------------------------- main
@@ -1000,7 +1140,8 @@ def main():
     (by_object_day, by_zone_day, by_employee_day, feedback_examples, qa,
      by_object_role_day, by_object_hour,
      by_employee_object_day, by_employee_task_day, report_cubes,
-     fb_by_object_day, fb_by_object_hour) = process_archive(
+     fb_by_object_day, fb_by_object_hour,
+     by_worker_func_day, team_usage) = process_archive(
         archive, manifest, employee_dir, team_membership, args.feedback_cap,
         role_id_of_employee=role_id_of_employee)
 
@@ -1008,6 +1149,42 @@ def main():
     zone_dict = {uid(z): {"name": z.get("name") or "", "objectID": str(z.get("objectID") or "")}
                  for z in zones if not z.get("deleted")}
     team_dict = {tid: {"name": t["name"], "size": t["size"]} for tid, t in team_membership.items()}
+
+    # Численность по функции и объекту (16.10): сколько АКТИВНЫХ учёток в
+    # активных командах этой функции, чей «домашний» объект (больше всего
+    # задач за последние 30 дней архива не считаем — берём за весь архив) —
+    # этот объект. Это знаменатель «работающие / численность» из таблиц 10.10.
+    # Снимок НА СЕГОДНЯ (справочник команд не историчен) — подпись в дашборде.
+    active_users = {uid(u) for u in users if not u.get("deleted") and u.get("active")}
+    func_roster = defaultdict(set)
+    for tid, use in team_usage.items():
+        t = team_membership.get(tid)
+        if not t or not t.get("active") or not use.get("func") or not use["objects"]:
+            continue
+        home = max(use["objects"].items(), key=lambda kv: kv[1])[0]
+        for m in t["memberIDs"]:
+            if m in active_users:
+                func_roster[home + "|" + use["func"]].add(m)
+    func_roster = {k: len(v) for k, v in func_roster.items()}
+
+    # Функция сотрудника (16.10) — для фильтра «Функция» в блоке 04 и мини-
+    # графиков на плашках: функция его активной команды (если команд несколько —
+    # та, по которой у команды больше задач), иначе — по роли.
+    for eid, info in employee_dir.items():
+        best, best_n = None, -1
+        for tid in info.get("teamIDs") or []:
+            t = team_membership.get(tid) or {}
+            use = team_usage.get(tid) or {}
+            f = use.get("func")
+            if not f:
+                tf = func_of_team(t)
+                f = func_label(tf[0], tf[1]) if tf else None
+            n = sum((use.get("objects") or {}).values()) + (1000000 if t.get("active") else 0)
+            if f and n > best_n:
+                best, best_n = f, n
+        if not best:
+            best = func_of_role(info.get("roleName")) or FUNC_NONE
+        info["func"] = best
 
     days_sorted = sorted(manifest.get("days", {}).keys())
     model = {
@@ -1018,6 +1195,13 @@ def main():
             "archiveTo": days_sorted[-1] if days_sorted else None,
             "objectsCount": len(obj_dict), "zonesCount": len(zone_dict),
             "employeesCount": len(employee_dir), "teamsCount": len(team_dict),
+            # 16.10: разрез «роль» в дашборде теперь означает ФУНКЦИЮ (по команде)
+            "roleDimension": "function",
+            "funcRoster": func_roster,
+            "funcRosterSnapshot": snap_date,
+            "staleOpenAsMissed": qa.get("staleOpenAsMissed", 0),
+            # формула эффективности (решение 21.09): выполнено / все задачи
+            "effFormula": "completed/all",
         },
         "directories": {
             "objects": obj_dict,
@@ -1052,6 +1236,8 @@ def main():
             # см. развёрнутый комментарий в process_archive().
             "fbByObjectDay": fb_by_object_day,
             "fbByObjectHour": fb_by_object_hour,
+            # 16.10: выработка — "дата|объект|сотрудник|функция" -> {done}
+            "byWorkerFuncDay": by_worker_func_day,
         },
         "feedbackExamples": feedback_examples,
         # НОВОЕ (проход 13): кубы для презентации-копии утверждённой колоды.
@@ -1100,6 +1286,10 @@ def main():
              "{:,}".format(sum(v["tasks"] for v in fb_by_object_day.values())).replace(",", " ")))
     print("  fbByObjectHour: %d записей ('дата|час|объект')" % len(fb_by_object_hour))
     print("  feedbackExamples: %d текстов сохранено" % len(feedback_examples))
+    print("  byWorkerFuncDay: %d записей ('дата|объект|сотрудник|функция'), выполнено: %s"
+          % (len(by_worker_func_day), sum(v["done"] for v in by_worker_func_day.values())))
+    print("  Функции: %s" % ", ".join(sorted({k.split("|")[2] for k in by_object_role_day})))
+    print("  Незакрытых задач с прошедшим сроком -> MISSED: %d" % qa.get("staleOpenAsMissed", 0))
     print("  -- кубы презентации (model['report']) --")
     print("  feedbackByObjectDay: %d записей, обращений всего: %s" % (
         len(report_cubes["feedbackByObjectDay"]),

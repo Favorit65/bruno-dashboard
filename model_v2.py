@@ -68,6 +68,8 @@ CUBES = {
     "fbByObjectDay":       {"key": ["d", "o"],      "val": ("flat", ["fb", "tasks", "NEW", "WAITING",
                                                                      "COMPLETING", "COMPLETED", "MISSED"])},
     "fbByObjectHour":      {"key": ["d", "h", "o"], "val": ("flat", ["fb", "tasks"])},
+    # 16.10: выработка по функции (r = функция, тот же список, что и роли)
+    "byWorkerFuncDay":     {"key": ["d", "o", "e", "r"], "val": ("flat", ["done"])},
 }
 
 # Что уезжает в первый (лёгкий) файл, что — во второй.
@@ -79,7 +81,8 @@ CUBES = {
 # крошечный (сотни записей против сотен тысяч у byObjectDay). fbByObjectHour —
 # в lazy, рядом с byObjectHour: нужен только по клику на столбик дня.
 CORE_CUBES = ["byObjectDay", "byObjectRoleDay", "byEmployeeDay",
-              "byEmployeeObjectDay", "byEmployeeTaskDay", "fbByObjectDay"]
+              "byEmployeeObjectDay", "byEmployeeTaskDay", "fbByObjectDay",
+              "byWorkerFuncDay"]
 LAZY_CUBES = ["byZoneDay", "byObjectHour", "fbByObjectHour"]
 
 

@@ -229,18 +229,89 @@ class Manifest:
         rec = self.data["days"].get(day)
         return bool(rec and rec.get("complete"))
 
-    def mark(self, day, counts, sizes, fields_mode):
+    def mark(self, day, counts, sizes, fields_mode, open_deadlines=None):
         self.data["days"][day] = {
             "complete": True,
             "fetchedAt": datetime.now(timezone.utc).isoformat(),
             "fields": fields_mode,
             "counts": counts,
             "bytes": sizes,
+            # Сроки (deactivationDate / completionDeadlineDate, до часа) задач
+            # дня, у которых на момент выгрузки ещё НЕ финальный статус
+            # (NEW/WAITING/COMPLETING). None — все задачи закрыты. Как только
+            # любой из сроков + 1 сутки наступил, а выгрузка была раньше, день
+            # перевыгружается (см. needs_refresh). Список, а не один максимум:
+            # одна месячная задача иначе держала бы недельные «в работе» месяц.
+            "openDeadlines": open_deadlines,
         }
         self.save()
 
+    def needs_refresh(self, day, now):
+        """Открытый день: есть незакрытые задачи, а последняя выгрузка была
+        раньше, чем их срок + 1 сутки. Иначе статусы, которые Bruno проставит
+        после дедлайна (обычно MISSED), навсегда застынут в архиве как «в
+        работе» — находка 21.09 (недельные обходы комендантов, админы
+        Рыбинской и т.п. висели «в работе» с августа)."""
+        rec = self.data["days"].get(day) or {}
+        dls = rec.get("openDeadlines")
+        if not dls:
+            return False
+        try:
+            fetched = datetime.fromisoformat(str(rec.get("fetchedAt")).replace("Z", "+00:00"))
+        except ValueError:
+            return True
+        for dl in dls:
+            try:
+                due = datetime.fromisoformat(str(dl).replace("Z", "+00:00")) + OPEN_GRACE
+            except ValueError:
+                continue
+            if fetched < due <= now:
+                return True
+        return False
+
 
 # ------------------------------------------------------------------- утилиты
+
+FINAL_STATUSES = {"COMPLETED", "MISSED"}
+OPEN_GRACE = timedelta(days=1)       # запас после дедлайна: Bruno ставит MISSED не мгновенно
+
+
+def task_deadline(rec):
+    """Самый поздний срок задачи (UTC, datetime) или None."""
+    best = None
+    for k in ("deactivationDate", "completionDeadlineDate"):
+        v = rec.get(k)
+        if not v or not isinstance(v, str):
+            continue
+        try:
+            dt = datetime.fromisoformat(v.replace("Z", "+00:00"))
+        except ValueError:
+            continue
+        if best is None or dt > best:
+            best = dt
+    return best
+
+
+def open_deadlines_of_records(records):
+    """Множество сроков (с точностью до часа, ISO UTC) незакрытых задач."""
+    out = set()
+    for rec in records:
+        if rec.get("status") in FINAL_STATUSES:
+            continue
+        dl = task_deadline(rec)
+        if dl:
+            out.add(dl.replace(minute=0, second=0, microsecond=0).isoformat())
+    return out
+
+
+def open_deadlines_of_file(path):
+    """openDeadlines по уже лежащему в архиве taskPlan.jsonl.gz (миграция старых дней)."""
+    def gen():
+        with gzip.open(path, "rt", encoding="utf-8") as f:
+            for line in f:
+                if line.strip():
+                    yield json.loads(line)
+    return sorted(open_deadlines_of_records(gen())) or None
 
 def day_filter(day):
     """Фильтр 'сутки по UTC' для поля date."""
@@ -310,8 +381,10 @@ def fetch_day(api, archive, day, fields_mode, page_limit, collect_field_stats=Fa
     tmp = Path(str(target) + ".part")
     total = api.count("/api/v2/taskPlan", flt)
     n = 0
+    open_deadlines = set()
     with gzip.open(tmp, "wt", encoding="utf-8", compresslevel=6) as f:
         for chunk in api.pages("/api/v2/taskPlan", flt, page_limit):
+            open_deadlines |= open_deadlines_of_records(chunk)
             for rec in chunk:
                 if collect_field_stats:
                     for k, v in rec.items():
@@ -326,6 +399,7 @@ def fetch_day(api, archive, day, fields_mode, page_limit, collect_field_stats=Fa
     print()
     tmp.replace(target)
     counts["taskPlan"] = n
+    counts["openDeadlines"] = sorted(open_deadlines) or None
     sizes["taskPlan"] = target.stat().st_size
 
     # --- нативные агрегаты: объёмы небольшие, собираем целиком ---
@@ -468,13 +542,38 @@ def mode_fetch(api, archive, days, fields_mode, page_limit, refresh_last, force)
     # refresh_last=5 -> перевыгружаем сегодня и четыре предыдущих дня; 0 -> ничего.
     fresh_edge = today - timedelta(days=refresh_last - 1) if refresh_last > 0 else None
 
+    now = datetime.now(timezone.utc)
+
+    # Миграция: у дней, выгруженных до 16.10.2026, поля openDeadlines нет —
+    # считаем его один раз по файлу, который уже лежит в архиве.
+    migrated = 0
+    for day, rec in manifest.data["days"].items():
+        if "openDeadlines" in rec:
+            continue
+        p = archive / "raw" / day / "taskPlan.jsonl.gz"
+        rec["openDeadlines"] = open_deadlines_of_file(p) if p.exists() else None
+        migrated += 1
+    if migrated:
+        manifest.save()
+        log("openDeadlines посчитаны по архиву для %d старых дней" % migrated, "ok")
+
     todo = []
     for day in days:
         d = datetime.strptime(day, "%Y-%m-%d").date()
         stale = fresh_edge is not None and d >= fresh_edge
-        if force or not manifest.is_done(day) or stale:
+        if force or not manifest.is_done(day) or stale or manifest.needs_refresh(day, now):
             todo.append(day)
     skipped = len(days) - len(todo)
+
+    # Открытые дни ВНЕ запрошенного диапазона (робот просит только последние
+    # ~5 суток) — тоже в работу, иначе недельные/месячные задачи застынут.
+    in_range = set(days)
+    reopened = sorted(d for d in manifest.data["days"]
+                      if d not in in_range and manifest.needs_refresh(d, now))
+    if reopened:
+        log("Перевыгрузка %d открытых дней вне диапазона (срок задач прошёл): %s%s"
+            % (len(reopened), ", ".join(reopened[:8]), " ..." if len(reopened) > 8 else ""), "step")
+        todo = reopened + todo
 
     print("\nВЫГРУЗКА: %d дней в работу, %d пропущено (уже в архиве)" % (len(todo), skipped))
     if refresh_last:
@@ -500,7 +599,8 @@ def mode_fetch(api, archive, days, fields_mode, page_limit, refresh_last, force)
             print("\n\nПрервано пользователем. Выгруженные дни сохранены в манифесте,")
             print("повторный запуск той же командой продолжит с этого места.")
             return
-        manifest.mark(day, counts, sizes, fields_mode)
+        open_deadlines = counts.pop("openDeadlines", None)
+        manifest.mark(day, counts, sizes, fields_mode, open_deadlines)
         done += 1
         log("taskPlan %s | statByZone %s | statByEmployee %s | statByTeam %s | %s" % (
             counts["taskPlan"], counts["statByZone"], counts["statByEmployee"],
