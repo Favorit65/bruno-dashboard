@@ -1,0 +1,1171 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%23002882'/%3E%3Cpolygon points='6,21 25,21 22,25 3,25' fill='%2300AAFF'/%3E%3Cpolygon points='9,14 28,14 25,18 6,18' fill='white'/%3E%3Cpolygon points='12,7 31,7 28,11 9,11' fill='white'/%3E%3C/svg%3E">
+<title>Поручения отдела — ВТБ</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Golos+Text:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap">
+<style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0}[hidden]{display:none!important}</style>
+<style>
+/* Layout: navy header band → sidebar with folders | main view; task card slides in from the right */
+:root{
+  --bg:#F3F5F9; --surface:#FFFFFF; --surface-2:#EDF1F7; --line:#D8DFEA; --line-2:#E6EBF3;
+  --fg:#0D1830; --muted:#5A6680; --faint:#8C96AB;
+  --navy:#002882; --blue:#00AAFF; --accent:#002882; --accent-fg:#FFFFFF; --link:#0050C8;
+  --header:#002882; --on-header:#FFFFFF; --on-header-muted:#AFC0EA;
+  --demo-bg:#FFF4DE; --demo-fg:#7A4E00;
+  --st-plan:#8A94A8; --st-work:#0A8FE0; --st-risk:#F5A623; --st-overdue:#E62632; --st-review:#7B4FD6; --st-done:#23A75B;
+  --p1:#E62632; --p2:#E8890C;
+  --shadow:0 12px 40px rgba(0,24,80,.18);
+  --font:"Golos Text",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  --mono:"JetBrains Mono",ui-monospace,"SFMono-Regular",Consolas,monospace;
+  --r:8px;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0A1120; --surface:#111A2E; --surface-2:#17223B; --line:#27344F; --line-2:#1E2A44;
+  --fg:#E5EBF6; --muted:#97A3BC; --faint:#6C7893;
+  --accent:#3D7BFF; --accent-fg:#FFFFFF; --link:#6FB6FF;
+  --header:#081A52; --on-header:#FFFFFF; --on-header-muted:#9FB2E4;
+  --demo-bg:#3A2A08; --demo-fg:#FFD27A;
+  --st-plan:#7D889E; --st-work:#2BB5FF; --st-risk:#F7B13D; --st-overdue:#FF4A55; --st-review:#9C77F0; --st-done:#34C26F;
+  --p1:#FF4A55; --p2:#F7A23D; --shadow:0 12px 40px rgba(0,0,0,.5); color-scheme:dark;}}
+:root[data-theme="dark"]{
+  --bg:#0A1120; --surface:#111A2E; --surface-2:#17223B; --line:#27344F; --line-2:#1E2A44;
+  --fg:#E5EBF6; --muted:#97A3BC; --faint:#6C7893;
+  --accent:#3D7BFF; --accent-fg:#FFFFFF; --link:#6FB6FF;
+  --header:#081A52; --on-header:#FFFFFF; --on-header-muted:#9FB2E4;
+  --demo-bg:#3A2A08; --demo-fg:#FFD27A;
+  --st-plan:#7D889E; --st-work:#2BB5FF; --st-risk:#F7B13D; --st-overdue:#FF4A55; --st-review:#9C77F0; --st-done:#34C26F;
+  --p1:#FF4A55; --p2:#F7A23D; --shadow:0 12px 40px rgba(0,0,0,.5); color-scheme:dark;}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--fg);font-family:var(--font);font-size:14px;line-height:1.45}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--header)}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
+.mono{font-family:var(--mono);font-feature-settings:"zero" 0}
+.num{font-variant-numeric:tabular-nums}
+.gut{padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+
+.demo{background:var(--demo-bg);color:var(--demo-fg);font-size:12px;padding-block:4px;display:flex;gap:12px;align-items:center;justify-content:space-between}
+.demo b{font-weight:600}
+.demo button{background:none;border:1px solid currentColor;border-radius:6px;padding:1px 8px;font-size:12px;opacity:.85}
+header.top{background:var(--header);color:var(--on-header);position:sticky;top:env(safe-area-inset-top,0px);z-index:20}
+.top-in{display:flex;align-items:center;gap:16px;padding-block:10px;flex-wrap:wrap}
+.brand{display:flex;flex-direction:column;line-height:1.15;margin-right:8px}
+.brand b{font-size:16px;font-weight:700;letter-spacing:.01em}
+.brand span{font-size:11px;color:var(--on-header-muted);letter-spacing:.06em;text-transform:uppercase}
+.tabs{display:flex;gap:2px;overflow-x:auto;scrollbar-width:none;min-width:0}
+.tabs button{background:none;border:0;color:var(--on-header-muted);padding:6px 10px;border-radius:6px;white-space:nowrap;font-weight:500;position:relative}
+.tabs button[aria-current="true"]{color:var(--on-header);background:rgba(255,255,255,.12)}
+.tabs .cnt{display:inline-block;min-width:18px;padding:0 5px;margin-left:5px;border-radius:9px;background:var(--blue);color:#00153F;font-size:11px;font-weight:700;line-height:18px;text-align:center}
+.top-r{margin-left:auto;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.seg{display:flex;border:1px solid rgba(255,255,255,.25);border-radius:7px;overflow:hidden}
+.seg button{background:none;border:0;color:var(--on-header-muted);padding:4px 9px;font-size:12px;white-space:nowrap}
+.seg button[aria-pressed="true"]{background:var(--blue);color:#00153F;font-weight:600}
+.seg-l{font-size:11px;color:var(--on-header-muted);margin-right:4px}
+.me{display:flex;align-items:center;gap:8px;background:rgba(255,255,255,.1);border:0;color:var(--on-header);border-radius:20px;padding:3px 12px 3px 3px;font-size:13px}
+.av{width:26px;height:26px;border-radius:50%;display:inline-grid;place-items:center;font-size:11px;font-weight:700;flex:none;color:#fff}
+
+.shell{display:grid;grid-template-columns:232px minmax(0,1fr);gap:20px;padding-block:18px;align-items:start}
+aside.side{position:sticky;top:76px;display:flex;flex-direction:column;gap:4px}
+.side h3{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin:0 0 6px 8px;font-weight:600}
+.fold{display:grid;grid-template-columns:40px 1fr auto;align-items:center;gap:6px;background:none;border:0;text-align:left;padding:7px 8px;border-radius:7px;color:var(--fg)}
+.fold:hover{background:var(--surface-2)}
+.fold[aria-pressed="true"]{background:var(--surface);box-shadow:inset 0 0 0 1px var(--line)}
+.fold .code{font-family:var(--mono);font-size:12px;font-weight:600;color:var(--accent)}
+.fold .nm{font-size:13px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.fold .c{font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums;white-space:nowrap}
+.fold .c .od{color:var(--st-overdue);font-weight:600}
+.side .hint{font-size:12px;color:var(--faint);padding:10px 8px;line-height:1.4}
+.side .newbtn{margin-top:10px}
+
+main{min-width:0;display:flex;flex-direction:column;gap:14px}
+.bar-f{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.inp,.sel{background:var(--surface);border:1px solid var(--line);border-radius:7px;padding:6px 9px;font-size:13px;min-width:0}
+.inp.search{width:220px}
+.tagrow{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.tag{display:inline-flex;align-items:center;border:1px solid var(--line);background:var(--surface);color:var(--link);border-radius:12px;padding:1px 9px;font-size:12px;font-weight:500;white-space:nowrap}
+button.tag[aria-pressed="true"]{background:var(--accent);color:var(--accent-fg);border-color:var(--accent)}
+.btn{border:1px solid var(--line);background:var(--surface);border-radius:7px;padding:6px 12px;font-size:13px;font-weight:500;white-space:nowrap}
+.btn:hover{border-color:var(--accent)}
+.btn.pri{background:var(--accent);border-color:var(--accent);color:var(--accent-fg)}
+.btn.ok{background:var(--st-done);border-color:var(--st-done);color:#fff}
+.btn.warn{color:var(--st-overdue);border-color:color-mix(in srgb,var(--st-overdue) 50%,var(--line))}
+.btn.sm{padding:3px 9px;font-size:12px}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.vh{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap}
+.vh h1{font-size:20px;margin:0;font-weight:700;text-wrap:balance}
+.vh .sub{color:var(--muted);font-size:13px}
+.vh .sp{margin-left:auto;display:flex;gap:8px}
+.seg2{display:flex;border:1px solid var(--line);border-radius:7px;overflow:hidden;background:var(--surface)}
+.seg2 button{border:0;background:none;padding:5px 11px;font-size:12px;color:var(--muted)}
+.seg2 button[aria-pressed="true"]{background:var(--surface-2);color:var(--fg);font-weight:600}
+
+/* status pills */
+.pill{display:inline-flex;align-items:center;gap:5px;font-size:11.5px;font-weight:600;border-radius:10px;padding:1px 8px;white-space:nowrap;color:var(--sc);background:color-mix(in srgb,var(--sc) 14%,transparent)}
+.pill::before{content:"";width:6px;height:6px;border-radius:50%;background:var(--sc)}
+.st-plan{--sc:var(--st-plan)} .st-work{--sc:var(--st-work)} .st-risk{--sc:var(--st-risk)} .st-overdue,.st-blocker{--sc:var(--st-overdue)} .st-review{--sc:var(--st-review)} .st-done{--sc:var(--st-done)} .st-cancelled{--sc:var(--faint)}
+.pr{font-family:var(--mono);font-size:10.5px;font-weight:700;border-radius:4px;padding:0 4px;line-height:16px;flex:none}
+.pr.P1{background:var(--p1);color:#fff} .pr.P2{background:var(--p2);color:#fff} .pr.P3{display:none}
+.resch{font-size:11px;color:var(--st-overdue);font-weight:600;white-space:nowrap}
+
+/* timeline */
+.tl{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);overflow:auto;max-height:calc(100dvh - 230px);min-height:320px;position:relative}
+.tl-in{position:relative;width:max-content;min-width:100%}
+.row{display:flex;border-bottom:1px solid var(--line-2)}
+.lab{position:sticky;left:0;z-index:3;width:320px;flex:none;background:var(--surface);border-right:1px solid var(--line);display:flex;align-items:center;gap:6px;padding:0 10px;min-height:38px}
+.row.child .lab{padding-left:34px;background:var(--surface)}
+.row.child{background:color-mix(in srgb,var(--surface-2) 45%,var(--surface))}
+.row.child .lab{background:color-mix(in srgb,var(--surface-2) 45%,var(--surface))}
+.lab .cv{width:20px;height:20px;border:0;background:none;color:var(--muted);border-radius:4px;flex:none;display:grid;place-items:center;font-size:11px;transition:transform .15s}
+.lab .cv[aria-expanded="true"]{transform:rotate(90deg)}
+.lab .cv:hover{background:var(--surface-2)}
+.lab .cd{font-family:var(--mono);font-size:11.5px;color:var(--muted);flex:none}
+.lab .tt{border:0;background:none;padding:0;text-align:left;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;font-size:13px;font-weight:500;color:var(--fg)}
+.row.child .lab .tt{font-weight:400}
+.lab .tt:hover{color:var(--link);text-decoration:underline}
+.lab .ow{font-size:11px;color:var(--faint);white-space:nowrap;flex:none}
+.trk{position:relative;flex:none;background-image:linear-gradient(to right,var(--line-2) 1px,transparent 1px);background-size:calc(var(--dw) * 7px) 100%}
+.head{position:sticky;top:0;z-index:5;background:var(--surface);border-bottom:1px solid var(--line)}
+.head .lab{z-index:6;font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;font-weight:600;min-height:48px}
+.head .trk{height:48px;background-image:none}
+.mon{position:absolute;top:0;height:24px;border-left:1px solid var(--line);font-size:12px;font-weight:600;padding:4px 8px;white-space:nowrap;overflow:hidden}
+.wk{position:absolute;top:24px;height:24px;border-left:1px solid var(--line-2);font-size:11px;color:var(--muted);padding:4px 5px;font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden}
+.bar{position:absolute;top:8px;height:22px;border-radius:5px;border:1px solid var(--sc);background:color-mix(in srgb,var(--sc) 16%,var(--surface));padding:0;overflow:hidden;display:flex;align-items:center}
+.row.child .bar{top:9px;height:18px}
+.bar .fill{position:absolute;inset:0 auto 0 0;background:color-mix(in srgb,var(--sc) 62%,transparent)}
+.bar .bl{position:relative;display:flex;gap:5px;align-items:center;padding:0 6px;font-size:11px;font-weight:600;white-space:nowrap;color:var(--fg)}
+.bar:hover{box-shadow:0 0 0 2px color-mix(in srgb,var(--sc) 40%,transparent)}
+.bar.st-blocker{background-image:repeating-linear-gradient(135deg,transparent 0 6px,color-mix(in srgb,var(--st-overdue) 20%,transparent) 6px 12px)}
+.late{position:absolute;top:18px;height:0;border-top:2px dashed var(--st-overdue)}
+.row.child .late{top:18px}
+.today{position:absolute;top:0;bottom:0;width:2px;background:var(--st-overdue);z-index:2;pointer-events:none}
+.today span{position:absolute;top:2px;left:4px;background:var(--st-overdue);color:#fff;font-size:10px;font-weight:700;border-radius:3px;padding:0 4px;white-space:nowrap}
+.legend{display:flex;gap:12px;flex-wrap:wrap;font-size:12px;color:var(--muted)}
+.legend span{display:inline-flex;align-items:center;gap:5px}
+.legend i{width:14px;height:10px;border-radius:3px;border:1px solid var(--sc);background:color-mix(in srgb,var(--sc) 55%,transparent)}
+.empty{padding:40px 20px;text-align:center;color:var(--muted)}
+
+/* list views */
+.grp{display:flex;flex-direction:column;gap:6px}
+.grp h2{font-size:13px;margin:8px 0 2px;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;font-weight:600;display:flex;gap:8px;align-items:center}
+.grp h2 .n{font-family:var(--mono);color:var(--faint)}
+.item{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px 12px;align-items:center;background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:10px 12px;text-align:left;width:100%}
+.item:hover{border-color:var(--accent)}
+.item .l1{display:flex;gap:8px;align-items:center;min-width:0}
+.item .ti{font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+.item .meta{grid-column:1/3;font-size:12px;color:var(--muted);display:flex;gap:10px;flex-wrap:wrap}
+.item .rt{text-align:right;font-size:12px;color:var(--muted);white-space:nowrap}
+.prog{height:4px;border-radius:2px;background:var(--surface-2);overflow:hidden;width:70px;display:inline-block;vertical-align:middle}
+.prog i{display:block;height:100%;background:var(--sc,var(--st-work))}
+
+/* feed */
+.feed{display:flex;flex-direction:column;background:var(--surface);border:1px solid var(--line);border-radius:var(--r)}
+.ev{display:grid;grid-template-columns:30px minmax(0,1fr);gap:10px;padding:11px 14px;border-bottom:1px solid var(--line-2)}
+.ev:last-child{border-bottom:0}
+.ev.unread{background:color-mix(in srgb,var(--blue) 7%,var(--surface))}
+.ev.unread .who::after{content:"новое";margin-left:8px;font-size:10px;font-weight:700;color:var(--link);text-transform:uppercase;letter-spacing:.06em}
+.ev .who{font-size:13px;font-weight:600}
+.ev .when{font-size:12px;color:var(--faint);font-weight:400;margin-left:6px;font-variant-numeric:tabular-nums}
+.ev .tx{font-size:13.5px;white-space:pre-wrap;overflow-wrap:anywhere}
+.ev .ref{font-size:12px;margin-top:2px}
+.ev.sys .tx{color:var(--muted);font-size:13px}
+.sysdot{width:30px;height:30px;display:grid;place-items:center}
+.sysdot i{width:9px;height:9px;border-radius:50%;background:var(--sc,var(--faint))}
+.mention{color:var(--link);font-weight:600;background:color-mix(in srgb,var(--blue) 12%,transparent);border-radius:4px;padding:0 3px}
+.mention.me{background:color-mix(in srgb,var(--st-risk) 30%,transparent);color:var(--fg)}
+a.lnk,button.lnk{color:var(--link);background:none;border:0;padding:0;font:inherit;text-decoration:underline;text-underline-offset:2px;cursor:pointer}
+
+/* summary */
+.tiles{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+.tile{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:14px 16px;display:flex;flex-direction:column;gap:2px}
+.tile .v{font-size:30px;font-weight:700;font-variant-numeric:tabular-nums;line-height:1.1;color:var(--sc,var(--fg))}
+.tile .k{font-size:12px;color:var(--muted)}
+.two{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:14px}
+.box{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:14px 16px;min-width:0}
+.box h2{font-size:14px;margin:0 0 10px;font-weight:700}
+.box.alert{border-color:color-mix(in srgb,var(--st-overdue) 45%,var(--line))}
+.box.alert h2{color:var(--st-overdue)}
+.tw{overflow-x:auto}
+table.t{border-collapse:collapse;width:100%;font-size:13px}
+table.t th{text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);font-weight:600;padding:6px 8px;border-bottom:1px solid var(--line)}
+table.t td{padding:7px 8px;border-bottom:1px solid var(--line-2);font-variant-numeric:tabular-nums}
+table.t td.n,table.t th.n{text-align:right}
+table.t td .z{color:var(--faint)}
+table.t td .bad{color:var(--st-overdue);font-weight:700}
+.mini{display:flex;flex-direction:column;gap:4px}
+.mini button{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:8px;align-items:center;text-align:left;background:none;border:0;border-radius:6px;padding:6px 6px}
+.mini button:hover{background:var(--surface-2)}
+.mini .ti{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.note{font-size:12px;color:var(--faint)}
+
+/* card panel */
+.scrim{position:fixed;inset:0;background:rgba(5,15,40,.35);z-index:40}
+.card{position:fixed;top:0;right:0;bottom:0;width:min(540px,100%);background:var(--surface);z-index:41;box-shadow:var(--shadow);display:flex;flex-direction:column;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);padding-right:env(safe-area-inset-right,0px)}
+.card-h{padding:14px 18px 12px;border-bottom:1px solid var(--line);display:flex;flex-direction:column;gap:8px}
+.card-h .r1{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.card-h .code{font-family:var(--mono);font-size:13px;font-weight:600;color:var(--accent)}
+.card-h h2{margin:0;font-size:18px;line-height:1.3;text-wrap:balance}
+.x{margin-left:auto;border:0;background:var(--surface-2);border-radius:6px;width:30px;height:30px;font-size:18px;line-height:1;color:var(--muted)}
+.card-b{overflow-y:auto;padding:14px 18px 24px;display:flex;flex-direction:column;gap:18px}
+.sec h3{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin:0 0 8px;font-weight:600;display:flex;gap:8px;align-items:center}
+.fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px 16px}
+.fields div{min-width:0}
+.fields dt{font-size:11px;color:var(--faint);margin:0}
+.fields dd{margin:0;font-size:13px;overflow-wrap:anywhere}
+.bigprog{display:flex;align-items:center;gap:10px;font-size:13px}
+.bigprog .prog{flex:1;height:8px;border-radius:4px}
+.acts{display:flex;gap:6px;flex-wrap:wrap}
+.flagbox{border:1px solid color-mix(in srgb,var(--st-overdue) 45%,var(--line));background:color-mix(in srgb,var(--st-overdue) 7%,var(--surface));border-radius:7px;padding:8px 10px;font-size:13px}
+.flagbox b{color:var(--st-overdue)}
+.cl{display:flex;flex-direction:column}
+.cli{display:grid;grid-template-columns:22px minmax(0,1fr);gap:6px;padding:6px 2px;border-bottom:1px solid var(--line-2);align-items:start}
+.cli input{width:16px;height:16px;margin:2px 0 0;accent-color:var(--st-done)}
+.cli .tx{font-size:13.5px}
+.cli.done .tx{color:var(--muted);text-decoration:line-through;text-decoration-color:var(--faint)}
+.cli .sig{display:block;font-size:11.5px;color:var(--st-done);text-decoration:none;font-variant-numeric:tabular-nums}
+.addrow{display:flex;gap:6px;margin-top:8px}
+.addrow .inp{flex:1}
+.subs{display:flex;flex-direction:column;gap:4px}
+.subs button{display:grid;grid-template-columns:auto minmax(0,1fr) auto auto;gap:8px;align-items:center;border:1px solid var(--line-2);background:var(--surface);border-radius:7px;padding:7px 9px;text-align:left}
+.subs button:hover{border-color:var(--accent)}
+.subs .cd{font-family:var(--mono);font-size:11.5px;color:var(--muted)}
+.subs .ti{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13px}
+.cfeed{display:flex;flex-direction:column;gap:2px}
+.cfeed .ev{padding:8px 0;grid-template-columns:28px minmax(0,1fr)}
+.composer{position:relative;display:flex;flex-direction:column;gap:6px;margin-top:8px}
+.composer textarea{width:100%;min-height:62px;resize:vertical}
+.composer .rowc{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.bruno{display:inline-flex;align-items:center;gap:5px;font-size:11.5px;font-weight:600;border:1px solid var(--line);border-radius:10px;padding:1px 8px;white-space:nowrap}
+.bruno i{width:7px;height:7px;border-radius:50%;background:var(--sc)}
+
+/* modal */
+.mod-w{position:fixed;inset:0;z-index:60;background:rgba(5,15,40,.45);display:grid;place-items:center;padding:16px}
+.mod{background:var(--surface);border-radius:10px;box-shadow:var(--shadow);width:min(560px,100%);max-height:calc(100dvh - 32px);display:flex;flex-direction:column}
+.mod h2{margin:0;padding:16px 18px 10px;font-size:17px}
+.mod .mb{padding:4px 18px 10px;overflow-y:auto;display:flex;flex-direction:column;gap:12px}
+.mod .mf{padding:12px 18px 16px;display:flex;gap:8px;justify-content:flex-end;border-top:1px solid var(--line-2);flex-wrap:wrap}
+.fl{display:flex;flex-direction:column;gap:4px;position:relative;min-width:0}
+.fl label{font-size:12px;color:var(--muted);font-weight:500}
+.fl .inp,.fl .sel{width:100%}
+.fl textarea.inp{min-height:70px;resize:vertical}
+.g2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.err{color:var(--st-overdue);font-size:12px}
+.codeprev{font-family:var(--mono);font-weight:600;color:var(--accent);font-size:15px}
+pre.json{background:var(--surface-2);border:1px solid var(--line);border-radius:7px;padding:10px;font-family:var(--mono);font-size:11.5px;overflow:auto;max-height:240px;margin:0;white-space:pre}
+.bf{display:grid;grid-template-columns:150px minmax(0,1fr);border:1px solid var(--line);border-radius:7px;overflow:hidden;font-size:13px}
+.bf div{padding:6px 10px;border-bottom:1px solid var(--line-2);min-width:0;overflow-wrap:anywhere}
+.bf div:nth-child(odd){background:var(--surface-2);color:var(--muted);font-size:12px}
+.bf div:nth-last-child(-n+2){border-bottom:0}
+.ac{position:absolute;left:0;right:0;top:100%;margin-top:2px;background:var(--surface);border:1px solid var(--line);border-radius:7px;box-shadow:var(--shadow);z-index:70;max-height:200px;overflow:auto}
+.composer .ac{top:auto;bottom:100%;margin-bottom:2px}
+.ac button{display:block;width:100%;text-align:left;border:0;background:none;padding:6px 10px;font-size:13px}
+.ac button:hover,.ac button.on{background:var(--surface-2)}
+
+/* login */
+.login{position:fixed;inset:0;z-index:80;background:var(--bg);display:grid;place-items:center;padding:24px 16px;overflow:auto}
+.login-in{width:min(520px,100%);display:flex;flex-direction:column;gap:16px}
+.login h1{margin:0;font-size:24px;color:var(--fg)}
+.login p{margin:0;color:var(--muted)}
+.who-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.who-list button{display:flex;gap:10px;align-items:center;text-align:left;background:var(--surface);border:1px solid var(--line);border-radius:9px;padding:12px}
+.who-list button:hover{border-color:var(--accent)}
+.who-list b{display:block;font-size:14px}
+.who-list span{font-size:12px;color:var(--muted)}
+.toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--fg);color:var(--bg);padding:9px 16px;border-radius:8px;font-size:13px;z-index:90;box-shadow:var(--shadow);max-width:calc(100% - 32px)}
+
+.chips-m{display:none}
+@media (max-width:860px){
+  .shell{grid-template-columns:minmax(0,1fr)}
+  aside.side{display:none}
+  .chips-m{display:flex;gap:6px;overflow-x:auto;padding-bottom:2px;scrollbar-width:none}
+  .chips-m button{flex:none;border:1px solid var(--line);background:var(--surface);border-radius:14px;padding:4px 10px;font-size:12px}
+  .chips-m button[aria-pressed="true"]{background:var(--accent);color:var(--accent-fg);border-color:var(--accent)}
+  .tiles{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .two{grid-template-columns:minmax(0,1fr)}
+  .inp.search{width:100%;grid-column:1/3}
+  .bar-f{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}
+  .bar-f .sel{width:100%}
+  .item .l1{flex-wrap:wrap}
+  .item .ti{white-space:normal;flex-basis:100%}
+  .demo{font-size:11px}
+  .top-in{gap:8px}
+  .top-r{margin-left:0;width:100%;justify-content:space-between}
+  .tabs{width:100%}
+  .card{width:100%}
+  .who-list{grid-template-columns:minmax(0,1fr)}
+  .g2{grid-template-columns:minmax(0,1fr)}
+  .bf{grid-template-columns:110px minmax(0,1fr)}
+  .vh .sp{margin-left:0}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+</style>
+<style>
+/* ===== Дополнения рабочей версии к стилям прототипа ===== */
+/* Полоса пространств «Дашборд | Поручения» — одинаковая в dashboard_v2.html и planner.html */
+.sp-nav{display:flex;gap:2px;background:#001A5E;padding:0 max(16px,env(safe-area-inset-left,0px));font:500 13px/1 "Golos Text",system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;overflow-x:auto;scrollbar-width:none}
+.sp-nav a{color:#AFC0EA;text-decoration:none;padding:10px 12px 8px;border-bottom:2px solid transparent;white-space:nowrap}
+.sp-nav a:hover{color:#FFFFFF}
+.sp-nav a[aria-current="page"]{color:#FFFFFF;border-bottom-color:#00AAFF}
+
+.sync{font-size:12px;color:var(--on-header-muted);white-space:nowrap;display:inline-flex;align-items:center;gap:6px}
+.sync::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--st-done)}
+.sync[data-s="saving"]::before{background:var(--st-risk)}
+.sync[data-s="error"]{color:#FFB3B8}
+.sync[data-s="error"]::before{background:var(--st-overdue)}
+.hbtn{background:rgba(255,255,255,.1);border:0;color:var(--on-header);border-radius:14px;padding:4px 10px;font-size:12px}
+.hbtn:hover{background:rgba(255,255,255,.2)}
+.toast{display:flex;gap:12px;align-items:center}
+.toast button{background:none;border:1px solid currentColor;color:inherit;border-radius:6px;padding:2px 9px;font-size:12px;font-weight:600}
+.toast.bad{background:var(--st-overdue);color:#fff}
+body:has(#loginRoot .login) .sp-nav{position:relative;z-index:85}  /* вкладки доступны и с экрана входа */
+.bar-f .sel{max-width:240px}  /* реальные названия объектов Bruno длинные */
+.fbk{font-size:11px;color:var(--demo-fg);background:var(--demo-bg);border-radius:4px;padding:0 5px;font-weight:500}
+.spin{width:30px;height:30px;border:3px solid var(--line);border-top-color:var(--accent);border-radius:50%;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+@media print{
+  .sp-nav,.demo,header.top,aside.side,.toast,#cardRoot,#modalRoot,.noprint{display:none!important}
+  .shell{display:block;padding:0}
+  body{background:#fff}
+  .box,.tile{break-inside:avoid}
+}
+</style>
+</head>
+<body>
+<nav class="sp-nav" aria-label="Разделы"><a href="dashboard_v2.html">Дашборд</a><a href="planner.html" aria-current="page">Поручения</a></nav>
+<div class="demo gut" id="demoBar" hidden><span><b>Демо-версия</b>, данные условные. Изменения сохраняются только в этом браузере.</span><button type="button" data-act="reset">Сбросить демо</button></div>
+<header class="top"><div class="top-in gut">
+  <div class="brand"><b>Поручения отдела</b><span>Bruno · планировщик</span></div>
+  <nav class="tabs" id="tabs"></nav>
+  <div class="top-r">
+    <div id="dateBox" style="display:flex;align-items:center" hidden><span class="seg-l">Дата демо</span><div class="seg" id="dateSeg"></div></div>
+    <span class="sync" id="sync" data-s="ok" hidden></span>
+    <button type="button" class="hbtn" data-act="refresh" title="Загрузить свежие данные" id="refreshBtn" hidden>↻ Обновить</button>
+    <button type="button" class="me" id="meBtn" data-act="login"></button>
+  </div>
+</div></header>
+
+<div class="shell gut">
+  <aside class="side" id="side"></aside>
+  <main id="main"></main>
+</div>
+<div id="cardRoot"></div>
+<div id="modalRoot"></div>
+<div id="loginRoot"></div>
+<div class="toast" id="toast" hidden></div>
+
+<script src="shared/status.js"></script>
+<script src="shared/core.js"></script>
+<script>
+(()=>{
+'use strict';
+/* =====================================================================
+   НАСТРОЙКА. URL веб-приложения Apps Script (Развернуть → Веб-приложение).
+   Это не секрет: без персонального ключа сервер ничего не отдаёт.
+   Пошагово — docs/DEPLOY_planner.md.
+   ===================================================================== */
+const API_URL='';
+
+const DEMO=new URLSearchParams(location.search).get('demo')==='1';
+const DEMO_BASE='2026-10-27';                // «сегодня» в демо, как в прототипе
+const LS_UI='bruno-planner-ui-v1', LS_KEY='bruno-planner-key', LS_MOCK='bruno-planner-demo-db-v1';
+const DIR_URL='data.json.gz', DEMO_URL='docs/demo_tasks.json';
+const {RISK,RANK}=PlannerStatus;
+const ST=PlannerStatus.LABEL;
+const BRUNO_ST={NEW:['plan','NEW · ждёт'],WAITING:['plan','WAITING · ждёт'],COMPLETING:['work','COMPLETING · в работе'],COMPLETED:['review','COMPLETED · на проверке'],MISSED:['overdue','MISSED · просрочено']};
+// Резервный список видов работ — из прототипа. Используется, только если в выгрузке
+// Bruno (data.json.gz → directories.workType) каталог пуст; в интерфейсе это помечено.
+const WORKTYPES_FALLBACK=[['wt_21','Ремонт мебели'],['wt_02','Клининг'],['wt_14','Озеленение'],['wt_30','Маркировка и QR'],['wt_40','Администрирование Bruno'],['wt_41','Отчётность'],['wt_12','ММС']];
+const ROLE_L={head:'Руководитель',mod:'Модератор',owner:'Ответственный',observer:'Наблюдатель'};
+const PALETTE=['#002882','#00AAFF','#23A75B','#7B4FD6','#E8890C','#C2185B','#0A8FE0','#5A6680','#1B8449','#9A6510'];
+const MONTHS=['Январь','Февраль','Март','Апрель','Май','Июнь','Июль','Август','Сентябрь','Октябрь','Ноябрь','Декабрь'];
+
+/* ---------- utils (как в прототипе) ---------- */
+const pad=n=>String(n).padStart(2,'0');
+const pD=s=>{const [y,m,d]=s.slice(0,10).split('-').map(Number);return new Date(y,m-1,d)};
+const iso=d=>d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());
+const add=(s,n)=>{const d=pD(s);d.setDate(d.getDate()+n);return iso(d)};
+const diff=(a,b)=>Math.round((pD(b)-pD(a))/864e5);
+const fd=s=>s?s.slice(8,10)+'.'+s.slice(5,7):'—';
+const fdy=s=>s?fd(s)+'.'+s.slice(0,4):'—';
+const fts=s=>s?fd(s)+' '+s.slice(11,16):'';
+const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const LAT={a:'а',b:'в',c:'с',e:'е',h:'н',k:'к',m:'м',o:'о',p:'р',t:'т',x:'х',y:'у'};
+const norm=s=>String(s).toLowerCase().replace(/[abcehkmoptxy]/g,c=>LAT[c]).replace(/ё/g,'е');
+const ini=n=>n.split(/\s+/).filter(Boolean).slice(0,2).map(w=>w[0]).join('').toUpperCase();
+const clone=o=>JSON.parse(JSON.stringify(o));
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+
+/* ---------- время ---------- */
+// Рабочая версия живёт по Москве (как Apps Script, appsscript.json → timeZone).
+function mskParts(){const p={};new Intl.DateTimeFormat('ru-RU',{timeZone:'Europe/Moscow',year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',hourCycle:'h23'}).formatToParts(new Date()).forEach(x=>p[x.type]=x.value);return p}
+const today=()=>{if(DEMO)return add(DEMO_BASE,ui.offset||0);const p=mskParts();return p.year+'-'+p.month+'-'+p.day};
+const nowTs=()=>{if(DEMO){const d=new Date();return today()+' '+pad(d.getHours())+':'+pad(d.getMinutes())}const p=mskParts();return today()+' '+p.hour+':'+p.minute};
+const env=()=>{const td=today();return {today:td,ts:nowTs(),year:td.slice(2,4),uid:()=>Date.now().toString(36)+Math.random().toString(36).slice(2,8)}};
+
+/* ---------- состояние интерфейса (только этот браузер) ---------- */
+const ui=Object.assign({view:'timeline',scale:'week',expanded:{'ПДР-26-001':true,'ОБК-26-001':true},offset:0,user:null},(()=>{try{return JSON.parse(localStorage.getItem(LS_UI))||{}}catch(e){return {}}})(),
+  {folder:null,tags:[],status:'',prio:'',owner:'',object:'',q:'',feed:'all',card:null,scrolled:false});
+function saveUi(){try{localStorage.setItem(LS_UI,JSON.stringify({view:ui.view,scale:ui.scale,expanded:ui.expanded,offset:ui.offset,user:ui.user}))}catch(e){}}
+
+/* =====================================================================
+   Справочники Bruno — из data.json.gz, тем же способом, что дашборд
+   (потоковая распаковка через DecompressionStream). Свои не заводим.
+   ===================================================================== */
+const DIR={ok:false,objects:[],objById:{},zones:[],teams:[],emps:{},workTypes:WORKTYPES_FALLBACK,wtFallback:true,error:''};
+async function fetchJson(url){
+  const resp=await fetch(url,{cache:'no-store'});
+  if(!resp.ok)throw new Error('HTTP '+resp.status+' — '+url);
+  const buf=new Uint8Array(await resp.arrayBuffer());
+  // Сервер мог уже снять gzip сам — смотрим на сигнатуру 1f 8b, а не на расширение.
+  if(buf.length>1&&buf[0]===0x1f&&buf[1]===0x8b){
+    if(!('DecompressionStream' in window))throw new Error('Браузер не умеет распаковывать gzip (нет DecompressionStream). Обновите браузер.');
+    return JSON.parse(await new Response(new Blob([buf]).stream().pipeThrough(new DecompressionStream('gzip'))).text());
+  }
+  return JSON.parse(new TextDecoder('utf-8').decode(buf));
+}
+async function loadDirectories(){
+  try{
+    const d=await fetchJson(DIR_URL),dir=d.directories||{};
+    DIR.objects=(dir.object||[]).map(o=>({id:o.id,name:o.name})).sort((a,b)=>a.name.localeCompare(b.name,'ru'));
+    DIR.objects.forEach(o=>DIR.objById[o.id]=o);
+    DIR.zones=dir.zone||[];DIR.teams=(dir.team||[]).slice().sort((a,b)=>a.name.localeCompare(b.name,'ru'));
+    (dir.user||[]).forEach(u=>DIR.emps[u.id]=u.name);
+    if((dir.workType||[]).length){DIR.workTypes=dir.workType.map(w=>[w.id,w.name]);DIR.wtFallback=false}
+    DIR.ok=true;
+  }catch(e){DIR.error=String(e.message||e);console.warn('Справочники Bruno не загружены:',e)}
+}
+const objName=id=>id==='ALL'?'Все объекты':(DIR.objById[id]?DIR.objById[id].name:id);
+const wtName=id=>(DIR.workTypes.find(w=>w[0]===id)||['','—'])[1];
+const fbNote=()=>DIR.wtFallback?' <span class="fbk" title="В выгрузке Bruno (data.json.gz) каталог «Вид работ» пуст — показан временный список из прототипа">временный список</span>':'';
+
+/* =====================================================================
+   API. Два варианта с одинаковым интерфейсом call(action, params):
+     remote — Apps Script (POST text/plain, без preflight);
+     mock   — ?demo=1: «сервер» в localStorage на том же PlannerCore.
+   ===================================================================== */
+const apiRemote={
+  key:()=>{try{return localStorage.getItem(LS_KEY)||''}catch(e){return ''}},
+  async call(action,params){
+    const ctl=new AbortController(),tm=setTimeout(()=>ctl.abort(),45000);
+    let res;
+    try{res=await fetch(API_URL,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({action,key:apiRemote.key(),params:params||{}}),signal:ctl.signal,redirect:'follow'})}
+    catch(e){throw {error:'network',message:'Нет связи с сервером — изменение не сохранено.'}}
+    finally{clearTimeout(tm)}
+    let j;try{j=await res.json()}catch(e){throw {error:'server',message:'Сервер ответил не JSON (HTTP '+res.status+'). Проверьте развёртывание Apps Script.'}}
+    if(j&&j.error)throw j;
+    return j;
+  }
+};
+const apiMock={
+  failNext:null,                 // для проверки отката: __planner.failNext('conflict')
+  async seed(){const d=await fetchJson(DEMO_URL);return {tasks:d.tasks,activity:d.activity,users:d.users,folders:d.folders}},
+  async db(){let raw=null;try{raw=localStorage.getItem(LS_MOCK)}catch(e){}if(raw){try{return JSON.parse(raw)}catch(e){}}const db=await apiMock.seed();apiMock.save(db);return db},
+  save(db){try{localStorage.setItem(LS_MOCK,JSON.stringify(db))}catch(e){}},
+  async call(action,params){
+    await sleep(250+Math.random()*250);   // как будто сеть
+    if(apiMock.failNext){const e=apiMock.failNext;apiMock.failNext=null;throw e==='conflict'?{error:'conflict',message:'Задачу изменили, обновите.'}:{error:'network',message:'Нет связи с сервером — изменение не сохранено.'}}
+    // Читаем базу заново на каждый запрос, как настоящий сервер: так второе окно
+    // с устаревшей копией получает conflict по version.
+    const db=await apiMock.db();
+    if(action==='bootstrap')return Object.assign({ok:true,today:today()},clone(PlannerCore.snapshot(db,ui.user,300)));
+    const r=PlannerCore.handle(db,ui.user,action,params,env());
+    apiMock.save(db);
+    return {ok:true,patch:clone(r.patch),result:r.result};
+  }
+};
+const api=DEMO?apiMock:apiRemote;
+
+/* =====================================================================
+   Данные и оптимистичная синхронизация.
+   confirmed — последнее, что подтвердил сервер; pending — очередь действий,
+   ещё не подтверждённых. На экране D = confirmed + pending, применённые тем же
+   PlannerCore, что и на сервере. Ответ сервера заменяет оптимистичную версию,
+   ошибка — убирает действие из очереди (откат) и показывает сообщение.
+   ===================================================================== */
+let confirmed=null,D=null,ME=null,lastSync=0;
+const pending=[],ownOk={},fails={},idMap={};
+let busy=false,seq=0;
+
+function rebuild(){
+  D=clone(confirmed);
+  pending.forEach(op=>{try{const r=PlannerCore.handle(D,ME,op.action,op.params,op.env);op.optId=r.result&&r.result.id}catch(e){/* сервер всё равно откажет */}});
+}
+function merge(db,patch){
+  (patch.tasks||[]).forEach(t=>{const i=db.tasks.findIndex(x=>x.id===t.id);if(i<0)db.tasks.push(t);else db.tasks[i]=t});
+  (patch.activity||[]).forEach(a=>{if(!db.activity.some(x=>x.id===a.id))db.activity.push(a)});
+  (patch.users||[]).forEach(u=>{const i=db.users.findIndex(x=>x.id===u.id);if(i>=0)db.users[i]=u});
+  (patch.folders||[]).forEach(f=>{const i=db.folders.findIndex(x=>x.code===f.code);if(i<0)db.folders.push(f);else db.folders[i]=f});
+}
+// Выполнить действие: проверить и применить сразу, отправить в фоне.
+// Возвращает строку-ошибку (для модалки) или {id} при успехе.
+function exec(action,params,okMsg){
+  const e=env(),trial=clone(D);
+  let r;
+  try{r=PlannerCore.handle(trial,ME,action,params,e)}catch(x){if(x&&x.message)return x.message;throw x}
+  const id=params.id;
+  const base=id&&confirmed.tasks.find(t=>t.id===id);
+  pending.push({seq:++seq,action,params,env:e,c0:base?base.version:1,k0:ownOk[id]||0,f0:fails[id]||0,optId:r.result&&r.result.id});
+  D=trial;renderAll();
+  if(okMsg)toast(typeof okMsg==='function'?okMsg(r):okMsg);
+  pump();
+  return {id:r.result&&r.result.id,result:r.result};
+}
+async function pump(){
+  if(busy)return;busy=true;setSync('saving');
+  let failed=false;
+  while(pending.length){
+    const op=pending[0],p=Object.assign({},op.params);
+    ['id','parent'].forEach(k=>{if(p[k]&&idMap[p[k]])p[k]=idMap[p[k]]});
+    const key=op.params.id;
+    try{
+      if(key&&(fails[key]||0)!==op.f0)throw {error:'conflict',message:'Предыдущее изменение этой задачи не сохранилось — следующее тоже отменено.'};
+      if(PlannerCore.VERSIONED[op.action])p.version=op.c0+((ownOk[key]||0)-op.k0);
+      const res=await api.call(op.action,p);
+      pending.shift();
+      merge(confirmed,res.patch||{});
+      if(PlannerCore.VERSIONED[op.action])ownOk[key]=(ownOk[key]||0)+1;
+      const real=res.result&&res.result.id;
+      if(op.optId&&real&&real!==op.optId){idMap[op.optId]=real;if(ui.card===op.optId)ui.card=real}
+    }catch(err){
+      pending.shift();
+      if(key)fails[key]=(fails[key]||0)+1;
+      if(err&&err.error==='auth'){busy=false;rebuild();showNoKey(err.message);return}
+      failed=true;showError(err);
+    }
+    rebuild();renderAll();
+  }
+  busy=false;lastSync=Date.now();setSync(failed?'error':'ok');
+}
+function showError(err){
+  console.warn('Ошибка синхронизации',err);
+  const m=(err&&err.message)||'Не удалось сохранить изменение.';
+  setSync('error');
+  if(err&&err.error==='conflict')toast(m+' Ваше изменение отменено.',{label:'Обновить',fn:refresh},true);
+  else toast(m+(err&&err.error==='network'?'':' Изменение отменено.'),null,true);
+}
+async function refresh(quiet){
+  if(pending.length||busy){if(!quiet)toast('Дождитесь сохранения изменений.');return}
+  try{
+    if(!quiet)setSync('saving');
+    const s=await api.call('bootstrap',{});
+    if(pending.length||busy)return;   // пока ждали, пользователь что-то изменил — обновим позже
+    confirmed={tasks:s.tasks,activity:s.activity,users:s.users,folders:s.folders};
+    ME=s.me;lastSync=Date.now();rebuild();setSync('ok');renderAll();
+    if(!quiet)toast('Данные обновлены');
+  }catch(err){if(err&&err.error==='auth'){showNoKey(err.message);return}showError(err)}
+}
+function setSync(s){
+  const el=document.getElementById('sync');if(!el)return;
+  el.dataset.s=s;el.textContent=s==='saving'?'Сохранение…':s==='error'?'Ошибка сохранения':'Сохранено';
+}
+
+/* ---------- контекст для отрисовки: статусы с кэшем, права, справочник людей ---------- */
+let CTX=null,R=null,USERS={},MEMO=new WeakMap(),MEMOP=new WeakMap();
+const byId={},kidsMap={};
+function setCtx(){
+  Object.keys(byId).forEach(k=>delete byId[k]);Object.keys(kidsMap).forEach(k=>delete kidsMap[k]);
+  D.tasks.forEach(t=>{byId[t.id]=t;if(t.parent)(kidsMap[t.parent]=kidsMap[t.parent]||[]).push(t)});
+  CTX={today:today(),kids:id=>kidsMap[id]||[]};
+  MEMO=new WeakMap();MEMOP=new WeakMap();
+  USERS={};D.users.forEach((u,i)=>USERS[u.id]=Object.assign({},u,{roleL:ROLE_L[u.role]||u.role,color:u.color||PALETTE[i%PALETTE.length]}));
+  R=PlannerCore.rights(D,ME,env());
+}
+const T=id=>byId[id]||null;
+const kids=id=>kidsMap[id]||[];
+const me=()=>ME;
+const statusOf=t=>{let s=MEMO.get(t);if(s===undefined){s=PlannerStatus.statusOf(t,CTX);MEMO.set(t,s)}return s};
+const progress=t=>{let s=MEMOP.get(t);if(s===undefined){s=PlannerStatus.progress(t,CTX);MEMOP.set(t,s)}return s};
+const activeUsers=()=>Object.entries(USERS).filter(([,u])=>u.active!==false);
+const av=(uid,size)=>{const u=USERS[uid]||{name:'?',color:'#888'};return `<span class="av" style="background:${u.color};${size?`width:${size}px;height:${size}px`:''}" aria-hidden="true">${esc(ini(u.name))}</span>`};
+const uname=id=>(USERS[id]||{name:'—'}).name;
+const FOLDERS=()=>D.folders.filter(f=>f.active!==false).map(f=>[f.code,f.name]);
+
+const isLeaf=t=>!kids(t.id).length;
+const bad=s=>s==='overdue'||s==='blocker';
+const PRN={P1:1,P2:2,P3:3};
+const sortKey=(a,b)=>{const sa=statusOf(a),sb=statusOf(b);const x=(bad(sa)?0:1)-(bad(sb)?0:1);if(x)return x;const y=PRN[a.prio]-PRN[b.prio];if(y)return y;return a.due<b.due?-1:a.due>b.due?1:0};
+
+/* ---------- filters ---------- */
+function matches(t){
+  if(ui.folder&&t.folder!==ui.folder)return false;
+  if(ui.tags.length&&!ui.tags.some(g=>t.tags.map(x=>x.toLowerCase()).includes(g.toLowerCase())))return false;
+  if(ui.status){const s=statusOf(t);if(ui.status==='hot'?!(bad(s)||s==='risk'):s!==ui.status)return false}
+  if(ui.prio&&t.prio!==ui.prio)return false;
+  if(ui.owner&&t.owner!==ui.owner)return false;
+  if(ui.object&&!t.objects.includes(ui.object)&&!t.objects.includes('ALL'))return false;
+  if(ui.q){const q=norm(ui.q.trim());if(q&&!norm(t.id+' '+t.title+' '+t.tags.join(' ')).includes(q))return false}
+  return true;
+}
+const anyFilter=()=>ui.tags.length||ui.status||ui.prio||ui.owner||ui.object||ui.q;
+function visibleTree(){
+  const tops=D.tasks.filter(t=>!t.parent&&t.flag!=='cancelled').sort(sortKey);
+  const out=[];
+  tops.forEach(t=>{
+    const ch=kids(t.id).filter(c=>c.flag!=='cancelled').sort((a,b)=>a.id.localeCompare(b.id,'ru',{numeric:true}));
+    const pm=matches(t),cm=ch.filter(matches);
+    if(ui.folder&&t.folder!==ui.folder)return;
+    if(!pm&&!cm.length)return;
+    out.push({t,ch:pm&&!anyFilter()?ch:(pm?ch:cm),forceOpen:!pm||!!anyFilter()});
+  });
+  return out;
+}
+const allTags=()=>PlannerCore.allTags(D).sort((a,b)=>a.localeCompare(b,'ru'));
+const alive=t=>t.flag!=='cancelled';
+
+/* ---------- header ---------- */
+function unread(){const lr=(USERS[me()]||{}).lastRead||'';return D.activity.filter(a=>a.ts>lr&&a.author!==me()).length}
+function renderHeader(){
+  const views=[['timeline','Таймлайн'],['mine','Мои задачи'],['feed','Лента отдела'],['summary','Сводка руководителя']];
+  const u=unread();
+  document.getElementById('tabs').innerHTML=views.map(([k,l])=>`<button type="button" data-view="${k}" aria-current="${ui.view===k}">${l}${k==='feed'&&u?`<span class="cnt">${u}</span>`:''}</button>`).join('');
+  if(DEMO)document.getElementById('dateSeg').innerHTML=[[0,fd(DEMO_BASE)],[7,'+7 дн'],[30,'+30 дн']].map(([o,l])=>`<button type="button" data-off="${o}" aria-pressed="${ui.offset===o}" title="${o?'Сдвинуть дату демо на '+o+' дней':'Сегодня, '+fdy(DEMO_BASE)}">${l}</button>`).join('');
+  const m=USERS[me()];
+  document.getElementById('meBtn').innerHTML=m?`${av(me())}<span>Я — ${esc(m.name)}</span>`:'Войти';
+}
+
+/* ---------- sidebar ---------- */
+function folderCounts(code){
+  const ts=D.tasks.filter(t=>t.folder===code&&isLeaf(t)&&alive(t));
+  const st=ts.map(statusOf);
+  return {a:st.filter(s=>s!=='done').length,o:st.filter(bad).length};
+}
+function renderSide(){
+  const rows=FOLDERS().map(([c,n])=>{const k=folderCounts(c);return `<button type="button" class="fold" data-folder="${esc(c)}" aria-pressed="${ui.folder===c}"><span class="code">${esc(c)}</span><span class="nm">${esc(n)}</span><span class="c">${k.a}${k.o?` / <span class="od">${k.o}</span>`:''}</span></button>`}).join('');
+  const all=D.tasks.filter(t=>isLeaf(t)&&alive(t)).map(statusOf);
+  document.getElementById('side').innerHTML=`<h3>Папки</h3>
+  <button type="button" class="fold" data-folder="" aria-pressed="${!ui.folder}"><span class="code">ВСЕ</span><span class="nm">Все поручения</span><span class="c">${all.filter(s=>s!=='done').length}${all.filter(bad).length?` / <span class="od">${all.filter(bad).length}</span>`:''}</span></button>
+  ${rows}
+  <div class="hint">Счётчик: активные задачи / <span style="color:var(--st-overdue);font-weight:600">просрочено или блокер</span>. Папки заводит модератор.</div>
+  ${R.create()?'<button type="button" class="btn pri newbtn" data-act="new">+ Поручение</button>':''}`;
+}
+function mobileChips(){
+  return `<div class="chips-m">${[['','Все'],...FOLDERS()].map(([c,n])=>`<button type="button" data-folder="${esc(c)}" aria-pressed="${(ui.folder||'')===c}">${esc(c||'Все')}${c?' · '+esc(n):''}</button>`).join('')}</div>`;
+}
+
+/* ---------- filter bar ---------- */
+function filterBar(){
+  const tags=allTags();
+  const opt=(v,l,cur)=>`<option value="${esc(v)}" ${cur===v?'selected':''}>${esc(l)}</option>`;
+  return `<div class="bar-f">
+    <input class="inp search" id="q" type="search" placeholder="Код или название: ПДР-26, пропуска…" value="${esc(ui.q)}" aria-label="Поиск">
+    <select class="sel" id="fStatus" aria-label="Статус">${opt('','Все статусы',ui.status)}${opt('hot','Только риск и просрочка',ui.status)}${Object.entries(ST).filter(([k])=>k!=='cancelled').map(([k,l])=>opt(k,l,ui.status)).join('')}</select>
+    <select class="sel" id="fPrio" aria-label="Приоритет">${opt('','Любой приоритет',ui.prio)}${opt('P1','P1 Критичный',ui.prio)}${opt('P2','P2 Высокий',ui.prio)}${opt('P3','P3 Обычный',ui.prio)}</select>
+    <select class="sel" id="fOwner" aria-label="Ответственный">${opt('','Все ответственные',ui.owner)}${activeUsers().map(([k,u])=>opt(k,u.name,ui.owner)).join('')}</select>
+    <select class="sel" id="fObj" aria-label="Объект">${opt('','Все объекты',ui.object)}${DIR.objects.map(o=>opt(o.id,o.name,ui.object)).join('')}</select>
+    ${anyFilter()?'<button type="button" class="btn sm" data-act="clearf">Сбросить фильтры</button>':''}
+  </div>
+  <div class="tagrow">${tags.map(g=>`<button type="button" class="tag" data-tag="${esc(g)}" aria-pressed="${ui.tags.includes(g)}">#${esc(g)}</button>`).join('')}</div>`;
+}
+
+/* ---------- views ---------- */
+const isMobile=()=>window.innerWidth<760;
+function renderMain(){
+  const m=document.getElementById('main');
+  const v=ui.view;
+  let h='';
+  if(v==='timeline')h=viewTimeline();
+  else if(v==='mine')h=viewMine();
+  else if(v==='feed')h=viewFeed();
+  else h=viewSummary();
+  m.innerHTML=h;
+  if(v==='timeline'&&!isMobile()){
+    const tl=document.getElementById('tl');
+    if(tl&&!ui.scrolled){const dw=ui.scale==='week'?30:11;tl.scrollLeft=Math.max(0,(diff(span().origin,today()))*dw-160);ui.scrolled=true}
+  }
+}
+function pill(s){return `<span class="pill st-${s}">${ST[s]}</span>`}
+function prB(p){return p==='P3'?'':`<span class="pr ${p}" title="${p==='P1'?'Критичный':'Высокий'}">${p}</span>`}
+function brunoBadge(t){if(!t.brunoRef)return '';const b=BRUNO_ST[t.brunoStatus||'NEW']||BRUNO_ST.NEW;return `<span class="bruno st-${b[0]}" title="Статус задачи в Bruno"><i></i>Bruno #${esc(t.brunoRef)} · ${esc(b[1])}</span>`}
+
+// Шкала: с понедельника недели, где начинается самая ранняя живая задача
+// (но не раньше недели назад и не глубже 90 дней), до конца года или последнего дедлайна.
+function span(){
+  const td=today(),live=D.tasks.filter(alive);
+  let lo=add(td,-7);live.forEach(t=>{if(t.start<lo)lo=t.start});
+  if(lo<add(td,-90))lo=add(td,-90);
+  const origin=add(lo,-((pD(lo).getDay()+6)%7));
+  let end=td.slice(0,4)+'-12-31';live.forEach(t=>{if(t.due>end)end=t.due});
+  return {origin,end};
+}
+function viewTimeline(){
+  const {origin,end}=span();
+  const head=`<div class="vh"><h1>Таймлайн поручений</h1><span class="sub">до ${fdy(end)} · сегодня ${fd(today())}</span>
+   <div class="sp">${isMobile()?'':`<div class="seg2"><button type="button" data-scale="week" aria-pressed="${ui.scale==='week'}">Неделя</button><button type="button" data-scale="month" aria-pressed="${ui.scale==='month'}">Месяц</button></div>`}${R.create()&&isMobile()?'<button type="button" class="btn pri" data-act="new">+ Поручение</button>':''}</div></div>`;
+  const tree=visibleTree();
+  const legend=`<div class="legend">${['plan','work','risk','overdue','review','done'].map(s=>`<span class="st-${s}"><i></i>${ST[s]}</span>`).join('')}<span>Заливка полосы = % чек-листа · пунктир = просрочка</span></div>`;
+  if(!tree.length)return head+mobileChips()+filterBar()+`<div class="empty">${D.tasks.length?'Под фильтр ничего не попало. Сбросьте фильтры или выберите другую папку.':'Поручений пока нет.'+(R.create()?' Создайте первое кнопкой «+ Поручение».':'')}</div>`;
+  if(isMobile())return head+mobileChips()+filterBar()+weekList(tree);
+  const dw=ui.scale==='week'?30:11,days=diff(origin,end)+1,W=days*dw,LW=320;
+  let mons='';
+  for(let m=origin.slice(0,8)+'01';m<=end;){
+    const d=pD(m),nx=iso(new Date(d.getFullYear(),d.getMonth()+1,1));
+    const a=Math.max(0,diff(origin,m)),e=Math.min(days,diff(origin,nx));
+    if(e>a)mons+=`<div class="mon" style="left:${a*dw}px;width:${(e-a)*dw}px">${MONTHS[d.getMonth()]}${m.slice(0,4)!==today().slice(0,4)?' '+m.slice(0,4):''}</div>`;
+    m=nx;
+  }
+  let wks='';for(let i=0;i<days;i+=7)wks+=`<div class="wk" style="left:${i*dw}px;width:${7*dw}px">${fd(add(origin,i))}</div>`;
+  const tdx=diff(origin,today());
+  const row=(t,child,ch,open)=>{
+    const s=statusOf(t),p=Math.round(progress(t)*100);
+    const x=diff(origin,t.start)*dw,w=(diff(t.start,t.due)+1)*dw;
+    const late=(s==='overdue'||(s==='blocker'&&today()>t.due))?`<div class="late" style="left:${x+w}px;width:${Math.max(0,(tdx-diff(origin,t.due)))*dw}px"></div>`:'';
+    const lbl=w>90?`${prB(t.prio)}<span class="mono">${esc(t.id.replace(/^.*?-\d\d-/,''))}</span> ${p}%`:(w>40?`${p}%`:'');
+    return `<div class="row${child?' child':''}"><div class="lab">
+      ${!child&&ch.length?`<button type="button" class="cv" data-exp="${esc(t.id)}" aria-expanded="${open}" aria-label="Подзадачи">▶</button>`:(!child?'<span style="width:20px;flex:none"></span>':'')}
+      ${child?'':prB(t.prio)}<span class="cd">${esc(child?t.id.slice(t.id.lastIndexOf('.')):t.id)}</span>
+      <button type="button" class="tt" data-open="${esc(t.id)}" title="${esc(t.title)}">${esc(t.title)}</button>
+      <span class="ow">${esc(ini(uname(t.owner)))}</span></div>
+      <div class="trk" style="width:${W}px">${late}<button type="button" class="bar st-${s}" style="left:${x}px;width:${w}px" data-open="${esc(t.id)}" title="${esc(t.id+' · '+t.title+' · '+ST[s]+' · '+fd(t.start)+'–'+fd(t.due)+' · '+p+'%')}"><span class="fill" style="width:${p}%"></span><span class="bl">${lbl}</span></button></div></div>`;
+  };
+  let body='';
+  tree.forEach(({t,ch,forceOpen})=>{const open=forceOpen||!!ui.expanded[t.id];body+=row(t,false,kids(t.id),open);if(open)ch.forEach(c=>body+=row(c,true,[],false))});
+  const todayLine=tdx>=0&&tdx<=days?`<div class="today" style="left:${LW+tdx*dw+dw/2}px"><span>${fd(today())}</span></div>`:'';
+  return head+filterBar()+legend+`<div class="tl" id="tl" style="--dw:${dw}"><div class="tl-in">
+    <div class="row head"><div class="lab">Поручение · подзадача</div><div class="trk" style="width:${W}px">${mons}${wks}</div></div>
+    ${body}${todayLine}</div></div>`;
+}
+function itemHtml(t,extra){
+  const s=statusOf(t),p=Math.round(progress(t)*100);
+  return `<button type="button" class="item" data-open="${esc(t.id)}">
+    <span class="l1">${prB(t.prio)}<span class="mono" style="font-size:12px;color:var(--muted);flex:none">${esc(t.id)}</span><span class="ti">${esc(t.title)}</span></span>
+    <span class="rt">${pill(s)}</span>
+    <span class="meta"><span>до ${fd(t.due)}</span><span class="st-${s}"><span class="prog"><i style="width:${p}%"></i></span> ${p}%</span><span>${esc(uname(t.owner))}</span>${t.resched>=2?`<span class="resch">переносилось ×${t.resched}</span>`:''}${extra||''}</span>
+  </button>`;
+}
+function weekList(tree){
+  const items=[];tree.forEach(({t,ch})=>{const k=kids(t.id);if(!k.length)items.push(t);else ch.forEach(c=>items.push(c))});
+  const td=today();const groups=new Map();
+  const over=items.filter(t=>bad(statusOf(t))).sort(sortKey);
+  items.filter(t=>!bad(statusOf(t))&&statusOf(t)!=='done').sort((a,b)=>a.due<b.due?-1:1).forEach(t=>{
+    const d=pD(t.due);const key=add(t.due,-((d.getDay()+6)%7));
+    if(!groups.has(key))groups.set(key,[]);groups.get(key).push(t)});
+  let h='';
+  if(over.length)h+=`<div class="grp"><h2 style="color:var(--st-overdue)">Просрочено и блокеры <span class="n">${over.length}</span></h2>${over.map(t=>itemHtml(t)).join('')}</div>`;
+  [...groups.keys()].sort().forEach(k=>{const g=groups.get(k).sort(sortKey);h+=`<div class="grp"><h2>Срок на неделе ${fd(k)}–${fd(add(k,6))}${k<=td&&td<=add(k,6)?' · текущая':''} <span class="n">${g.length}</span></h2>${g.map(t=>itemHtml(t)).join('')}</div>`});
+  const done=items.filter(t=>statusOf(t)==='done');
+  if(done.length)h+=`<div class="grp"><h2>Выполнено <span class="n">${done.length}</span></h2>${done.map(t=>itemHtml(t)).join('')}</div>`;
+  return h;
+}
+function viewMine(){
+  const u=me(),td=today();
+  const parentAlive=t=>!t.parent||(T(t.parent)&&alive(T(t.parent)));
+  const mine=D.tasks.filter(t=>t.owner===u&&isLeaf(t)&&alive(t)&&parentAlive(t)&&matches(t));
+  const g={over:[],week:[],soon:[],rev:[],review:[]};
+  mine.forEach(t=>{const s=statusOf(t);if(s==='done')return;if(s==='review'){g.review.push(t);return}if(bad(s))g.over.push(t);else if(diff(td,t.due)<=7&&t.start<=add(td,7))g.week.push(t);else g.soon.push(t)});
+  g.rev=D.tasks.filter(t=>(t.controller===u||((USERS[u]||{}).role==='mod'))&&statusOf(t)==='review');
+  const sec=(title,arr,color)=>arr.length?`<div class="grp"><h2${color?` style="color:${color}"`:''}>${title} <span class="n">${arr.length}</span></h2>${arr.sort(sortKey).map(t=>itemHtml(t)).join('')}</div>`:'';
+  let h=`<div class="vh"><h1>Мои задачи</h1><span class="sub">${esc(uname(u))} · ответственный или контролёр</span></div>${mobileChips()}${filterBar()}`;
+  const body=sec('Просрочено и блокеры',g.over,'var(--st-overdue)')+sec('На этой неделе',g.week)+sec('Скоро',g.soon)+sec('Сдано мной, ждёт проверки',g.review)+sec('Ждут моей проверки',g.rev,'var(--st-review)');
+  if(!body){
+    const ctl=D.tasks.filter(t=>!t.parent&&t.controller===u&&alive(t)).sort(sortKey);
+    return h+(ctl.length?`<div class="grp"><h2>Поручения под моим контролем <span class="n">${ctl.length}</span></h2>${ctl.map(t=>itemHtml(t)).join('')}</div>`:'<div class="empty">Задач, где вы ответственный, нет.</div>');
+  }
+  return h+body;
+}
+function fmtText(s){
+  let x=esc(s);
+  x=x.replace(/@([\wА-Яа-яЁё_]+)/g,(m,hd)=>{const id=Object.keys(USERS).find(k=>(USERS[k].handle||'').toLowerCase()===hd.toLowerCase());return id?`<span class="mention${id===me()?' me':''}">@${esc(USERS[id].handle)}</span>`:m});
+  return x;
+}
+const SYS_C={check:'done',uncheck:'plan',created:'work',submit:'review',accept:'done',return:'risk',blocker:'overdue',unblock:'work',due_change:'risk',subtask_added:'work',bruno:'review',assign:'work',status:'plan'};
+function evHtml(a,withRef,unreadMark){
+  const t=T(a.task);
+  const ref=withRef&&t?`<div class="ref"><button type="button" class="lnk" data-open="${esc(t.id)}">${esc(t.id)}</button> <span style="color:var(--muted)">${esc(t.title)}</span></div>`:'';
+  if(a.type==='comment')return `<div class="ev${unreadMark?' unread':''}">${av(a.author,withRef?30:28)}<div><div class="who">${esc(uname(a.author))}<span class="when">${fts(a.ts)}</span></div><div class="tx">${fmtText(a.text)}</div>${ref}</div></div>`;
+  return `<div class="ev sys${unreadMark?' unread':''}"><span class="sysdot st-${SYS_C[a.type]||'plan'}"><i></i></span><div><div class="tx"><b style="color:var(--fg);font-weight:600">${esc(uname(a.author))}</b> ${fmtText(a.text)} <span class="when">${fts(a.ts)}</span></div>${ref}</div></div>`;
+}
+function viewFeed(){
+  const u=me(),lr=(USERS[u]||{}).lastRead||'';
+  let list=D.activity.slice().sort((a,b)=>a.ts<b.ts?1:a.ts>b.ts?-1:0);
+  const mentions=list.filter(a=>(a.mentions||[]).includes(u));
+  if(ui.feed==='mention')list=mentions;
+  else if(ui.feed==='mine')list=list.filter(a=>{const t=T(a.task);return t&&(t.owner===u||t.controller===u||(t.parent&&T(t.parent)&&T(t.parent).owner===u))});
+  else if(ui.feed==='comments')list=list.filter(a=>a.type==='comment');
+  const un=unread();
+  return `<div class="vh"><h1>Лента отдела</h1><span class="sub">${un?`непрочитанных: ${un}`:'всё прочитано'}</span><div class="sp">${un?'<button type="button" class="btn sm" data-act="readall">Отметить всё прочитанным</button>':''}</div></div>
+  <div class="seg2" style="align-self:flex-start;flex-wrap:wrap">${[['all','Все события'],['comments','Только комментарии'],['mention',`Упоминания меня (${mentions.length})`],['mine','Мои задачи']].map(([k,l])=>`<button type="button" data-feed="${k}" aria-pressed="${ui.feed===k}">${l}</button>`).join('')}</div>
+  <div class="feed">${list.length?list.map(a=>evHtml(a,true,a.ts>lr&&a.author!==u)).join(''):'<div class="empty">Событий нет.</div>'}</div>
+  ${DEMO?'':'<div class="note">Показаны последние 300 событий отдела. Полная история — в листе Activity таблицы.</div>'}`;
+}
+function viewSummary(){
+  const leaves=D.tasks.filter(t=>isLeaf(t)&&alive(t));
+  const st=leaves.map(t=>[t,statusOf(t)]);
+  const active=st.filter(([,s])=>s!=='done').length,risk=st.filter(([,s])=>s==='risk').length,over=st.filter(([,s])=>bad(s)).length,rev=st.filter(([,s])=>s==='review').length;
+  const p1=D.tasks.filter(t=>t.prio==='P1'&&alive(t)).filter(t=>{const s=statusOf(t);return s==='risk'||bad(s)}).sort(sortKey);
+  const hot=st.filter(([,s])=>bad(s)||s==='risk').map(([t])=>t).sort((a,b)=>{const r=RANK[statusOf(b)]-RANK[statusOf(a)];return r||sortKey(a,b)}).slice(0,5);
+  const byOwner=Object.keys(USERS).map(u=>{const mine=st.filter(([t])=>t.owner===u);return {u,a:mine.filter(([,s])=>s!=='done').length,r:mine.filter(([,s])=>s==='risk').length,o:mine.filter(([,s])=>bad(s)).length,v:mine.filter(([,s])=>s==='review').length,d:mine.filter(([,s])=>s==='done').length,x:mine.reduce((n,[t])=>n+(+t.resched||0),0)}}).filter(r=>r.a+r.d>0);
+  const z=n=>n?n:`<span class="z">0</span>`;
+  const tops=D.tasks.filter(t=>!t.parent&&alive(t)).sort(sortKey);
+  return `<div class="vh"><h1>Сводка руководителя</h1><span class="sub">на ${fdy(today())} · задачи нижнего уровня</span><div class="sp noprint"><button type="button" class="btn sm" data-act="print">Печать / PDF</button></div></div>
+  <div class="tiles">
+    <div class="tile"><span class="v">${active}</span><span class="k">активных задач</span></div>
+    <div class="tile st-risk" style="--sc:var(--st-risk)"><span class="v">${risk}</span><span class="k">в зоне риска</span></div>
+    <div class="tile" style="--sc:var(--st-overdue)"><span class="v">${over}</span><span class="k">просрочено и блокеры</span></div>
+    <div class="tile" style="--sc:var(--st-review)"><span class="v">${rev}</span><span class="k">ждут проверки</span></div>
+  </div>
+  <div class="box alert"><h2>P1 под угрозой · ${p1.length}</h2>${p1.length?`<div class="mini">${p1.map(t=>`<button type="button" data-open="${esc(t.id)}"><span class="mono" style="font-size:12px;color:var(--muted)">${esc(t.id)}</span><span class="ti">${esc(t.title)}</span>${pill(statusOf(t))}</button>`).join('')}</div>`:'<div class="note">Критичные поручения идут по плану.</div>'}</div>
+  <div class="two">
+    <div class="box"><h2>По ответственным</h2><div class="tw"><table class="t"><thead><tr><th>Ответственный</th><th class="n">Активно</th><th class="n">Риск</th><th class="n">Просрочено</th><th class="n">На проверке</th><th class="n">Переносы</th></tr></thead><tbody>
+      ${byOwner.map(r=>`<tr><td>${esc(uname(r.u))}</td><td class="n">${z(r.a)}</td><td class="n">${z(r.r)}</td><td class="n">${r.o?`<span class="bad">${r.o}</span>`:z(0)}</td><td class="n">${z(r.v)}</td><td class="n">${z(r.x)}</td></tr>`).join('')}
+    </tbody></table></div></div>
+    <div class="box"><h2>Топ-5 горящих</h2>${hot.length?`<div class="mini">${hot.map(t=>`<button type="button" data-open="${esc(t.id)}"><span class="mono" style="font-size:12px;color:var(--muted)">${esc(t.id)}</span><span class="ti">${esc(t.title)} <span class="note">· до ${fd(t.due)}</span></span>${pill(statusOf(t))}</button>`).join('')}</div>`:'<div class="note">Горящих задач нет.</div>'}</div>
+  </div>
+  <div class="box"><h2>Поручения: прогресс</h2><div class="tw"><table class="t"><thead><tr><th>Код</th><th>Поручение</th><th>Ответственный</th><th>Срок</th><th class="n">Прогресс</th><th>Статус</th></tr></thead><tbody>
+    ${tops.map(t=>{const p=Math.round(progress(t)*100),s=statusOf(t);return `<tr><td class="mono" style="white-space:nowrap">${prB(t.prio)} ${esc(t.id)}</td><td><button type="button" class="lnk" data-open="${esc(t.id)}">${esc(t.title)}</button></td><td>${esc(uname(t.owner))}</td><td>${fd(t.due)}</td><td class="n st-${s}"><span class="prog"><i style="width:${p}%"></i></span> ${p}%</td><td>${pill(s)}</td></tr>`}).join('')}
+  </tbody></table></div></div>
+  <div class="note">Еженедельное письмо руководителю по понедельникам — в следующей версии.</div>`;
+}
+
+/* ---------- card ---------- */
+function openCard(id){ui.card=id;renderCard()}
+function closeCard(){ui.card=null;document.getElementById('cardRoot').innerHTML=''}
+function renderCard(){
+  const root=document.getElementById('cardRoot');const t=T(ui.card);if(!t){root.innerHTML='';return}
+  const prevCmt=document.getElementById('cmt'),draft=prevCmt?prevCmt.value:'',prevCl=document.getElementById('newCl'),draftCl=prevCl?prevCl.value:'';
+  const s=statusOf(t),p=Math.round(progress(t)*100),par=t.parent?T(t.parent):null,ch=kids(t.id);
+  const fold=D.folders.find(f=>f.code===t.folder);
+  const canC=R.check(t);
+  const dep=t.dep?T(t.dep):null;
+  const acts=[];
+  if(R.submit(t))acts.push('<button type="button" class="btn pri" data-act="submit">Сдать на проверку</button>');
+  if(R.accept(t))acts.push('<button type="button" class="btn ok" data-act="accept">Принять</button>','<button type="button" class="btn" data-act="return">Вернуть</button>');
+  if(R.block(t))acts.push(t.flag==='blocker'?'<button type="button" class="btn" data-act="unblock">Снять блокер</button>':'<button type="button" class="btn warn" data-act="block">Блокер</button>');
+  if(R.resched(t))acts.push('<button type="button" class="btn" data-act="resched">Перенести срок</button>');
+  if(R.sub(t))acts.push('<button type="button" class="btn" data-act="addsub">+ Подзадача</button>');
+  if(R.bruno(t))acts.push(`<button type="button" class="btn" data-act="bruno">${t.brunoRef?'Bruno: изменить':'Передать в Bruno'}</button>`);
+  if(R.update(t))acts.push('<button type="button" class="btn" data-act="edit">Изменить</button>');
+  if(R.cancel(t))acts.push('<button type="button" class="btn warn" data-act="cancel">Отменить</button>');
+  const feed=D.activity.filter(a=>a.task===t.id).sort((a,b)=>a.ts<b.ts?-1:a.ts>b.ts?1:0);
+  const others=activeUsers().filter(([k])=>k!==me()).slice(0,2).map(([,u])=>'@'+esc(u.handle)).join(', ');
+  root.innerHTML=`<div class="scrim" data-act="close"></div>
+  <section class="card" role="dialog" aria-label="Карточка ${esc(t.id)}">
+    <div class="card-h">
+      <div class="r1"><span class="code">${esc(t.id)}</span>${prB(t.prio)}${pill(s)}${brunoBadge(t)}${t.resched>=2?`<span class="resch">переносилось ×${t.resched}</span>`:''}<button type="button" class="x" data-act="close" aria-label="Закрыть">×</button></div>
+      ${par?`<div style="font-size:12px;color:var(--muted)">Поручение: <button type="button" class="lnk" data-open="${esc(par.id)}">${esc(par.id)} ${esc(par.title)}</button></div>`:''}
+      <h2>${esc(t.title)}</h2>
+      <div class="bigprog st-${s}"><span class="prog"><i style="width:${p}%"></i></span><b class="num">${p}%</b><span style="color:var(--muted)">${ch.length?'по подзадачам':'чек-листа'}</span></div>
+    </div>
+    <div class="card-b">
+      ${t.flag==='blocker'?`<div class="flagbox"><b>Блокер:</b> ${esc(t.flagNote)}</div>`:''}
+      ${t.flag==='cancelled'?`<div class="flagbox"><b>Отменено:</b> ${esc(t.flagNote)}</div>`:''}
+      ${dep?`<div class="flagbox" style="border-color:var(--line);background:var(--surface-2)">Зависит от <button type="button" class="lnk" data-open="${esc(dep.id)}">${esc(dep.id)}</button> «${esc(dep.title)}» — сейчас ${pill(statusOf(dep))}</div>`:''}
+      ${acts.length?`<div class="acts">${acts.join('')}</div>`:`<div class="note">Вы — ${esc(uname(me()))}: в этой задаче доступны просмотр и комментарии.</div>`}
+      <div class="sec"><h3>Поля</h3><dl class="fields">
+        <div><dt>Папка</dt><dd>${esc(t.folder)} · ${esc(fold?fold.name:'')}</dd></div>
+        <div><dt>Код</dt><dd class="mono">${esc(t.id)}</dd></div>
+        <div><dt>Приоритет</dt><dd>${t.prio} ${t.prio==='P1'?'Критичный':t.prio==='P2'?'Высокий':'Обычный'} · риск за ${RISK[t.prio]} дн.</dd></div>
+        <div><dt>Объект</dt><dd>${esc(t.objects.map(objName).join(', ')||'—')}</dd></div>
+        <div><dt>Зона</dt><dd>${esc(t.zone||'—')}</dd></div>
+        <div><dt>Вид работ</dt><dd>${esc(t.workType?wtName(t.workType):'—')}${t.workType?fbNote():''}</dd></div>
+        <div><dt>Ответственный</dt><dd>${esc(uname(t.owner))}</dd></div>
+        <div><dt>Контролёр</dt><dd>${esc(uname(t.controller))}</dd></div>
+        <div><dt>Старт</dt><dd class="num">${fdy(t.start)}</dd></div>
+        <div><dt>Дедлайн</dt><dd class="num">${fdy(t.due)} · ${(()=>{const l=diff(today(),t.due);return l<0?`<span style="color:var(--st-overdue);font-weight:600">просрочка ${-l} дн.</span>`:`осталось ${l} дн.`})()}</dd></div>
+        <div><dt>Теги</dt><dd>${t.tags.length?t.tags.map(g=>`<button type="button" class="tag" data-tag="${esc(g)}" data-close="1">#${esc(g)}</button>`).join(' '):'—'}</dd></div>
+        <div><dt>Переносов срока</dt><dd>${t.resched}</dd></div>
+      </dl>${t.desc?`<p style="margin:10px 0 0;font-size:13.5px;max-width:65ch;white-space:pre-line">${esc(t.desc)}</p>`:''}</div>
+      ${ch.length||R.sub(t)?`<div class="sec"><h3>Подзадачи · ${ch.length}</h3><div class="subs">${ch.slice().sort((a,b)=>a.id.localeCompare(b.id,'ru',{numeric:true})).map(c=>{const cs=statusOf(c);return `<button type="button" data-open="${esc(c.id)}"><span class="cd">${esc(c.id.slice(c.id.lastIndexOf('.')))}</span><span class="ti">${esc(c.title)}</span><span class="num" style="font-size:12px;color:var(--muted)">${fd(c.start)}–${fd(c.due)} · ${Math.round(progress(c)*100)}%</span>${pill(cs)}</button>`}).join('')||'<div class="note">Подзадач пока нет.</div>'}</div></div>`:''}
+      ${!ch.length||t.checklist.length?`<div class="sec"><h3>Чек-лист · ${t.checklist.filter(c=>c.done).length} из ${t.checklist.length}</h3><div class="cl">
+        ${t.checklist.map(c=>`<label class="cli${c.done?' done':''}"><input type="checkbox" data-chk="${esc(c.id)}" ${c.done?'checked':''} ${canC?'':'disabled'}><span><span class="tx">${esc(c.text)}</span>${c.done?`<span class="sig">✓ ${esc(uname(c.by))} · ${fts(c.at)}</span>`:''}</span></label>`).join('')||'<div class="note">Пунктов нет.</div>'}
+      </div>${canC?`<div class="addrow"><input class="inp" id="newCl" placeholder="Новый пункт чек-листа" aria-label="Новый пункт" value="${esc(draftCl)}"><button type="button" class="btn sm" data-act="addcl">Добавить</button></div>`:''}</div>`:''}
+      <div class="sec"><h3>Обсуждение и события · ${feed.length}</h3><div class="cfeed">${feed.map(a=>evHtml(a,false,false)).join('')||'<div class="note">Пока пусто.</div>'}</div>
+        <div class="composer"><textarea class="inp" id="cmt" placeholder="Комментарий. @ — упомянуть коллегу">${esc(draft)}</textarea><div class="ac" id="cmtAc" hidden></div>
+        <div class="rowc"><span class="note">${others?others+' … ':''}упомянутый увидит это в ленте${DEMO?'':' и получит письмо, если указан email'}</span><button type="button" class="btn pri sm" data-act="comment">Отправить</button></div></div>
+      </div>
+    </div>
+  </section>`;
+  attachAC(document.getElementById('cmt'),document.getElementById('cmtAc'),'@',q=>activeUsers().map(([,u])=>u.handle).filter(h=>h&&norm(h).startsWith(norm(q))).map(h=>({v:h,l:'@'+h})));
+}
+
+/* ---------- autocomplete (@ and #) ---------- */
+function attachAC(inp,box,ch,src){
+  if(!inp||!box)return;
+  let items=[],sel=0;
+  const tokenRe=new RegExp('\\'+ch+'([\\wА-Яа-яЁё_\\-]*)$');
+  const hide=()=>{box.hidden=true;items=[]};
+  const show=()=>{
+    const pos=inp.selectionStart,before=inp.value.slice(0,pos),m=before.match(tokenRe);
+    if(!m){hide();return}
+    items=src(m[1]).slice(0,8);if(!items.length){hide();return}
+    sel=0;box.innerHTML=items.map((it,i)=>`<button type="button" data-i="${i}" class="${i===0?'on':''}">${esc(it.l)}</button>`).join('');box.hidden=false;
+  };
+  const pick=i=>{const pos=inp.selectionStart,before=inp.value.slice(0,pos),after=inp.value.slice(pos);const nb=before.replace(tokenRe,ch+items[i].v+' ');inp.value=nb+after;inp.focus();inp.setSelectionRange(nb.length,nb.length);hide();inp.dispatchEvent(new Event('input'))};
+  inp.addEventListener('input',show);
+  inp.addEventListener('keydown',e=>{if(box.hidden)return;if(e.key==='ArrowDown'||e.key==='ArrowUp'){e.preventDefault();sel=(sel+(e.key==='ArrowDown'?1:-1)+items.length)%items.length;[...box.children].forEach((b,i)=>b.classList.toggle('on',i===sel))}else if(e.key==='Enter'||e.key==='Tab'){e.preventDefault();pick(sel)}else if(e.key==='Escape')hide()});
+  box.addEventListener('mousedown',e=>{const b=e.target.closest('button');if(b){e.preventDefault();pick(+b.dataset.i)}});
+  inp.addEventListener('blur',()=>setTimeout(hide,150));
+}
+
+/* ---------- modal ---------- */
+function modal(title,body,actions,onMount){
+  const r=document.getElementById('modalRoot');
+  r.innerHTML=`<div class="mod-w"><div class="mod" role="dialog" aria-modal="true" aria-label="${esc(title)}"><h2>${esc(title)}</h2><div class="mb">${body}<div class="err" id="mErr"></div></div><div class="mf">${actions.map((a,i)=>`<button type="button" class="btn ${a.cls||''}" data-mi="${i}">${esc(a.l)}</button>`).join('')}<button type="button" class="btn" data-mi="x">Отмена</button></div></div></div>`;
+  r.querySelector('.mf').addEventListener('click',e=>{const b=e.target.closest('[data-mi]');if(!b)return;if(b.dataset.mi==='x'){r.innerHTML='';return}const res=actions[+b.dataset.mi].fn();if(typeof res==='string'){document.getElementById('mErr').textContent=res;return}if(res!==false)r.innerHTML=''});
+  r.querySelector('.mod-w').addEventListener('mousedown',e=>{if(e.target.classList.contains('mod-w'))r.innerHTML=''});
+  if(onMount)onMount(r);
+  const f=r.querySelector('input:not([readonly]),textarea,select');if(f)f.focus();
+}
+const val=id=>{const e=document.getElementById(id);return e?e.value.trim():''};
+function toast(m,action,isBad){
+  const t=document.getElementById('toast');
+  t.innerHTML=`<span>${esc(m)}</span>${action?`<button type="button">${esc(action.label)}</button>`:''}`;
+  t.classList.toggle('bad',!!isBad);t.hidden=false;
+  if(action)t.querySelector('button').onclick=()=>{t.hidden=true;action.fn()};
+  clearTimeout(toast._t);toast._t=setTimeout(()=>t.hidden=true,action||isBad?7000:2600);
+}
+
+/* ---------- tags & codes ---------- */
+const extractTags=text=>PlannerCore.extractTags(text,allTags());
+const nextCode=folder=>PlannerCore.nextCode(D,folder,today().slice(2,4)).id;
+const nextSub=pid=>PlannerCore.nextSub(D,pid);
+
+function objOptions(cur){
+  const opt=(v,l)=>`<option value="${esc(v)}" ${v===cur?'selected':''}>${esc(l)}</option>`;
+  return DIR.objects.map(o=>opt(o.id,o.name)).join('')+opt('ALL','Все объекты');
+}
+function defaultObject(){const b=DIR.objects.find(o=>o.name==='Башня ВТБ');return b?b.id:(DIR.objects[0]?DIR.objects[0].id:'ALL')}
+function taskForm(parent){
+  const opt=(v,l,c)=>`<option value="${esc(v)}" ${v===c?'selected':''}>${esc(l)}</option>`;
+  const st=parent?(parent.start>today()?parent.start:today()):today();
+  const du=parent?parent.due:add(today(),14);
+  const f0=ui.folder||(FOLDERS()[0]||[''])[0];
+  const people=activeUsers();
+  return `${parent?`<div>Код подзадачи: <span class="codeprev" id="codePrev">${esc(nextSub(parent.id))}</span> <span class="note">присваивается автоматически</span></div>`:
+   `<div class="g2"><div class="fl"><label for="fFolder">Папка</label><select class="sel" id="fFolder">${FOLDERS().map(([c,n])=>opt(c,c+' · '+n,f0)).join('')}</select></div>
+    <div class="fl"><label>Код</label><div style="padding-top:6px"><span class="codeprev" id="codePrev">${esc(nextCode(f0))}</span> <span class="note">автоматически</span></div></div></div>`}
+  <div class="fl"><label for="fTitle">Название <span class="note">— #теги пишите прямо здесь</span></label><input class="inp" id="fTitle" placeholder="${parent?'Например: Сверка актов за ноябрь':'Например: Замена диванов в переговорных #VIP'}" autocomplete="off"><div class="ac" id="fTitleAc" hidden></div><div class="tagrow" id="tagPrev"></div></div>
+  <div class="g2">
+    ${parent?'':`<div class="fl"><label for="fPr">Приоритет</label><select class="sel" id="fPr">${opt('P1','P1 Критичный — риск за 5 дн.','P2')}${opt('P2','P2 Высокий — риск за 3 дн.','P2')}${opt('P3','P3 Обычный — риск за 2 дн.','P2')}</select></div>
+    <div class="fl"><label for="fOb">Объект</label><select class="sel" id="fOb">${objOptions(defaultObject())}</select></div>`}
+    <div class="fl"><label for="fOw">Ответственный</label><select class="sel" id="fOw">${people.map(([k,u])=>opt(k,u.name,parent?parent.owner:me())).join('')}</select></div>
+    <div class="fl"><label for="fCt">Контролёр</label><select class="sel" id="fCt">${people.map(([k,u])=>opt(k,u.name,(people.find(([,x])=>x.role==='head')||[me()])[0])).join('')}</select></div>
+    ${parent?'':`<div class="fl"><label for="fWt">Вид работ (каталог Bruno)${fbNote()}</label><select class="sel" id="fWt">${DIR.workTypes.map(([k,l])=>opt(k,l,'')).join('')}</select></div><div></div>`}
+    <div class="fl"><label for="fSt">Старт</label><input class="inp" type="date" id="fSt" value="${st}"></div>
+    <div class="fl"><label for="fDu">Дедлайн</label><input class="inp" type="date" id="fDu" value="${du}"></div>
+  </div>
+  <div class="fl"><label for="fCl">Чек-лист — по пункту в строке</label><textarea class="inp" id="fCl" placeholder="Получить КП&#10;Согласовать с руководителем"></textarea></div>`;
+}
+function mountTaskForm(){
+  const ti=document.getElementById('fTitle'),prev=document.getElementById('tagPrev');
+  const upd=()=>{const {tags}=extractTags(ti.value);prev.innerHTML=tags.map(g=>`<span class="tag">#${esc(g)}</span>`).join('')+(tags.length?'<span class="note">теги будут вынесены в поле «Теги»</span>':'')};
+  ti.addEventListener('input',upd);
+  attachAC(ti,document.getElementById('fTitleAc'),'#',q=>allTags().filter(g=>norm(g).startsWith(norm(q))).map(g=>({v:g,l:'#'+g})));
+  const ff=document.getElementById('fFolder');if(ff)ff.addEventListener('change',()=>document.getElementById('codePrev').textContent=nextCode(ff.value));
+}
+function createTask(parent){
+  modal(parent?'Новая подзадача':'Новое поручение',taskForm(parent),[{l:parent?'Создать подзадачу':'Создать поручение',cls:'pri',fn:()=>{
+    const cl=val('fCl').split('\n').map(x=>x.trim()).filter(Boolean);
+    const common={title:val('fTitle'),owner:val('fOw'),controller:val('fCt'),start:val('fSt'),due:val('fDu'),checklist:cl};
+    const r=parent?exec('addSubtask',Object.assign({parent:parent.id},common),x=>`Создано: ${x.result.id}`)
+      :exec('createTask',Object.assign({folder:val('fFolder'),prio:val('fPr'),objects:[val('fOb')],workType:val('fWt')},common),x=>`Создано: ${x.result.id}`);
+    if(typeof r==='string')return r;
+    if(parent){ui.expanded[parent.id]=true;saveUi()}
+    ui.card=r.id;renderAll();
+  }}],mountTaskForm);
+}
+// Правка полей — для руководителя и модератора. Дедлайн меняется только «Перенести срок».
+function editTask(t){
+  const opt=(v,l,c)=>`<option value="${esc(v)}" ${v===c?'selected':''}>${esc(l)}</option>`;
+  const people=activeUsers();
+  const multi=t.objects.length>1;
+  modal('Изменить '+t.id,`
+    ${t.parent?'':`<div class="g2"><div class="fl"><label for="eFolder">Папка <span class="note">— код не меняется</span></label><select class="sel" id="eFolder">${FOLDERS().map(([c,n])=>opt(c,c+' · '+n,t.folder)).join('')}</select></div>
+    <div class="fl"><label for="ePr">Приоритет</label><select class="sel" id="ePr">${['P1','P2','P3'].map(p=>opt(p,p+' · риск за '+RISK[p]+' дн.',t.prio)).join('')}</select></div></div>`}
+    <div class="fl"><label for="eTitle">Название <span class="note">— новые #теги добавятся к имеющимся</span></label><input class="inp" id="eTitle" value="${esc(t.title)}" autocomplete="off"><div class="ac" id="eTitleAc" hidden></div></div>
+    <div class="fl"><label for="eDesc">Описание</label><textarea class="inp" id="eDesc">${esc(t.desc)}</textarea></div>
+    <div class="g2">
+      ${t.parent?'':`<div class="fl"><label for="eOb">Объект</label><select class="sel" id="eOb">${multi?opt('__keep','Без изменений: '+t.objects.map(objName).join(', '),'__keep'):''}${objOptions(multi?'':t.objects[0])}</select></div>
+      <div class="fl"><label for="eWt">Вид работ${fbNote()}</label><select class="sel" id="eWt">${opt('','—',t.workType)}${DIR.workTypes.map(([k,l])=>opt(k,l,t.workType)).join('')}</select></div>`}
+      <div class="fl"><label for="eOw">Ответственный</label><select class="sel" id="eOw">${people.map(([k,u])=>opt(k,u.name,t.owner)).join('')}</select></div>
+      <div class="fl"><label for="eCt">Контролёр</label><select class="sel" id="eCt">${people.map(([k,u])=>opt(k,u.name,t.controller)).join('')}</select></div>
+      <div class="fl"><label for="eZone">Зона <span class="note">— текстом, необязательно</span></label><input class="inp" id="eZone" value="${esc(t.zone)}"></div>
+      <div class="fl"><label for="eSt">Старт</label><input class="inp" type="date" id="eSt" value="${t.start}" max="${t.due}"></div>
+    </div>
+    <div class="note">Дедлайн ${fdy(t.due)} меняется только кнопкой «Перенести срок» — с причиной.</div>`,
+  [{l:'Сохранить',cls:'pri',fn:()=>{
+    const fields={title:val('eTitle'),desc:val('eDesc'),owner:val('eOw'),controller:val('eCt'),zone:val('eZone'),start:val('eSt')};
+    if(!t.parent){fields.folder=val('eFolder');fields.prio=val('ePr');fields.workType=val('eWt');if(val('eOb')!=='__keep')fields.objects=[val('eOb')]}
+    return exec('updateTask',{id:t.id,fields},'Сохранено');
+  }}],()=>attachAC(document.getElementById('eTitle'),document.getElementById('eTitleAc'),'#',q=>allTags().filter(g=>norm(g).startsWith(norm(q))).map(g=>({v:g,l:'#'+g}))));
+}
+
+/* ---------- Bruno transfer (v1.1 §C) ---------- */
+function brunoPayload(t,zoneId,teamId){
+  const objs=t.objects.includes('ALL')?[null]:t.objects;
+  const u=USERS[t.owner]||{};
+  return objs.map(o=>({
+    taskName:`[${t.id}] ${t.title}`,description:t.desc||'',objectID:o||null,zoneID:zoneId||null,
+    employees:u.bruno?[u.bruno]:[],team:teamId||null,workTypeID:(!DIR.wtFallback&&t.workType)||null,tags:t.tags,
+    date:t.start,activationDate:t.start,completionDeadlineDate:t.due,
+    actions:t.checklist.map((c,i)=>({order:i+1,name:c.text})),photoRequired:!!t.photo,
+    consumables:[],inventory:[],documents:[],chronoMode:null,surveys:[]
+  }));
+}
+function brunoModal(t){
+  const u=USERS[t.owner]||{};
+  const one=t.objects.length===1&&t.objects[0]!=='ALL'?t.objects[0]:null;
+  const zones=one?DIR.zones.filter(z=>z.objectID===one).sort((a,b)=>a.name.localeCompare(b.name,'ru')):[];
+  const opt=(v,l,c)=>`<option value="${esc(v)}" ${v===c?'selected':''}>${esc(l)}</option>`;
+  const emp=u.bruno?(DIR.emps[u.bruno]?`${u.bruno} · ${DIR.emps[u.bruno]}`:`${u.bruno} · нет в справочнике Bruno`):'не указан bruno_employee_id в листе Users';
+  const json=()=>{const p=brunoPayload(t,val('bZone'),val('bTeam'));return JSON.stringify(p.length===1?p[0]:p,null,2)};
+  const rows=[['Название',`[${t.id}] ${t.title}`],['Описание',t.desc||'—'],['Объект',t.objects.map(objName).join(', ')+(t.objects.includes('ALL')?' — выбрать объект при заведении':'')],['Исполнитель',`${uname(t.owner)} (${emp})`],['Вид работ',(t.workType?wtName(t.workType):'—')+(DIR.wtFallback?' — каталог Bruno в выгрузке пуст, выбрать в Bruno вручную':'')],['Дата начала',fdy(t.start)],['Срок выполнения',fdy(t.due)],['Чек-лист (действия)',t.checklist.map((c,i)=>`${i+1}. ${c.text}`).join('\n')||'—'],['Фото обязательно',t.photo?'да':'нет'],['Не ведём','расходники, инвентарь, документы, хронометраж, проверки — пусто']];
+  modal('Передать в Bruno',`
+    <div class="note">Поля ядра в порядке формы Bruno. Модератор заводит задачу в Bruno и вставляет её ID ниже.${DIR.ok?'':' Справочник Bruno не загрузился — объекты показаны идентификаторами.'}</div>
+    <div class="bf">${rows.map(([k,v])=>`<div>${esc(k)}</div><div style="white-space:pre-line">${esc(v)}</div>`).join('')}</div>
+    <div class="g2"><div class="fl"><label for="bZone">Зона Bruno</label><select class="sel" id="bZone">${opt('',one?'служебная зона объекта':'— выбирается при заведении —',t.zoneId)}${zones.map(z=>opt(z.id,z.name,t.zoneId)).join('')}</select></div>
+    <div class="fl"><label for="bTeam">Команда Bruno <span class="note">— вместо сотрудника</span></label><select class="sel" id="bTeam">${opt('','—',t.teamId)}${DIR.teams.map(x=>opt(x.id,x.name,t.teamId)).join('')}</select></div></div>
+    <div class="fl"><label>JSON для API (POST taskPlan)${t.objects.length>1?' — по задаче на каждый объект':''}</label><pre class="json" id="bJson"></pre><div><button type="button" class="btn sm" id="bCopy">Скопировать JSON</button></div></div>
+    <div class="g2"><div class="fl"><label for="bId">ID задачи в Bruno</label><input class="inp mono" id="bId" value="${esc(t.brunoRef)}" placeholder="например 48213977"></div>
+    <div class="fl"><label for="bSt">Статус в Bruno ${DEMO?'(для демо)':'(вручную, до синхронизации по API)'}</label><select class="sel" id="bSt">${Object.keys(BRUNO_ST).map(k=>`<option ${k===(t.brunoStatus||'NEW')?'selected':''}>${k}</option>`).join('')}</select></div></div>`,
+  [{l:'Сохранить связь',cls:'pri',fn:()=>exec('setBrunoRef',{id:t.id,ref:val('bId'),status:val('bSt'),zoneId:val('bZone'),teamId:val('bTeam')},'Связь с Bruno сохранена')}],
+  ()=>{
+    const upd=()=>document.getElementById('bJson').textContent=json();upd();
+    ['bZone','bTeam'].forEach(id=>document.getElementById(id).addEventListener('change',upd));
+    document.getElementById('bCopy').addEventListener('click',()=>{const txt=document.getElementById('bJson').textContent;const sel=()=>{const r=document.createRange();r.selectNodeContents(document.getElementById('bJson'));const s=getSelection();s.removeAllRanges();s.addRange(r);toast('Текст выделен — нажмите Ctrl+C')};try{navigator.clipboard.writeText(txt).then(()=>toast('JSON скопирован'),sel)}catch(e){sel()}});
+  });
+}
+
+/* ---------- actions ---------- */
+function act(a){
+  const t=ui.card?T(ui.card):null;
+  switch(a){
+    case 'close':closeCard();return;
+    case 'login':if(DEMO)showLogin();else showMe();return;
+    case 'new':createTask(null);return;
+    case 'addsub':createTask(t);return;
+    case 'edit':editTask(t);return;
+    case 'print':window.print();return;
+    case 'refresh':refresh();return;
+    case 'clearf':Object.assign(ui,{tags:[],status:'',prio:'',owner:'',object:'',q:''});renderAll();return;
+    case 'readall':exec('markRead',{});return;
+    case 'reset':modal('Сбросить демо?','<p style="margin:0">Все изменения в этом браузере удалятся, вернутся исходные демо-данные.</p>',[{l:'Сбросить',cls:'warn',fn:()=>{
+      if(pending.length)return 'Дождитесь сохранения изменений.';
+      try{localStorage.removeItem(LS_MOCK)}catch(e){}
+      ui.card=null;ui.scrolled=false;Object.assign(ui,{folder:null,tags:[],status:'',prio:'',owner:'',object:'',q:''});document.getElementById('cardRoot').innerHTML='';
+      refresh(true).then(()=>toast('Демо сброшено'));
+    }}]);return;
+    case 'bruno':brunoModal(t);return;
+    case 'addcl':{const v=val('newCl');if(!v)return;const el=document.getElementById('newCl');if(el)el.value='';const r=exec('addCheckItem',{id:t.id,text:v});if(typeof r==='string')toast(r,null,true);return}
+    case 'comment':{const v=val('cmt');if(!v)return;document.getElementById('cmt').value='';const r=exec('addComment',{id:t.id,text:v},x=>x.result.mentions.length?`Упомянуто: ${x.result.mentions.map(m=>USERS[m].handle).join(', ')}`:'Комментарий добавлен');if(typeof r==='string'){document.getElementById('cmt').value=v;toast(r,null,true)}return}
+    case 'submit':{const n=t.checklist.length,d=t.checklist.filter(c=>c.done).length;const go=()=>exec('submit',{id:t.id},'Сдано на проверку');
+      if(isLeaf(t)&&n&&d<n)modal('Сдать на проверку?',`<p style="margin:0">Отмечено ${d} из ${n} пунктов чек-листа. Контролёр увидит незакрытые пункты.</p>`,[{l:'Сдать всё равно',cls:'pri',fn:go}]);else{const r=go();if(typeof r==='string')toast(r,null,true)}return}
+    case 'accept':{const r=exec('accept',{id:t.id},'Принято');if(typeof r==='string')toast(r,null,true);return}
+    case 'return':modal('Вернуть в работу','<div class="fl"><label for="mTx">Что доработать (обязательно)</label><textarea class="inp" id="mTx"></textarea></div>',[{l:'Вернуть',cls:'pri',fn:()=>exec('return',{id:t.id,comment:val('mTx')},'Возвращено в работу')}]);return;
+    case 'block':modal('Поставить блокер','<div class="fl"><label for="mTx">Что мешает (обязательно)</label><textarea class="inp" id="mTx" placeholder="Например: нет списков персонала по этажам 57–60"></textarea></div>',[{l:'Поставить блокер',cls:'warn',fn:()=>exec('setBlocker',{id:t.id,comment:val('mTx')},'Блокер поставлен')}]);return;
+    case 'unblock':modal('Снять блокер',`<p style="margin:0">Блокер: «${esc(t.flagNote)}»</p><div class="fl"><label for="mTx">Как решилось (обязательно)</label><textarea class="inp" id="mTx"></textarea></div>`,[{l:'Снять',cls:'pri',fn:()=>exec('clearBlocker',{id:t.id,comment:val('mTx')},'Блокер снят')}]);return;
+    case 'resched':modal('Перенести срок',`<div class="g2"><div class="fl"><label>Сейчас</label><div style="padding-top:6px" class="num">${fdy(t.due)} · переносов: ${t.resched}</div></div><div class="fl"><label for="mDt">Новый дедлайн</label><input class="inp" type="date" id="mDt" value="${t.due}" min="${t.start}"></div></div><div class="fl"><label for="mTx">Причина (обязательно)</label><textarea class="inp" id="mTx"></textarea></div>`,[{l:'Перенести',cls:'pri',fn:()=>exec('reschedule',{id:t.id,due:val('mDt'),reason:val('mTx')},'Срок перенесён')}]);return;
+    case 'cancel':modal('Отменить '+t.id,`<p style="margin:0">Задача уйдёт в архив${kids(t.id).length?' вместе с незакрытыми подзадачами':''}. Запись об отмене останется в ленте.</p><div class="fl"><label for="mTx">Причина (обязательно)</label><textarea class="inp" id="mTx"></textarea></div>`,[{l:'Отменить задачу',cls:'warn',fn:()=>{const r=exec('cancel',{id:t.id,reason:val('mTx')},'Задача отменена');if(typeof r!=='string')closeCard();return r}}]);return;
+  }
+}
+
+/* ---------- вход ---------- */
+// Демо: выбор «кто я», как в прототипе.
+function showLogin(){
+  const r=document.getElementById('loginRoot');
+  r.innerHTML=`<div class="login"><div class="login-in"><div><div class="mono" style="color:var(--accent);font-size:12px;letter-spacing:.08em">BRUNO · ПЛАНИРОВЩИК · ДЕМО</div><h1>Поручения отдела</h1></div>
+    <p>Выберите, от чьего имени смотреть демо. Права в интерфейсе меняются по роли. В рабочей версии вход по персональной ссылке-ключу.</p>
+    <div class="who-list">${Object.entries(USERS).map(([k,u])=>`<button type="button" data-login="${esc(k)}">${av(k,36)}<span><b>Я — ${esc(u.name)}</b><span>${u.role==='head'?'Создаёт, назначает, принимает, переносит сроки':u.role==='mod'?'Всё + справочники и передача в Bruno':u.role==='observer'?'Просмотр и комментарии':'Свои задачи: чек-лист, подзадачи, сдача'}</span></span></button>`).join('')}</div>
+    <p class="note">Данные условные, без реальных ФИО. Изменения сохраняются только в вашем браузере.</p></div></div>`;
+}
+// Рабочая версия без ключа.
+function showNoKey(msg){
+  document.getElementById('loginRoot').innerHTML=`<div class="login"><div class="login-in"><div><div class="mono" style="color:var(--accent);font-size:12px;letter-spacing:.08em">BRUNO · ПЛАНИРОВЩИК</div><h1>Нужна персональная ссылка</h1></div>
+    <p>${esc(msg||'Вход в планировщик — по персональной ссылке с ключом доступа. Обратитесь к модератору.')}</p>
+    <p>Посмотреть, как всё устроено, можно в <a class="lnk" href="planner.html?demo=1">демо-версии</a> — на условных данных, без входа.</p>
+    <p class="note"><a class="lnk" href="dashboard_v2.html">← Вернуться к дашборду</a></p></div></div>`;
+}
+function showLoading(msg){document.getElementById('loginRoot').innerHTML=`<div class="login"><div class="login-in" style="align-items:center;text-align:center"><div class="spin"></div><p>${esc(msg)}</p></div></div>`}
+function showFatal(msg){document.getElementById('loginRoot').innerHTML=`<div class="login"><div class="login-in"><h1>Не удалось загрузить</h1><p>${msg}</p><p><button type="button" class="btn pri" onclick="location.reload()">Повторить</button></p></div></div>`}
+function showMe(){
+  const u=USERS[me()]||{};
+  modal('Вы вошли',`<p style="margin:0"><b>${esc(u.name)}</b> · ${esc(u.roleL||'')}${u.position&&u.position!==u.roleL?' · '+esc(u.position):''}</p>
+    <p class="note" style="margin:0">Ключ доступа хранится в этом браузере. На чужом устройстве нажмите «Выйти» — ссылку можно открыть снова.${u.hasEmail?' Письма о назначениях и упоминаниях приходят на почту из листа Users.':' Почта не указана — письма не приходят.'}</p>`,
+  [{l:'Выйти на этом устройстве',cls:'warn',fn:()=>{try{localStorage.removeItem(LS_KEY)}catch(e){}location.reload()}}]);
+}
+
+/* ---------- render ---------- */
+function renderAll(){
+  if(!D)return;
+  setCtx();
+  if(!ME||!USERS[ME]){if(DEMO)showLogin();return}
+  document.getElementById('loginRoot').innerHTML='';
+  renderHeader();renderSide();renderMain();if(ui.card)renderCard();
+}
+
+/* ---------- events (как в прототипе) ---------- */
+document.addEventListener('click',e=>{
+  const g=k=>e.target.closest('['+k+']');
+  let el;
+  if(el=g('data-login')){ui.user=ME=el.dataset.login;saveUi();ui.card=null;document.getElementById('cardRoot').innerHTML='';renderAll();toast('Вы вошли как: '+USERS[ME].name);return}
+  if(el=g('data-view')){ui.view=el.dataset.view;ui.scrolled=false;saveUi();renderAll();return}
+  if(el=g('data-off')){ui.offset=+el.dataset.off;ui.scrolled=false;saveUi();renderAll();toast(ui.offset?`Дата демо: ${fdy(today())}`:'Дата демо: сегодня');return}
+  if(el=g('data-scale')){ui.scale=el.dataset.scale;ui.scrolled=false;saveUi();renderMain();return}
+  if(el=g('data-folder')){const f=el.dataset.folder||null;ui.folder=ui.folder===f?null:f;renderSide();renderMain();return}
+  if(el=g('data-tag')){const tg=el.dataset.tag;ui.tags=ui.tags.includes(tg)?ui.tags.filter(x=>x!==tg):[...ui.tags,tg];if(el.dataset.close){closeCard();if(ui.view!=='timeline'&&ui.view!=='mine')ui.view='timeline'}renderAll();return}
+  if(el=g('data-exp')){const id=el.dataset.exp;ui.expanded[id]=!ui.expanded[id];saveUi();renderMain();return}
+  if(el=g('data-feed')){ui.feed=el.dataset.feed;renderMain();return}
+  if(el=g('data-open')){openCard(el.dataset.open);return}
+  if(el=g('data-act')){act(el.dataset.act);return}
+});
+document.addEventListener('change',e=>{
+  const t=e.target;
+  if(t.dataset&&t.dataset.chk){
+    const task=T(ui.card);if(!task)return;
+    const r=exec('toggleCheck',{id:task.id,item:t.dataset.chk,done:t.checked});
+    if(typeof r==='string'){toast(r,null,true);renderCard()}
+    return;
+  }
+  const map={fStatus:'status',fPrio:'prio',fOwner:'owner',fObj:'object'};
+  if(map[t.id]){ui[map[t.id]]=t.value;renderMain()}
+});
+let qT;
+document.addEventListener('input',e=>{if(e.target.id==='q'){ui.q=e.target.value;clearTimeout(qT);qT=setTimeout(()=>{const pos=e.target.selectionStart;renderMain();const q=document.getElementById('q');if(q){q.focus();q.setSelectionRange(pos,pos)}},200)}});
+document.addEventListener('keydown',e=>{
+  if(e.key==='Escape'){if(document.getElementById('modalRoot').innerHTML){document.getElementById('modalRoot').innerHTML='';return}if(ui.card)closeCard()}
+  if(e.key==='Enter'&&e.target.id==='newCl'){e.preventDefault();act('addcl')}
+  if(e.key==='Enter'&&(e.ctrlKey||e.metaKey)&&e.target.id==='cmt'){e.preventDefault();act('comment')}
+});
+let lastMob=isMobile();
+window.addEventListener('resize',()=>{const m=isMobile();if(m!==lastMob){lastMob=m;if(D&&ME)renderMain()}});
+// Вернулись на вкладку через пару минут — подтягиваем изменения коллег.
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&confirmed&&Date.now()-lastSync>120000)refresh(true)});
+// Ссылку с ключом или на задачу открыли в уже открытой вкладке — меняется только #.
+window.addEventListener('hashchange',()=>{const h=new URLSearchParams(location.hash.slice(1));if(h.get('k'))location.reload();else if(h.get('t')&&D&&T(h.get('t')))openCard(h.get('t'))});
+window.addEventListener('beforeunload',e=>{if(pending.length){e.preventDefault();e.returnValue=''}});
+
+/* ---------- старт ---------- */
+(async()=>{
+  if(DEMO){document.getElementById('demoBar').hidden=false;document.getElementById('dateBox').hidden=false}
+  // #k=ключ — запоминаем и сразу убираем из адресной строки, чтобы ссылку не переслали вместе с ключом.
+  const h=new URLSearchParams(location.hash.slice(1));
+  if(h.get('k')){try{localStorage.setItem(LS_KEY,h.get('k'))}catch(e){}h.delete('k');history.replaceState(null,'',location.pathname+location.search+(h.toString()?'#'+h.toString():''))}
+  const openId=h.get('t');
+  if(location.protocol==='file:'){showFatal('Страница открыта как локальный файл (file://), а браузер запрещает в этом режиме читать данные.<br><br>Запустите в папке проекта <code>python -m http.server 8000</code> и откройте <code>http://localhost:8000/planner.html?demo=1</code>.');return}
+  if(!DEMO&&!API_URL){showNoKey('Планировщик ещё не подключён к таблице (в planner.html не указан API_URL). Обратитесь к модератору.');return}
+  if(!DEMO&&!apiRemote.key()){showNoKey();return}
+  showLoading('Загружаю поручения…');
+  try{
+    const [s]=await Promise.all([api.call('bootstrap',{}),loadDirectories()]);
+    confirmed={tasks:s.tasks,activity:s.activity,users:s.users,folders:s.folders};
+    ME=DEMO?ui.user:s.me;lastSync=Date.now();
+    rebuild();setSync('ok');
+    document.getElementById('sync').hidden=false;document.getElementById('refreshBtn').hidden=false;
+    if(openId&&confirmed.tasks.some(t=>t.id===openId))ui.card=openId;
+    renderAll();
+    if(!DIR.ok)toast('Справочник Bruno (data.json.gz) не загрузился — объекты показаны идентификаторами.',null,true);
+  }catch(err){
+    if(err&&err.error==='auth'){try{localStorage.removeItem(LS_KEY)}catch(e){}showNoKey(err.message);return}
+    console.error(err);showFatal(esc((err&&err.message)||String(err)));
+  }
+})();
+
+// Для отладки и проверок из консоли.
+window.__planner={api,state:()=>({confirmed,D,pending:pending.slice()}),failNext:k=>{apiMock.failNext=k},refresh};
+})();
+</script>
+</body>
+</html>

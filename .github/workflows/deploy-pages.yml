@@ -12,6 +12,8 @@ on:
     branches: [ main ]
     paths:
       - '**.html'
+      - 'shared/**'
+      - 'docs/demo_tasks.json'
       - '.nojekyll'
       - '.github/workflows/deploy-pages.yml'
   # Вызывается напрямую как подпрограмма из update-model.yml
@@ -53,6 +55,11 @@ jobs:
           cp .nojekyll site/ 2>/dev/null || touch site/.nojekyll
           cp index.html site/
           cp dashboard_v2.html site/
+          # планировщик поручений: страница, общая логика статусов/прав, демо-данные
+          cp planner.html site/
+          mkdir -p site/shared site/docs
+          cp shared/*.js site/shared/
+          cp docs/demo_tasks.json site/docs/
           # старый дашборд v3 и его данные — пока не выведен из эксплуатации
           cp dashboard_vtb_live_3.html site/ 2>/dev/null || true
           cp data.json.gz site/ 2>/dev/null || true

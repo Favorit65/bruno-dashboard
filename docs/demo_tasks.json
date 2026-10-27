@@ -1,0 +1,2359 @@
+{
+ "_note": "Демо-данные планировщика: те же 8 поручений, что в прототипе docs/planner_demo.html. Люди и формулировки условные. Объекты — ID из справочника Bruno (data.json.gz), ALL = «Все объекты». Читают: planner.html?demo=1 и seedDemo() в Apps Script.",
+ "baseDate": "2026-10-27",
+ "users": [
+  {
+   "id": "head",
+   "name": "Руководитель отдела",
+   "handle": "Руководитель",
+   "role": "head",
+   "position": "Руководитель",
+   "objects": [],
+   "email": "",
+   "bruno": "emp_1001",
+   "active": true,
+   "lastRead": "2026-10-25 00:00",
+   "color": "#002882"
+  },
+  {
+   "id": "mod",
+   "name": "Модератор",
+   "handle": "Модератор",
+   "role": "mod",
+   "position": "Модератор",
+   "objects": [],
+   "email": "",
+   "bruno": "emp_1002",
+   "active": true,
+   "lastRead": "2026-10-25 00:00",
+   "color": "#00AAFF"
+  },
+  {
+   "id": "kom",
+   "name": "Комендант Воронцовской",
+   "handle": "Комендант",
+   "role": "owner",
+   "position": "Ответственный",
+   "objects": [],
+   "email": "",
+   "bruno": "emp_2114",
+   "active": true,
+   "lastRead": "2026-10-25 00:00",
+   "color": "#23A75B"
+  },
+  {
+   "id": "clean",
+   "name": "Менеджер клининга БФ",
+   "handle": "Клининг_БФ",
+   "role": "owner",
+   "position": "Ответственный",
+   "objects": [],
+   "email": "",
+   "bruno": "emp_3307",
+   "active": true,
+   "lastRead": "2026-10-25 00:00",
+   "color": "#7B4FD6"
+  },
+  {
+   "id": "mms",
+   "name": "Инженер ММС",
+   "handle": "Инженер_ММС",
+   "role": "owner",
+   "position": "Ответственный",
+   "objects": [],
+   "email": "",
+   "bruno": "emp_2560",
+   "active": true,
+   "lastRead": "2026-10-25 00:00",
+   "color": "#E8890C"
+  },
+  {
+   "id": "pdr",
+   "name": "Ответственный по подрядчикам",
+   "handle": "Подрядчики",
+   "role": "owner",
+   "position": "Ответственный",
+   "objects": [],
+   "email": "",
+   "bruno": "emp_1450",
+   "active": true,
+   "lastRead": "2026-10-25 00:00",
+   "color": "#C2185B"
+  }
+ ],
+ "folders": [
+  {
+   "code": "ПДР",
+   "name": "Подрядчики",
+   "order": 1,
+   "active": true,
+   "counters": {
+    "26": 2
+   }
+  },
+  {
+   "code": "РМТ",
+   "name": "Ремонт и VIP-обращения",
+   "order": 2,
+   "active": true,
+   "counters": {
+    "26": 1
+   }
+  },
+  {
+   "code": "ОБК",
+   "name": "Обклейка и маркировка",
+   "order": 3,
+   "active": true,
+   "counters": {
+    "26": 2
+   }
+  },
+  {
+   "code": "ВНД",
+   "name": "Внедрение Bruno",
+   "order": 4,
+   "active": true,
+   "counters": {
+    "26": 1
+   }
+  },
+  {
+   "code": "ОТЧ",
+   "name": "Отчётность",
+   "order": 5,
+   "active": true,
+   "counters": {
+    "26": 1
+   }
+  },
+  {
+   "code": "ОРГ",
+   "name": "Прочее и орг.",
+   "order": 6,
+   "active": true,
+   "counters": {
+    "26": 1
+   }
+  }
+ ],
+ "tasks": [
+  {
+   "id": "РМТ-26-001",
+   "parent": null,
+   "folder": "РМТ",
+   "title": "VIP-мебель: регулярный ремонт по обращениям",
+   "desc": "Регулярный цикл ремонта мебели VIP-зон по обращениям из Bruno: реестр дефектов, ежемесячные циклы с подрядчиком, закрытие обращений.",
+   "objects": [
+    "a037facd-77d3-4fd6-b2b9-a33b90ab0eb0"
+   ],
+   "zone": "VIP-этажи",
+   "zoneId": "",
+   "teamId": "",
+   "owner": "pdr",
+   "controller": "head",
+   "workType": "wt_21",
+   "start": "2026-10-27",
+   "due": "2026-12-25",
+   "prio": "P1",
+   "tags": [
+    "VIP"
+   ],
+   "dep": "",
+   "flag": "",
+   "flagNote": "",
+   "submitted": false,
+   "accepted": false,
+   "resched": 0,
+   "brunoRef": "",
+   "brunoStatus": "",
+   "photo": false,
+   "created": "2026-10-27 09:00",
+   "createdBy": "head",
+   "updated": "2026-10-27 09:00",
+   "version": 1,
+   "checklist": []
+  },
+  {
+   "id": "РМТ-26-001.1",
+   "parent": "РМТ-26-001",
+   "folder": "РМТ",
+   "title": "Реестр мебели и дефектов",
+   "desc": "",
+   "objects": [
+    "a037facd-77d3-4fd6-b2b9-a33b90ab0eb0"
+   ],
+   "zone": "VIP-этажи",
+   "zoneId": "",
+   "teamId": "",
+   "owner": "pdr",
+   "controller": "head",
+   "workType": "wt_21",
+   "start": "2026-10-27",
+   "due": "2026-11-06",
+   "prio": "P1",
+   "tags": [
+    "VIP"
+   ],
+   "dep": "",
+   "flag": "",
+   "flagNote": "",
+   "submitted": false,
+   "accepted": false,
+   "resched": 0,
+   "brunoRef": "",
+   "brunoStatus": "",
+   "photo": false,
+   "created": "2026-10-27 09:00",
+   "createdBy": "head",
+   "updated": "2026-10-27 09:00",
+   "version": 1,
+   "checklist": [
+    {
+     "id": "РМТ-26-001.1-c0",
+     "text": "Выгрузить обращения по мебели из Bruno за 2026",
+     "done": true,
+     "by": "mod",
+     "at": "2026-10-27 09:40",
+     "order": 1,
+     "createdBy": "head",
+     "createdAt": "2026-10-27 09:00"
+    },
+    {
+     "id": "РМТ-26-001.1-c1",
+     "text": "Обойти VIP-этажи и сфотографировать дефекты",
+     "done": false,
+     "by": "",
+     "at": "",
+     "order": 2,
+     "createdBy": "head",
+     "createdAt": "2026-10-27 09:00"
+    },
+    {
+     "id": "РМТ-26-001.1-c2",
+     "text": "Свести реестр: позиция, дефект, срочность",
+     "done": false,
+     "by": "",
+     "at": "",
+     "order": 3,
+     "createdBy": "head",
+     "createdAt": "2026-10-27 09:00"
+    },
+    {
+     "id": "РМТ-26-001.1-c3",
+     "text": "Запросить КП у мебельного подрядчика",
+     "done": false,
+     "by": "",
+     "at": "",
+     "order": 4,
+     "createdBy": "head",
+     "createdAt": "2026-10-27 09:00"
+    },
+    {
+     "id": "РМТ-26-001.1-c4",
+     "text": "Согласовать реестр с руководителем",
+     "done": false,
+     "by": "",
+     "at": "",
+     "order": 5,
+     "createdBy": "head",
+     "createdAt": "2026-10-27 09:00"
+    }
+   ]
+  },
+  {
+   "id": "РМТ-26-001.2",
+   "parent": "РМТ-26-001",
+   "folder": "РМТ",
+   "title": "Ноябрьский цикл ремонта",
+   "desc": "",
+   "objects": [
+    "a037facd-77d3-4fd6-b2b9-a33b90ab0eb0"
+   ],
+   "zone": "VIP-этажи",
+   "zoneId": "",
+   "teamId": "",
+   "owner": "pdr",
+   "controller": "head",
+   "workType": "wt_21",
+   "start": "2026-11-09",
+   "due": "2026-11-27",
+   "prio": "P1",
+   "tags": [
+    "VIP"
+   ],
+   "dep": "",
+   "flag": "",
+   "flagNote": "",
+   "submitted": false,
+   "accepted": false,
+   "resched": 0,
+   "brunoRef": "",
+   "brunoStatus": "",
+   "photo": false,
+   "created": "2026-10-27 09:00",
+   "createdBy": "head",
+   "updated": "2026-10-27 09:00",
+   "version": 1,
+   "checklist": [
+    {
+     "id": "РМТ-26-001.2-c0",
+     "text": "Передать подрядчику ноябрьскую очередь",
+     "done": false,
+     "by": "",
+     "at": "",
+     "order": 1,
+     "createdBy": "head",
+     "createdAt": "2026-10-27 09:00"
+    },
+    {
+     "id": "РМТ-26-001.2-c1",
+     "text": "Согласовать окна работ с секретариатом",
+     "done": false,
+     "by": "",
+     "at": "",
+     "order": 2,
+     "createdBy": "head",
+     "createdAt": "2026-10-27 09:00"
+    },
+    {
+     "id": "РМТ-26-001.2-c2",
+     "text": "Принять работы по актам",
+     "done": false,
+     "by": "",
+     "at": "",
+     "order": 3,
+     "createdBy": "head",
+     "createdAt": "2026-10-27 09:00"
+    },
+    {
+     "id": "РМТ-26-001.2-c3",
+     "text": "Закрыть обращения в Bruno",
+     "done": false,
+     "by": "",
+     "at": "",
+     "order": 4,
+     "createdBy": "head",
+     "createdAt": "2026-10-27 09:00"
+    }
+   ]
+  },
+  {
+   "id": "РМТ-26-001.3",
+   "parent": "РМТ-26-001",
+   "folder": "РМТ",
+   "title": "Декабрьский цикл ремонта",
+   "desc": "",
+   "objects": [
+    "a037facd-77d3-4fd6-b2b9-a33b90ab0eb0"
+   ],
+   "zone": "VIP-этажи",
+   "zoneId": "",
+   "teamId": "",
+   "owner": "pdr",
+   "controller": "head",
+   "workType": "wt_21",
+   "start": "2026-12-07",
+   "due": "2026-12-25",
+   "prio": "P1",
+   "tags": [
+    "VIP"
+   ],
+   "dep": "",
+   "flag": "",
+   "flagNote": "",
+   "submitted": false,
+   "accepted": false,
+   "resched": 0,
+   "brunoRef": "",
+   "brunoStatus": "",
+   "photo": false,
+   "created": "2026-10-27 09:00",
+   "createdBy": "head",
+   "updated": "2026-10-27 09:00",
+   "version": 1,
+   "checklist": [
+    {
+     "id": "РМТ-26-001.3-c0",
+     "text": "Передать подрядчику декабрьскую очередь",
+     "done": false,
+     "by": "",
+     "at": "",
+     "order": 1,
+     "createdBy": "head",
+     "createdAt": "2026-10-27 09:00"
+    },
+    {
+     "id": "РМТ-26-001.3-c1",
+     "text": "Согласовать окна работ с секретариатом",
+     "done": false,
+     "by": "",
+     "at": "",
+     "order": 2,
+     "createdBy": "head",
+     "createdAt": "2026-10-27 09:00"
+    },
+    {
+     "id": "РМТ-26-001.3-c2",
+     "text": "Принять работы по актам",
+     "done": false,
+     "by": "",
+     "at": "",
+     "order": 3,
+     "createdBy": "head",
+     "createdAt": "2026-10-27 09:00"
+    },
+    {
+     "id": "РМТ-26-001.3-c3",
+     "text": "Закрыть обращения в Bruno",
+     "done": false,
+     "by": "",
+     "at": "",
+     "order": 4,
+     "createdBy": "head",
+     "createdAt": "2026-10-27 09:00"
+    },
+    {
+     "id": "РМТ-26-001.3-c4",
+     "text": "Итог года по VIP-мебели в годовой отчёт",
+     "done": false,
+     "by": "",
+     "at": "",
+     "order": 5,
+     "createdBy": "head",
+     "createdAt": "2026-10-27 09:00"
+    }
+   ]
+  },
+  {
+   "id": "ПДР-26-001",
+   "parent": null,
+   "folder": "ПДР",
+   "title": "Ввод нового подрядчика клининга, Башня Федерация",
+   "desc": "Смена клинингового подрядчика на БФ Запад/Восток: пропуска, заведение персонала и команд в Bruno, инструктаж, контрольный месяц, решение о продлении.",
+   "objects": [
+    "a5fc4390-5a9f-4521-8443-9364e0065603",
+    "da25b805-5315-484b-8159-82a9c8eeb5af"
+   ],
+   "zone": "",
+   "zoneId": "",
+   "teamId": "",
+   "owner": "pdr",
+   "controller": "head",
+   "workType": "wt_02",
+   "start": "2026-10-20",
+   "due": "2026-12-04",
+   "prio": "P1",
+   "tags": [
+    "БФ",
+    "договор"
+   ],
+   "dep": "",
+   "flag": "",
+   "flagNote": "",
+   "submitted": false,
+   "accepted": false,
+   "resched": 0,
+   "brunoRef": "",
+   "brunoStatus": "",
+   "photo": false,
+   "created": "2026-10-20 10:00",
+   "createdBy": "head",
+   "updated": "2026-10-20 10:00",
+   "version": 1,
+   "checklist": []
+  },
+  {
+   "id": "ПДР-26-001.1",
+   "parent": "ПДР-26-001",
+   "folder": "ПДР",
+   "title": "Списки персонала и пропуска",
+   "desc": "",
+   "objects": [
+    "a5fc4390-5a9f-4521-8443-9364e0065603",
+    "da25b805-5315-484b-8159-82a9c8eeb5af"
+   ],
+   "zone": "",
+   "zoneId": "",
+   "teamId": "",
+   "owner": "clean",
+   "controller": "head",
+   "workType": "wt_02",
+   "start": "2026-10-20",
+   "due": "2026-10-30",
+   "prio": "P1",
+   "tags": [
+    "БФ",
+    "договор"
+   ],
+   "dep": "",
+   "flag": "blocker",
+   "flagNote": "Нет списков персонала по этажам 57–60",
+   "submitted": false,
+   "accepted": false,
+   "resched": 0,
+   "brunoRef": "",
+   "brunoStatus": "",
+   "photo": false,
+   "created": "2026-10-20 10:00",
+   "createdBy": "head",
+   "updated": "2026-10-20 10:00",
+   "version": 1,
+   "checklist": [
+    {
+     "id": "ПДР-26-001.1-c0",
+     "text": "Получить от подрядчика списки персонала по этажам",
+     "done": true,
+     "by": "clean",
+     "at": "2026-10-21 11:05",
+     "order": 1,
+     "createdBy": "head",
+     "createdAt": "2026-10-20 10:00"
+    },
+    {
+     "id": "ПДР-26-001.1-c1",
+     "text": "Сверить списки с мастер-таблицей персонала",
+     "done": true,
+     "by": "clean",
+     "at": "2026-10-22 16:30",
+     "order": 2,
+     "createdBy": "head",
+     "createdAt": "2026-10-20 10:00"
+    },
+    {
+     "id": "ПДР-26-001.1-c2",
+     "text": "Получить списки по этажам 57–60",
+     "done": false,
+     "by": "",
+     "at": "",
+     "order": 3,
+     "createdBy": "head",
+     "createdAt": "2026-10-20 10:00"
+    },
+    {
+     "id": "ПДР-26-001.1-c3",
+     "text": "Подать заявку на пропуска в службу безопасности",
+     "done": false,
+     "by": "",
+     "at": "",
+     "order": 4,
+     "createdBy": "head",
+     "createdAt": "2026-10-20 10:00"
+    },
+    {
+     "id": "ПДР-26-001.1-c4",
+     "text": "Выдать пропуска и проверить проход",
+     "done": false,
+     "by": "",
+     "at": "",
+     "order": 5,
+     "createdBy": "head",
+     "createdAt": "2026-10-20 10:00"
+    }
+   ]
+  },
+  {
+   "id": "ПДР-26-001.2",
+   "parent": "ПДР-26-001",
+   "folder": "ПДР",
+   "title": "Заведение в Bruno: персонал, команды, роли",
+   "desc": "",
+   "objects": [
+    "a5fc4390-5a9f-4521-8443-9364e0065603",
+    "da25b805-5315-484b-8159-82a9c8eeb5af"
+   ],
+   "zone": "",
+   "zoneId": "",
+   "teamId": "",
+   "owner": "mod",
+   "controller": "head",
+   "workType": "wt_02",
+   "start": "2026-10-29",
+   "due": "2026-10-31",
+   "prio": "P1",
+   "tags": [
+    "БФ",
+    "договор"
+   ],
+   "dep": "",
+   "flag": "",
+   "flagNote": "",
+   "submitted": false,
+   "accepted": false,
+   "resched": 0,
+   "brunoRef": "",
+   "brunoStatus": "",
+   "photo": false,
+   "created": "2026-10-20 10:00",
+   "createdBy": "head",
+   "updated": "2026-10-20 10:00",
+   "version": 1,
+   "checklist": [
+    {
+     "id": "ПДР-26-001.2-c0",
+     "text": "Завести сотрудников в каталог «Персонал»",
+     "done": false,
+     "by": "",
+     "at": "",
+     "order": 1,
+     "createdBy": "head",
+     "createdAt": "2026-10-20 10:00"
+    },
+    {
+     "id": "ПДР-26-001.2-c1",
+     "text": "Собрать команды по этажам",
+     "done": false,
+     "by": "",
+     "at": "",
+     "order": 2,
+     "createdBy": "head",
+     "createdAt": "2026-10-20 10:00"
+    },
+    {
+     "id": "ПДР-26-001.2-c2",
+     "text": "Назначить роли и права",
+     "done": false,
+     "by": "",
+     "at": "",
+     "order": 3,
+     "createdBy": "head",
+     "createdAt": "2026-10-20 10:00"
+    },
+    {
+     "id": "ПДР-26-001.2-c3",
+     "text": "Привязать расписания к командам",
+     "done": false,
+     "by": "",
+     "at": "",
+     "order": 4,
+     "createdBy": "head",
+     "createdAt": "2026-10-20 10:00"
+    }
+   ]
+  },
+  {
+   "id": "ПДР-26-001.3",
+   "parent": "ПДР-26-001",
+   "folder": "ПДР",
+   "title": "Инструктаж персонала подрядчика",
+   "desc": "",
+   "objects": [
+    "a5fc4390-5a9f-4521-8443-9364e0065603",
+    "da25b805-5315-484b-8159-82a9c8eeb5af"
+   ],
+   "zone": "",
+   "zoneId": "",
+   "teamId": "",
+   "owner": "clean",
+   "controller": "head",
+   "workType": "wt_02",
+   "start": "2026-11-02",
+   "due": "2026-11-06",
+   "prio": "P1",
+   "tags": [
+    "БФ",
+    "договор"
+   ],
+   "dep": "",
+   "flag": "",
+   "flagNote": "",
+   "submitted": false,
+   "accepted": false,
+   "resched": 0,
+   "brunoRef": "",
+   "brunoStatus": "",
+   "photo": false,
+   "created": "2026-10-20 10:00",
+   "createdBy": "head",
+   "updated": "2026-10-20 10:00",
+   "version": 1,
+   "checklist": [
+    {
+     "id": "ПДР-26-001.3-c0",
+     "text": "Инструктаж по мобильному приложению Bruno",
+     "done": false,
+     "by": "",
+     "at": "",
+     "order": 1,
+     "createdBy": "head",
+     "createdAt": "2026-10-20 10:00"
+    },
+    {
+     "id": "ПДР-26-001.3-c1",
+     "text": "Раздать памятку по сканированию QR",
+     "done": false,
+     "by": "",
+     "at": "",
+     "order": 2,
+     "createdBy": "head",
+     "createdAt": "2026-10-20 10:00"
+    },
+    {
+     "id": "ПДР-26-001.3-c2",
+     "text": "Пробная смена с наставником",
+     "done": false,
+     "by": "",
+     "at": "",
+     "order": 3,
+     "createdBy": "head",
+     "createdAt": "2026-10-20 10:00"
+    },
+    {
+     "id": "ПДР-26-001.3-c3",
+     "text": "Подписать лист инструктажа",
+     "done": false,
+     "by": "",
+     "at": "",
+     "order": 4,
+     "createdBy": "head",
+     "createdAt": "2026-10-20 10:00"
+    }
+   ]
+  },
+  {
+   "id": "ПДР-26-001.4",
+   "parent": "ПДР-26-001",
+   "folder": "ПДР",
+   "title": "Контрольный месяц",
+   "desc": "",
+   "objects": [
+    "a5fc4390-5a9f-4521-8443-9364e0065603",
+    "da25b805-5315-484b-8159-82a9c8eeb5af"
+   ],
+   "zone": "",
+   "zoneId": "",
+   "teamId": "",
+   "owner": "clean",
+   "controller": "head",
+   "workType": "wt_02",
+   "start": "2026-11-02",
+   "due": "2026-11-30",
+   "prio": "P1",
+   "tags": [
+    "БФ",
+    "договор"
+   ],
+   "dep": "",
+   "flag": "",
+   "flagNote": "",
+   "submitted": false,
+   "accepted": false,
+   "resched": 0,
+   "brunoRef": "",
+   "brunoStatus": "",
+   "photo": false,
+   "created": "2026-10-20 10:00",
+   "createdBy": "head",
+   "updated": "2026-10-20 10:00",
+   "version": 1,
+   "checklist": [
+    {
+     "id": "ПДР-26-001.4-c0",
+     "text": "Еженедельная сверка выполнения по дашборду",
+     "done": false,
+     "by": "",
+     "at": "",
+     "order": 1,
+     "createdBy": "head",
+     "createdAt": "2026-10-20 10:00"
+    },
+    {
+     "id": "ПДР-26-001.4-c1",
+     "text": "Обходы с проверкой качества (4 шт.)",
+     "done": false,
+     "by": "",
+     "at": "",
+     "order": 2,
+     "createdBy": "head",
+     "createdAt": "2026-10-20 10:00"
+    },
+    {
+     "id": "ПДР-26-001.4-c2",
+     "text": "Разбор обращений по БФ",
+     "done": false,
+     "by": "",
+     "at": "",
+     "order": 3,
+     "createdBy": "head",
+     "createdAt": "2026-10-20 10:00"
+    },
+    {
+     "id": "ПДР-26-001.4-c3",
+     "text": "Протокол замечаний подрядчику",
+     "done": false,
+     "by": "",
+     "at": "",
+     "order": 4,
+     "createdBy": "head",
+     "createdAt": "2026-10-20 10:00"
+    }
+   ]
+  },
+  {
+   "id": "ПДР-26-001.5",
+   "parent": "ПДР-26-001",
+   "folder": "ПДР",
+   "title": "Итоги и решение по подрядчику",
+   "desc": "",
+   "objects": [
+    "a5fc4390-5a9f-4521-8443-9364e0065603",
+    "da25b805-5315-484b-8159-82a9c8eeb5af"
+   ],
+   "zone": "",
+   "zoneId": "",
+   "teamId": "",
+   "owner": "pdr",
+   "controller": "head",
+   "workType": "wt_02",
+   "start": "2026-12-01",
+   "due": "2026-12-04",
+   "prio": "P1",
+   "tags": [
+    "БФ",
+    "договор"
+   ],
+   "dep": "",
+   "flag": "",
+   "flagNote": "",
+   "submitted": false,
+   "accepted": false,
+   "resched": 0,
+   "brunoRef": "",
+   "brunoStatus": "",
+   "photo": false,
+   "created": "2026-10-20 10:00",
+   "createdBy": "head",
+   "updated": "2026-10-20 10:00",
+   "version": 1,
+   "checklist": [
+    {
+     "id": "ПДР-26-001.5-c0",
+     "text": "Свести KPI контрольного месяца",
+     "done": false,
+     "by": "",
+     "at": "",
+     "order": 1,
+     "createdBy": "head",
+     "createdAt": "2026-10-20 10:00"
+    },
+    {
+     "id": "ПДР-26-001.5-c1",
+     "text": "Подготовить заключение",
+     "done": false,
+     "by": "",
+     "at": "",
+     "order": 2,
+     "createdBy": "head",
+     "createdAt": "2026-10-20 10:00"
+    },
+    {
+     "id": "ПДР-26-001.5-c2",
+     "text": "Решение руководителя: продлить или заменить",
+     "done": false,
+     "by": "",
+     "at": "",
+     "order": 3,
+     "createdBy": "head",
+     "createdAt": "2026-10-20 10:00"
+    }
+   ]
+  },
+  {
+   "id": "ПДР-26-002",
+   "parent": null,
+   "folder": "ПДР",
+   "title": "Ввод подрядчика озеленения (флористы)",
+   "desc": "Ввод флористов на все объекты: договор, график, команда и QR в Bruno, пробный месяц.",
+   "objects": [
+    "ALL"
+   ],
+   "zone": "",
+   "zoneId": "",
+   "teamId": "",
+   "owner": "pdr",
+   "controller": "head",
+   "workType": "wt_14",
+   "start": "2026-11-02",
+   "due": "2026-12-18",
+   "prio": "P2",
+   "tags": [
+    "озеленение"
+   ],
+   "dep": "",
+   "flag": "",
+   "flagNote": "",
+   "submitted": false,
+   "accepted": false,
+   "resched": 0,
+   "brunoRef": "",
+   "brunoStatus": "",
+   "photo": false,
+   "created": "2026-10-27 09:00",
+   "createdBy": "head",
+   "updated": "2026-10-27 09:00",
+   "version": 1,
+   "checklist": []
+  },
+  {
+   "id": "ПДР-26-002.1",
+   "parent": "ПДР-26-002",
+   "folder": "ПДР",
+   "title": "Договор и график обходов",
+   "desc": "",
+   "objects": [
+    "ALL"
+   ],
+   "zone": "",
+   "zoneId": "",
+   "teamId": "",
+   "owner": "pdr",
+   "controller": "head",
+   "workType": "wt_14",
+   "start": "2026-11-02",
+   "due": "2026-11-13",
+   "prio": "P2",
+   "tags": [
+    "озеленение"
+   ],
+   "dep": "",
+   "flag": "",
+   "flagNote": "",
+   "submitted": false,
+   "accepted": false,
+   "resched": 0,
+   "brunoRef": "",
+   "brunoStatus": "",
+   "photo": false,
+   "created": "2026-10-27 09:00",
+   "createdBy": "head",
+   "updated": "2026-10-27 09:00",
+   "version": 1,
+   "checklist": [
+    {
+     "id": "ПДР-26-002.1-c0",
+     "text": "Согласовать договор с юристами",
+     "done": false,
+     "by": "",
+     "at": "",
+     "order": 1,
+     "createdBy": "head",
+     "createdAt": "2026-10-27 09:00"
+    },
+    {
+     "id": "ПДР-26-002.1-c1",
+     "text": "Согласовать график обходов по объектам",
+     "done": false,
+     "by": "",
+     "at": "",
+     "order": 2,
+     "createdBy": "head",
+     "createdAt": "2026-10-27 09:00"
+    },
+    {
+     "id": "ПДР-26-002.1-c2",
+     "text": "Назначить ответственных на объектах",
+     "done": false,
+     "by": "",
+     "at": "",
+     "order": 3,
+     "createdBy": "head",
+     "createdAt": "2026-10-27 09:00"
+    }
+   ]
+  },
+  {
+   "id": "ПДР-26-002.2",
+   "parent": "ПДР-26-002",
+   "folder": "ПДР",
+   "title": "Команда и QR в Bruno",
+   "desc": "",
+   "objects": [
+    "ALL"
+   ],
+   "zone": "",
+   "zoneId": "",
+   "teamId": "",
+   "owner": "mod",
+   "controller": "head",
+   "workType": "wt_14",
+   "start": "2026-11-16",
+   "due": "2026-11-20",
+   "prio": "P2",
+   "tags": [
+    "озеленение"
+   ],
+   "dep": "",
+   "flag": "",
+   "flagNote": "",
+   "submitted": false,
+   "accepted": false,
+   "resched": 0,
+   "brunoRef": "",
+   "brunoStatus": "",
+   "photo": false,
+   "created": "2026-10-27 09:00",
+   "createdBy": "head",
+   "updated": "2026-10-27 09:00",
+   "version": 1,
+   "checklist": [
+    {
+     "id": "ПДР-26-002.2-c0",
+     "text": "Завести команду флористов",
+     "done": false,
+     "by": "",
+     "at": "",
+     "order": 1,
+     "createdBy": "head",
+     "createdAt": "2026-10-27 09:00"
+    },
+    {
+     "id": "ПДР-26-002.2-c1",
+     "text": "Проверить QR зоны 36.47 на всех объектах",
+     "done": false,
+     "by": "",
+     "at": "",
+     "order": 2,
+     "createdBy": "head",
+     "createdAt": "2026-10-27 09:00"
+    },
+    {
+     "id": "ПДР-26-002.2-c2",
+     "text": "Создать расписание полива и ухода",
+     "done": false,
+     "by": "",
+     "at": "",
+     "order": 3,
+     "createdBy": "head",
+     "createdAt": "2026-10-27 09:00"
+    },
+    {
+     "id": "ПДР-26-002.2-c3",
+     "text": "Тестовое сканирование",
+     "done": false,
+     "by": "",
+     "at": "",
+     "order": 4,
+     "createdBy": "head",
+     "createdAt": "2026-10-27 09:00"
+    }
+   ]
+  },
+  {
+   "id": "ПДР-26-002.3",
+   "parent": "ПДР-26-002",
+   "folder": "ПДР",
+   "title": "Пробный месяц",
+   "desc": "",
+   "objects": [
+    "ALL"
+   ],
+   "zone": "",
+   "zoneId": "",
+   "teamId": "",
+   "owner": "pdr",
+   "controller": "head",
+   "workType": "wt_14",
+   "start": "2026-11-23",
+   "due": "2026-12-18",
+   "prio": "P2",
+   "tags": [
+    "озеленение"
+   ],
+   "dep": "",
+   "flag": "",
+   "flagNote": "",
+   "submitted": false,
+   "accepted": false,
+   "resched": 0,
+   "brunoRef": "",
+   "brunoStatus": "",
+   "photo": false,
+   "created": "2026-10-27 09:00",
+   "createdBy": "head",
+   "updated": "2026-10-27 09:00",
+   "version": 1,
+   "checklist": [
+    {
+     "id": "ПДР-26-002.3-c0",
+     "text": "Еженедельная проверка выполнения",
+     "done": false,
+     "by": "",
+     "at": "",
+     "order": 1,
+     "createdBy": "head",
+     "createdAt": "2026-10-27 09:00"
+    },
+    {
+     "id": "ПДР-26-002.3-c1",
+     "text": "Сбор замечаний комендантов",
+     "done": false,
+     "by": "",
+     "at": "",
+     "order": 2,
+     "createdBy": "head",
+     "createdAt": "2026-10-27 09:00"
+    },
+    {
+     "id": "ПДР-26-002.3-c2",
+     "text": "Итог пробного месяца",
+     "done": false,
+     "by": "",
+     "at": "",
+     "order": 3,
+     "createdBy": "head",
+     "createdAt": "2026-10-27 09:00"
+    }
+   ]
+  },
+  {
+   "id": "ОБК-26-001",
+   "parent": null,
+   "folder": "ОБК",
+   "title": "Обклейка QR после переименования 153 зон",
+   "desc": "После переименования 153 зон в Bruno заменить стикеры QR в корпусах А и Б и проверить сканирование.",
+   "objects": [
+    "2b4ca6a5-47c5-4aab-b66a-e84dc026f22c",
+    "7cbbf23b-a270-4ff0-bdb3-24d79456a0b1"
+   ],
+   "zone": "",
+   "zoneId": "",
+   "teamId": "",
+   "owner": "kom",
+   "controller": "head",
+   "workType": "wt_30",
+   "start": "2026-10-27",
+   "due": "2026-11-20",
+   "prio": "P2",
+   "tags": [
+    "Воронцовская",
+    "QR"
+   ],
+   "dep": "",
+   "flag": "",
+   "flagNote": "",
+   "submitted": false,
+   "accepted": false,
+   "resched": 0,
+   "brunoRef": "",
+   "brunoStatus": "",
+   "photo": false,
+   "created": "2026-10-27 09:00",
+   "createdBy": "head",
+   "updated": "2026-10-27 09:00",
+   "version": 1,
+   "checklist": []
+  },
+  {
+   "id": "ОБК-26-001.1",
+   "parent": "ОБК-26-001",
+   "folder": "ОБК",
+   "title": "Печать стикеров",
+   "desc": "",
+   "objects": [
+    "2b4ca6a5-47c5-4aab-b66a-e84dc026f22c",
+    "7cbbf23b-a270-4ff0-bdb3-24d79456a0b1"
+   ],
+   "zone": "",
+   "zoneId": "",
+   "teamId": "",
+   "owner": "mod",
+   "controller": "head",
+   "workType": "wt_30",
+   "start": "2026-10-27",
+   "due": "2026-10-30",
+   "prio": "P2",
+   "tags": [
+    "Воронцовская",
+    "QR"
+   ],
+   "dep": "",
+   "flag": "",
+   "flagNote": "",
+   "submitted": false,
+   "accepted": false,
+   "resched": 1,
+   "brunoRef": "",
+   "brunoStatus": "",
+   "photo": false,
+   "created": "2026-10-27 09:00",
+   "createdBy": "head",
+   "updated": "2026-10-27 09:00",
+   "version": 1,
+   "checklist": [
+    {
+     "id": "ОБК-26-001.1-c0",
+     "text": "Выгрузить 153 QR из Bruno",
+     "done": true,
+     "by": "mod",
+     "at": "2026-10-27 10:15",
+     "order": 1,
+     "createdBy": "head",
+     "createdAt": "2026-10-27 09:00"
+    },
+    {
+     "id": "ОБК-26-001.1-c1",
+     "text": "Сверить названия с таблицей переименования",
+     "done": false,
+     "by": "",
+     "at": "",
+     "order": 2,
+     "createdBy": "head",
+     "createdAt": "2026-10-27 09:00"
+    },
+    {
+     "id": "ОБК-26-001.1-c2",
+     "text": "Сдать макет в типографию",
+     "done": false,
+     "by": "",
+     "at": "",
+     "order": 3,
+     "createdBy": "head",
+     "createdAt": "2026-10-27 09:00"
+    },
+    {
+     "id": "ОБК-26-001.1-c3",
+     "text": "Получить тираж",
+     "done": false,
+     "by": "",
+     "at": "",
+     "order": 4,
+     "createdBy": "head",
+     "createdAt": "2026-10-27 09:00"
+    }
+   ]
+  },
+  {
+   "id": "ОБК-26-001.2",
+   "parent": "ОБК-26-001",
+   "folder": "ОБК",
+   "title": "Обклейка, корпус А",
+   "desc": "",
+   "objects": [
+    "2b4ca6a5-47c5-4aab-b66a-e84dc026f22c",
+    "7cbbf23b-a270-4ff0-bdb3-24d79456a0b1"
+   ],
+   "zone": "",
+   "zoneId": "",
+   "teamId": "",
+   "owner": "kom",
+   "controller": "head",
+   "workType": "wt_30",
+   "start": "2026-11-02",
+   "due": "2026-11-06",
+   "prio": "P2",
+   "tags": [
+    "Воронцовская",
+    "QR"
+   ],
+   "dep": "",
+   "flag": "",
+   "flagNote": "",
+   "submitted": false,
+   "accepted": false,
+   "resched": 0,
+   "brunoRef": "",
+   "brunoStatus": "",
+   "photo": false,
+   "created": "2026-10-27 09:00",
+   "createdBy": "head",
+   "updated": "2026-10-27 09:00",
+   "version": 1,
+   "checklist": [
+    {
+     "id": "ОБК-26-001.2-c0",
+     "text": "Снять старые стикеры",
+     "done": false,
+     "by": "",
+     "at": "",
+     "order": 1,
+     "createdBy": "head",
+     "createdAt": "2026-10-27 09:00"
+    },
+    {
+     "id": "ОБК-26-001.2-c1",
+     "text": "Наклеить новые по схеме этажей",
+     "done": false,
+     "by": "",
+     "at": "",
+     "order": 2,
+     "createdBy": "head",
+     "createdAt": "2026-10-27 09:00"
+    },
+    {
+     "id": "ОБК-26-001.2-c2",
+     "text": "Отметить обклеенные зоны в таблице",
+     "done": false,
+     "by": "",
+     "at": "",
+     "order": 3,
+     "createdBy": "head",
+     "createdAt": "2026-10-27 09:00"
+    },
+    {
+     "id": "ОБК-26-001.2-c3",
+     "text": "Фото-подтверждение по этажам",
+     "done": false,
+     "by": "",
+     "at": "",
+     "order": 4,
+     "createdBy": "head",
+     "createdAt": "2026-10-27 09:00"
+    }
+   ]
+  },
+  {
+   "id": "ОБК-26-001.3",
+   "parent": "ОБК-26-001",
+   "folder": "ОБК",
+   "title": "Обклейка, корпус Б",
+   "desc": "",
+   "objects": [
+    "2b4ca6a5-47c5-4aab-b66a-e84dc026f22c",
+    "7cbbf23b-a270-4ff0-bdb3-24d79456a0b1"
+   ],
+   "zone": "",
+   "zoneId": "",
+   "teamId": "",
+   "owner": "kom",
+   "controller": "head",
+   "workType": "wt_30",
+   "start": "2026-11-09",
+   "due": "2026-11-13",
+   "prio": "P2",
+   "tags": [
+    "Воронцовская",
+    "QR"
+   ],
+   "dep": "",
+   "flag": "",
+   "flagNote": "",
+   "submitted": false,
+   "accepted": false,
+   "resched": 0,
+   "brunoRef": "",
+   "brunoStatus": "",
+   "photo": false,
+   "created": "2026-10-27 09:00",
+   "createdBy": "head",
+   "updated": "2026-10-27 09:00",
+   "version": 1,
+   "checklist": [
+    {
+     "id": "ОБК-26-001.3-c0",
+     "text": "Снять старые стикеры",
+     "done": false,
+     "by": "",
+     "at": "",
+     "order": 1,
+     "createdBy": "head",
+     "createdAt": "2026-10-27 09:00"
+    },
+    {
+     "id": "ОБК-26-001.3-c1",
+     "text": "Наклеить новые по схеме этажей",
+     "done": false,
+     "by": "",
+     "at": "",
+     "order": 2,
+     "createdBy": "head",
+     "createdAt": "2026-10-27 09:00"
+    },
+    {
+     "id": "ОБК-26-001.3-c2",
+     "text": "Отметить обклеенные зоны в таблице",
+     "done": false,
+     "by": "",
+     "at": "",
+     "order": 3,
+     "createdBy": "head",
+     "createdAt": "2026-10-27 09:00"
+    },
+    {
+     "id": "ОБК-26-001.3-c3",
+     "text": "Фото-подтверждение по этажам",
+     "done": false,
+     "by": "",
+     "at": "",
+     "order": 4,
+     "createdBy": "head",
+     "createdAt": "2026-10-27 09:00"
+    }
+   ]
+  },
+  {
+   "id": "ОБК-26-001.4",
+   "parent": "ОБК-26-001",
+   "folder": "ОБК",
+   "title": "Контрольный обход",
+   "desc": "",
+   "objects": [
+    "2b4ca6a5-47c5-4aab-b66a-e84dc026f22c",
+    "7cbbf23b-a270-4ff0-bdb3-24d79456a0b1"
+   ],
+   "zone": "",
+   "zoneId": "",
+   "teamId": "",
+   "owner": "kom",
+   "controller": "head",
+   "workType": "wt_30",
+   "start": "2026-11-16",
+   "due": "2026-11-20",
+   "prio": "P2",
+   "tags": [
+    "Воронцовская",
+    "QR"
+   ],
+   "dep": "",
+   "flag": "",
+   "flagNote": "",
+   "submitted": false,
+   "accepted": false,
+   "resched": 0,
+   "brunoRef": "",
+   "brunoStatus": "",
+   "photo": false,
+   "created": "2026-10-27 09:00",
+   "createdBy": "head",
+   "updated": "2026-10-27 09:00",
+   "version": 1,
+   "checklist": [
+    {
+     "id": "ОБК-26-001.4-c0",
+     "text": "Пройти все 153 зоны со сканированием",
+     "done": false,
+     "by": "",
+     "at": "",
+     "order": 1,
+     "createdBy": "head",
+     "createdAt": "2026-10-27 09:00"
+    },
+    {
+     "id": "ОБК-26-001.4-c1",
+     "text": "Зафиксировать несчитывающиеся QR",
+     "done": false,
+     "by": "",
+     "at": "",
+     "order": 2,
+     "createdBy": "head",
+     "createdAt": "2026-10-27 09:00"
+    },
+    {
+     "id": "ОБК-26-001.4-c2",
+     "text": "Переклеить дефектные",
+     "done": false,
+     "by": "",
+     "at": "",
+     "order": 3,
+     "createdBy": "head",
+     "createdAt": "2026-10-27 09:00"
+    },
+    {
+     "id": "ОБК-26-001.4-c3",
+     "text": "Акт завершения",
+     "done": false,
+     "by": "",
+     "at": "",
+     "order": 4,
+     "createdBy": "head",
+     "createdAt": "2026-10-27 09:00"
+    }
+   ]
+  },
+  {
+   "id": "ОБК-26-002",
+   "parent": null,
+   "folder": "ОБК",
+   "title": "Зоны и QR этажей 57–60, Башня Федерация",
+   "desc": "Завести зоны этажей 57–60 в Bruno, обклеить QR, проверить сканирование. Стартует после получения списков по 57–60.",
+   "objects": [
+    "a5fc4390-5a9f-4521-8443-9364e0065603",
+    "da25b805-5315-484b-8159-82a9c8eeb5af"
+   ],
+   "zone": "",
+   "zoneId": "",
+   "teamId": "",
+   "owner": "clean",
+   "controller": "head",
+   "workType": "wt_30",
+   "start": "2026-11-09",
+   "due": "2026-11-27",
+   "prio": "P2",
+   "tags": [
+    "БФ",
+    "QR"
+   ],
+   "dep": "ПДР-26-001.1",
+   "flag": "",
+   "flagNote": "",
+   "submitted": false,
+   "accepted": false,
+   "resched": 0,
+   "brunoRef": "",
+   "brunoStatus": "",
+   "photo": false,
+   "created": "2026-10-27 09:00",
+   "createdBy": "head",
+   "updated": "2026-10-27 09:00",
+   "version": 1,
+   "checklist": []
+  },
+  {
+   "id": "ОБК-26-002.1",
+   "parent": "ОБК-26-002",
+   "folder": "ОБК",
+   "title": "Зоны этажей 57–60 в Bruno",
+   "desc": "",
+   "objects": [
+    "a5fc4390-5a9f-4521-8443-9364e0065603",
+    "da25b805-5315-484b-8159-82a9c8eeb5af"
+   ],
+   "zone": "",
+   "zoneId": "",
+   "teamId": "",
+   "owner": "mod",
+   "controller": "head",
+   "workType": "wt_30",
+   "start": "2026-11-09",
+   "due": "2026-11-13",
+   "prio": "P2",
+   "tags": [
+    "БФ",
+    "QR"
+   ],
+   "dep": "",
+   "flag": "",
+   "flagNote": "",
+   "submitted": false,
+   "accepted": false,
+   "resched": 0,
+   "brunoRef": "",
+   "brunoStatus": "",
+   "photo": false,
+   "created": "2026-10-27 09:00",
+   "createdBy": "head",
+   "updated": "2026-10-27 09:00",
+   "version": 1,
+   "checklist": [
+    {
+     "id": "ОБК-26-002.1-c0",
+     "text": "Получить планировки этажей 57–60",
+     "done": false,
+     "by": "",
+     "at": "",
+     "order": 1,
+     "createdBy": "head",
+     "createdAt": "2026-10-27 09:00"
+    },
+    {
+     "id": "ОБК-26-002.1-c1",
+     "text": "Создать зоны с родительской иерархией",
+     "done": false,
+     "by": "",
+     "at": "",
+     "order": 2,
+     "createdBy": "head",
+     "createdAt": "2026-10-27 09:00"
+    },
+    {
+     "id": "ОБК-26-002.1-c2",
+     "text": "Сгенерировать QR",
+     "done": false,
+     "by": "",
+     "at": "",
+     "order": 3,
+     "createdBy": "head",
+     "createdAt": "2026-10-27 09:00"
+    }
+   ]
+  },
+  {
+   "id": "ОБК-26-002.2",
+   "parent": "ОБК-26-002",
+   "folder": "ОБК",
+   "title": "Обклейка QR",
+   "desc": "",
+   "objects": [
+    "a5fc4390-5a9f-4521-8443-9364e0065603",
+    "da25b805-5315-484b-8159-82a9c8eeb5af"
+   ],
+   "zone": "",
+   "zoneId": "",
+   "teamId": "",
+   "owner": "clean",
+   "controller": "head",
+   "workType": "wt_30",
+   "start": "2026-11-16",
+   "due": "2026-11-24",
+   "prio": "P2",
+   "tags": [
+    "БФ",
+    "QR"
+   ],
+   "dep": "",
+   "flag": "",
+   "flagNote": "",
+   "submitted": false,
+   "accepted": false,
+   "resched": 0,
+   "brunoRef": "",
+   "brunoStatus": "",
+   "photo": false,
+   "created": "2026-10-27 09:00",
+   "createdBy": "head",
+   "updated": "2026-10-27 09:00",
+   "version": 1,
+   "checklist": [
+    {
+     "id": "ОБК-26-002.2-c0",
+     "text": "Печать стикеров",
+     "done": false,
+     "by": "",
+     "at": "",
+     "order": 1,
+     "createdBy": "head",
+     "createdAt": "2026-10-27 09:00"
+    },
+    {
+     "id": "ОБК-26-002.2-c1",
+     "text": "Обклейка 57–58 этажей",
+     "done": false,
+     "by": "",
+     "at": "",
+     "order": 2,
+     "createdBy": "head",
+     "createdAt": "2026-10-27 09:00"
+    },
+    {
+     "id": "ОБК-26-002.2-c2",
+     "text": "Обклейка 59–60 этажей",
+     "done": false,
+     "by": "",
+     "at": "",
+     "order": 3,
+     "createdBy": "head",
+     "createdAt": "2026-10-27 09:00"
+    },
+    {
+     "id": "ОБК-26-002.2-c3",
+     "text": "Фото-подтверждение",
+     "done": false,
+     "by": "",
+     "at": "",
+     "order": 4,
+     "createdBy": "head",
+     "createdAt": "2026-10-27 09:00"
+    }
+   ]
+  },
+  {
+   "id": "ОБК-26-002.3",
+   "parent": "ОБК-26-002",
+   "folder": "ОБК",
+   "title": "Проверка сканирования",
+   "desc": "",
+   "objects": [
+    "a5fc4390-5a9f-4521-8443-9364e0065603",
+    "da25b805-5315-484b-8159-82a9c8eeb5af"
+   ],
+   "zone": "",
+   "zoneId": "",
+   "teamId": "",
+   "owner": "clean",
+   "controller": "head",
+   "workType": "wt_30",
+   "start": "2026-11-25",
+   "due": "2026-11-27",
+   "prio": "P2",
+   "tags": [
+    "БФ",
+    "QR"
+   ],
+   "dep": "",
+   "flag": "",
+   "flagNote": "",
+   "submitted": false,
+   "accepted": false,
+   "resched": 0,
+   "brunoRef": "",
+   "brunoStatus": "",
+   "photo": false,
+   "created": "2026-10-27 09:00",
+   "createdBy": "head",
+   "updated": "2026-10-27 09:00",
+   "version": 1,
+   "checklist": [
+    {
+     "id": "ОБК-26-002.3-c0",
+     "text": "Тестовое сканирование всех зон",
+     "done": false,
+     "by": "",
+     "at": "",
+     "order": 1,
+     "createdBy": "head",
+     "createdAt": "2026-10-27 09:00"
+    },
+    {
+     "id": "ОБК-26-002.3-c1",
+     "text": "Исправить ошибки привязки",
+     "done": false,
+     "by": "",
+     "at": "",
+     "order": 2,
+     "createdBy": "head",
+     "createdAt": "2026-10-27 09:00"
+    },
+    {
+     "id": "ОБК-26-002.3-c2",
+     "text": "Отчёт модератору",
+     "done": false,
+     "by": "",
+     "at": "",
+     "order": 3,
+     "createdBy": "head",
+     "createdAt": "2026-10-27 09:00"
+    }
+   ]
+  },
+  {
+   "id": "ВНД-26-001",
+   "parent": null,
+   "folder": "ВНД",
+   "title": "Закрытие года в Bruno",
+   "desc": "Довести шаблоны, справочники и документацию Bruno до целевого состояния к концу года.",
+   "objects": [
+    "ALL"
+   ],
+   "zone": "",
+   "zoneId": "",
+   "teamId": "",
+   "owner": "mod",
+   "controller": "head",
+   "workType": "wt_40",
+   "start": "2026-11-02",
+   "due": "2026-12-29",
+   "prio": "P2",
+   "tags": [
+    "Bruno"
+   ],
+   "dep": "",
+   "flag": "",
+   "flagNote": "",
+   "submitted": false,
+   "accepted": false,
+   "resched": 0,
+   "brunoRef": "",
+   "brunoStatus": "",
+   "photo": false,
+   "created": "2026-10-27 09:00",
+   "createdBy": "head",
+   "updated": "2026-10-27 09:00",
+   "version": 1,
+   "checklist": []
+  },
+  {
+   "id": "ВНД-26-001.1",
+   "parent": "ВНД-26-001",
+   "folder": "ВНД",
+   "title": "Шаблоны на оставшихся объектах",
+   "desc": "",
+   "objects": [
+    "ALL"
+   ],
+   "zone": "",
+   "zoneId": "",
+   "teamId": "",
+   "owner": "mod",
+   "controller": "head",
+   "workType": "wt_40",
+   "start": "2026-11-02",
+   "due": "2026-12-11",
+   "prio": "P2",
+   "tags": [
+    "Bruno"
+   ],
+   "dep": "",
+   "flag": "",
+   "flagNote": "",
+   "submitted": false,
+   "accepted": false,
+   "resched": 0,
+   "brunoRef": "",
+   "brunoStatus": "",
+   "photo": false,
+   "created": "2026-10-27 09:00",
+   "createdBy": "head",
+   "updated": "2026-10-27 09:00",
+   "version": 1,
+   "checklist": [
+    {
+     "id": "ВНД-26-001.1-c0",
+     "text": "Шаблоны: Перовское ш.",
+     "done": false,
+     "by": "",
+     "at": "",
+     "order": 1,
+     "createdBy": "head",
+     "createdAt": "2026-10-27 09:00"
+    },
+    {
+     "id": "ВНД-26-001.1-c1",
+     "text": "Шаблоны: Рыбинская",
+     "done": false,
+     "by": "",
+     "at": "",
+     "order": 2,
+     "createdBy": "head",
+     "createdAt": "2026-10-27 09:00"
+    },
+    {
+     "id": "ВНД-26-001.1-c2",
+     "text": "Шаблоны: Днепропетровский",
+     "done": false,
+     "by": "",
+     "at": "",
+     "order": 3,
+     "createdBy": "head",
+     "createdAt": "2026-10-27 09:00"
+    },
+    {
+     "id": "ВНД-26-001.1-c3",
+     "text": "Шаблоны: Воздвиженка",
+     "done": false,
+     "by": "",
+     "at": "",
+     "order": 4,
+     "createdBy": "head",
+     "createdAt": "2026-10-27 09:00"
+    },
+    {
+     "id": "ВНД-26-001.1-c4",
+     "text": "Шаблоны: Южнопортовая",
+     "done": false,
+     "by": "",
+     "at": "",
+     "order": 5,
+     "createdBy": "head",
+     "createdAt": "2026-10-27 09:00"
+    },
+    {
+     "id": "ВНД-26-001.1-c5",
+     "text": "Шаблоны: Зотов Центр",
+     "done": false,
+     "by": "",
+     "at": "",
+     "order": 6,
+     "createdBy": "head",
+     "createdAt": "2026-10-27 09:00"
+    }
+   ]
+  },
+  {
+   "id": "ВНД-26-001.2",
+   "parent": "ВНД-26-001",
+   "folder": "ВНД",
+   "title": "Теги, сотрудники, команды",
+   "desc": "",
+   "objects": [
+    "ALL"
+   ],
+   "zone": "",
+   "zoneId": "",
+   "teamId": "",
+   "owner": "mod",
+   "controller": "head",
+   "workType": "wt_40",
+   "start": "2026-11-16",
+   "due": "2026-12-11",
+   "prio": "P2",
+   "tags": [
+    "Bruno"
+   ],
+   "dep": "",
+   "flag": "",
+   "flagNote": "",
+   "submitted": false,
+   "accepted": false,
+   "resched": 0,
+   "brunoRef": "",
+   "brunoStatus": "",
+   "photo": false,
+   "created": "2026-10-27 09:00",
+   "createdBy": "head",
+   "updated": "2026-10-27 09:00",
+   "version": 1,
+   "checklist": [
+    {
+     "id": "ВНД-26-001.2-c0",
+     "text": "Чистка каталога тегов",
+     "done": false,
+     "by": "",
+     "at": "",
+     "order": 1,
+     "createdBy": "head",
+     "createdAt": "2026-10-27 09:00"
+    },
+    {
+     "id": "ВНД-26-001.2-c1",
+     "text": "Сверка персонала с мастер-таблицей",
+     "done": false,
+     "by": "",
+     "at": "",
+     "order": 2,
+     "createdBy": "head",
+     "createdAt": "2026-10-27 09:00"
+    },
+    {
+     "id": "ВНД-26-001.2-c2",
+     "text": "Команды по всем объектам",
+     "done": false,
+     "by": "",
+     "at": "",
+     "order": 3,
+     "createdBy": "head",
+     "createdAt": "2026-10-27 09:00"
+    },
+    {
+     "id": "ВНД-26-001.2-c3",
+     "text": "Удалить кастомный атрибут «Виды работ»",
+     "done": false,
+     "by": "",
+     "at": "",
+     "order": 4,
+     "createdBy": "head",
+     "createdAt": "2026-10-27 09:00"
+    }
+   ]
+  },
+  {
+   "id": "ВНД-26-001.3",
+   "parent": "ВНД-26-001",
+   "folder": "ВНД",
+   "title": "Руководство по ведению Bruno",
+   "desc": "",
+   "objects": [
+    "ALL"
+   ],
+   "zone": "",
+   "zoneId": "",
+   "teamId": "",
+   "owner": "mod",
+   "controller": "head",
+   "workType": "wt_40",
+   "start": "2026-12-07",
+   "due": "2026-12-25",
+   "prio": "P2",
+   "tags": [
+    "Bruno"
+   ],
+   "dep": "",
+   "flag": "",
+   "flagNote": "",
+   "submitted": false,
+   "accepted": false,
+   "resched": 0,
+   "brunoRef": "",
+   "brunoStatus": "",
+   "photo": false,
+   "created": "2026-10-27 09:00",
+   "createdBy": "head",
+   "updated": "2026-10-27 09:00",
+   "version": 1,
+   "checklist": [
+    {
+     "id": "ВНД-26-001.3-c0",
+     "text": "Структура руководства",
+     "done": false,
+     "by": "",
+     "at": "",
+     "order": 1,
+     "createdBy": "head",
+     "createdAt": "2026-10-27 09:00"
+    },
+    {
+     "id": "ВНД-26-001.3-c1",
+     "text": "Разделы для комендантов",
+     "done": false,
+     "by": "",
+     "at": "",
+     "order": 2,
+     "createdBy": "head",
+     "createdAt": "2026-10-27 09:00"
+    },
+    {
+     "id": "ВНД-26-001.3-c2",
+     "text": "Разделы для менеджеров клининга",
+     "done": false,
+     "by": "",
+     "at": "",
+     "order": 3,
+     "createdBy": "head",
+     "createdAt": "2026-10-27 09:00"
+    },
+    {
+     "id": "ВНД-26-001.3-c3",
+     "text": "Согласование с руководителем",
+     "done": false,
+     "by": "",
+     "at": "",
+     "order": 4,
+     "createdBy": "head",
+     "createdAt": "2026-10-27 09:00"
+    }
+   ]
+  },
+  {
+   "id": "ОТЧ-26-001",
+   "parent": null,
+   "folder": "ОТЧ",
+   "title": "Итоговый отчёт руководству за 2026",
+   "desc": "",
+   "objects": [
+    "ALL"
+   ],
+   "zone": "",
+   "zoneId": "",
+   "teamId": "",
+   "owner": "mod",
+   "controller": "head",
+   "workType": "wt_41",
+   "start": "2026-12-28",
+   "due": "2026-12-29",
+   "prio": "P3",
+   "tags": [
+    "отчёт"
+   ],
+   "dep": "",
+   "flag": "",
+   "flagNote": "",
+   "submitted": false,
+   "accepted": false,
+   "resched": 0,
+   "brunoRef": "",
+   "brunoStatus": "",
+   "photo": false,
+   "created": "2026-10-27 09:00",
+   "createdBy": "head",
+   "updated": "2026-10-27 09:00",
+   "version": 1,
+   "checklist": [
+    {
+     "id": "ОТЧ-26-001-c0",
+     "text": "Собрать цифры из дашборда",
+     "done": false,
+     "by": "",
+     "at": "",
+     "order": 1,
+     "createdBy": "head",
+     "createdAt": "2026-10-27 09:00"
+    },
+    {
+     "id": "ОТЧ-26-001-c1",
+     "text": "Итоги поручений отдела",
+     "done": false,
+     "by": "",
+     "at": "",
+     "order": 2,
+     "createdBy": "head",
+     "createdAt": "2026-10-27 09:00"
+    },
+    {
+     "id": "ОТЧ-26-001-c2",
+     "text": "Подготовить слайды",
+     "done": false,
+     "by": "",
+     "at": "",
+     "order": 3,
+     "createdBy": "head",
+     "createdAt": "2026-10-27 09:00"
+    },
+    {
+     "id": "ОТЧ-26-001-c3",
+     "text": "Отправить руководителю",
+     "done": false,
+     "by": "",
+     "at": "",
+     "order": 4,
+     "createdBy": "head",
+     "createdAt": "2026-10-27 09:00"
+    }
+   ]
+  },
+  {
+   "id": "ОРГ-26-001",
+   "parent": null,
+   "folder": "ОРГ",
+   "title": "Ревизия мультимедиа переговорных перед закрытием года",
+   "desc": "",
+   "objects": [
+    "a037facd-77d3-4fd6-b2b9-a33b90ab0eb0"
+   ],
+   "zone": "",
+   "zoneId": "",
+   "teamId": "",
+   "owner": "mms",
+   "controller": "head",
+   "workType": "wt_12",
+   "start": "2026-11-10",
+   "due": "2026-12-11",
+   "prio": "P3",
+   "tags": [
+    "ММС"
+   ],
+   "dep": "",
+   "flag": "",
+   "flagNote": "",
+   "submitted": false,
+   "accepted": false,
+   "resched": 0,
+   "brunoRef": "",
+   "brunoStatus": "",
+   "photo": false,
+   "created": "2026-10-27 09:00",
+   "createdBy": "head",
+   "updated": "2026-10-27 09:00",
+   "version": 1,
+   "checklist": [
+    {
+     "id": "ОРГ-26-001-c0",
+     "text": "Список переговорных с оборудованием",
+     "done": false,
+     "by": "",
+     "at": "",
+     "order": 1,
+     "createdBy": "head",
+     "createdAt": "2026-10-27 09:00"
+    },
+    {
+     "id": "ОРГ-26-001-c1",
+     "text": "Проверка проекторов и панелей",
+     "done": false,
+     "by": "",
+     "at": "",
+     "order": 2,
+     "createdBy": "head",
+     "createdAt": "2026-10-27 09:00"
+    },
+    {
+     "id": "ОРГ-26-001-c2",
+     "text": "Проверка ВКС-комплектов",
+     "done": false,
+     "by": "",
+     "at": "",
+     "order": 3,
+     "createdBy": "head",
+     "createdAt": "2026-10-27 09:00"
+    },
+    {
+     "id": "ОРГ-26-001-c3",
+     "text": "Перечень на замену",
+     "done": false,
+     "by": "",
+     "at": "",
+     "order": 4,
+     "createdBy": "head",
+     "createdAt": "2026-10-27 09:00"
+    },
+    {
+     "id": "ОРГ-26-001-c4",
+     "text": "Заявка на закупку",
+     "done": false,
+     "by": "",
+     "at": "",
+     "order": 5,
+     "createdBy": "head",
+     "createdAt": "2026-10-27 09:00"
+    }
+   ]
+  }
+ ],
+ "activity": [
+  {
+   "id": "a6",
+   "task": "ПДР-26-001",
+   "ts": "2026-10-20 10:00",
+   "author": "head",
+   "type": "created",
+   "text": "создал(а) поручение",
+   "mentions": []
+  },
+  {
+   "id": "a13",
+   "task": "ПДР-26-001",
+   "ts": "2026-10-20 10:05",
+   "author": "head",
+   "type": "comment",
+   "text": "Ввод нового подрядчика держим как P1: старт клининга 02.11, сдвигать нельзя. @Подрядчики, вы ведёте поручение целиком.",
+   "mentions": [
+    "pdr"
+   ]
+  },
+  {
+   "id": "a2",
+   "task": "ПДР-26-001.1",
+   "ts": "2026-10-21 11:05",
+   "author": "clean",
+   "type": "check",
+   "text": "отметил(а) «Получить от подрядчика списки персонала по этажам»",
+   "mentions": []
+  },
+  {
+   "id": "a3",
+   "task": "ПДР-26-001.1",
+   "ts": "2026-10-22 16:30",
+   "author": "clean",
+   "type": "check",
+   "text": "отметил(а) «Сверить списки с мастер-таблицей персонала»",
+   "mentions": []
+  },
+  {
+   "id": "a14",
+   "task": "ПДР-26-001.1",
+   "ts": "2026-10-23 14:12",
+   "author": "clean",
+   "type": "comment",
+   "text": "Подрядчик прислал списки только по этажам 45–56. По 57–60 списков нет, без них не закажем пропуска. @Подрядчики, запросите до 29.10.",
+   "mentions": [
+    "pdr"
+   ]
+  },
+  {
+   "id": "a15",
+   "task": "ПДР-26-001.1",
+   "ts": "2026-10-23 14:15",
+   "author": "clean",
+   "type": "blocker",
+   "text": "Блокер: нет списков персонала по этажам 57–60",
+   "mentions": []
+  },
+  {
+   "id": "a16",
+   "task": "ПДР-26-001.1",
+   "ts": "2026-10-24 10:02",
+   "author": "pdr",
+   "type": "comment",
+   "text": "Запросил у подрядчика, обещают до 28.10. Если не пришлют — выношу на руководителя.",
+   "mentions": []
+  },
+  {
+   "id": "a18",
+   "task": "ОБК-26-001.1",
+   "ts": "2026-10-26 12:00",
+   "author": "head",
+   "type": "due_change",
+   "text": "Срок 28.10 → 30.10. Причина: типография изготавливает тираж 3 рабочих дня.",
+   "mentions": []
+  },
+  {
+   "id": "a17",
+   "task": "ПДР-26-001.1",
+   "ts": "2026-10-26 18:40",
+   "author": "head",
+   "type": "comment",
+   "text": "@Модератор, заведение в Bruno начинаем только после полных списков, частично не заводим.",
+   "mentions": [
+    "mod"
+   ]
+  },
+  {
+   "id": "a5",
+   "task": "РМТ-26-001",
+   "ts": "2026-10-27 09:00",
+   "author": "head",
+   "type": "created",
+   "text": "создал(а) поручение",
+   "mentions": []
+  },
+  {
+   "id": "a7",
+   "task": "ПДР-26-002",
+   "ts": "2026-10-27 09:00",
+   "author": "head",
+   "type": "created",
+   "text": "создал(а) поручение",
+   "mentions": []
+  },
+  {
+   "id": "a8",
+   "task": "ОБК-26-001",
+   "ts": "2026-10-27 09:00",
+   "author": "head",
+   "type": "created",
+   "text": "создал(а) поручение",
+   "mentions": []
+  },
+  {
+   "id": "a9",
+   "task": "ОБК-26-002",
+   "ts": "2026-10-27 09:00",
+   "author": "head",
+   "type": "created",
+   "text": "создал(а) поручение",
+   "mentions": []
+  },
+  {
+   "id": "a10",
+   "task": "ВНД-26-001",
+   "ts": "2026-10-27 09:00",
+   "author": "head",
+   "type": "created",
+   "text": "создал(а) поручение",
+   "mentions": []
+  },
+  {
+   "id": "a11",
+   "task": "ОТЧ-26-001",
+   "ts": "2026-10-27 09:00",
+   "author": "head",
+   "type": "created",
+   "text": "создал(а) поручение",
+   "mentions": []
+  },
+  {
+   "id": "a12",
+   "task": "ОРГ-26-001",
+   "ts": "2026-10-27 09:00",
+   "author": "head",
+   "type": "created",
+   "text": "создал(а) поручение",
+   "mentions": []
+  },
+  {
+   "id": "a1",
+   "task": "РМТ-26-001.1",
+   "ts": "2026-10-27 09:40",
+   "author": "mod",
+   "type": "check",
+   "text": "отметил(а) «Выгрузить обращения по мебели из Bruno за 2026»",
+   "mentions": []
+  },
+  {
+   "id": "a4",
+   "task": "ОБК-26-001.1",
+   "ts": "2026-10-27 10:15",
+   "author": "mod",
+   "type": "check",
+   "text": "отметил(а) «Выгрузить 153 QR из Bruno»",
+   "mentions": []
+  },
+  {
+   "id": "a19",
+   "task": "ОБК-26-001.1",
+   "ts": "2026-10-27 10:20",
+   "author": "mod",
+   "type": "comment",
+   "text": "QR выгружены. Макет отправил на сверку названий, @Комендант, проверьте корпус Б: там больше всего переименований.",
+   "mentions": [
+    "kom"
+   ]
+  },
+  {
+   "id": "a20",
+   "task": "РМТ-26-001.1",
+   "ts": "2026-10-27 11:30",
+   "author": "pdr",
+   "type": "comment",
+   "text": "В Bruno за год 41 обращение по VIP-мебели, 9 из них повторные. Обход этажей начну 28.10.",
+   "mentions": []
+  }
+ ]
+}

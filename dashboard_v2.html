@@ -573,9 +573,17 @@
     .tbl-body th, .tbl-body td { padding: 9px 8px; font-size: 12px; }
   }
   @media print { .card-tools, .tbl-overlay { display: none !important; } }
+
+  /* Полоса пространств «Дашборд | Поручения» — одинаковая в dashboard_v2.html и planner.html */
+  .sp-nav{display:flex;gap:2px;background:#001A5E;padding:0 max(16px,env(safe-area-inset-left,0px));font:500 13px/1 "Golos Text",system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;overflow-x:auto;scrollbar-width:none}
+  .sp-nav a{color:#AFC0EA;text-decoration:none;padding:10px 12px 8px;border-bottom:2px solid transparent;white-space:nowrap}
+  .sp-nav a:hover{color:#FFFFFF}
+  .sp-nav a[aria-current="page"]{color:#FFFFFF;border-bottom-color:#00AAFF}
+  @media print { .sp-nav { display: none !important; } }
 </style>
 </head>
 <body>
+<nav class="sp-nav" aria-label="Разделы"><a href="dashboard_v2.html" aria-current="page">Дашборд</a><a href="planner.html">Поручения</a></nav>
 <div class="app loading">
 
   <div class="top-bar">
