@@ -97,6 +97,9 @@ import json
 import sys
 from collections import defaultdict
 from pathlib import Path
+from datetime import datetime, timezone
+from function_stats import FunctionStats
+from activity_stats import ActivityStats
 
 
 def log(msg, level="info"):
@@ -618,6 +621,8 @@ def build_employee_directory(users, role_lookup, team_membership, project_id_hin
 
 def process_archive(archive, manifest, employee_dir, team_membership, feedback_cap, days_override=None,
                     role_id_of_employee=None):
+    function_stats = FunctionStats(team_membership)
+    activity_stats = ActivityStats(function_stats.attribution)
     by_object_day = defaultdict(empty_bucket)          # "date|objectID" -> bucket (planned/unplanned внутри)
     by_object_day_unplanned = defaultdict(empty_bucket)
     by_zone_day = defaultdict(lambda: {"objectID": "", "completed": 0, "missed": 0})
@@ -720,6 +725,7 @@ def process_archive(archive, manifest, employee_dir, team_membership, feedback_c
           "recordsTaskPlan": 0, "recordsStatEmployee": 0, "recordsStatTeam": 0, "recordsStatZone": 0}
 
     qa["staleOpenAsMissed"] = 0
+    qa["openPastDeadline"] = 0
     team_func_cache = {}
     # НОВОЕ (16.10): выработка. "дата|объект|сотрудник|функция" -> выполнено
     # (только завершённые задачи с employeeID — у них исполнитель точный).
@@ -745,14 +751,15 @@ def process_archive(archive, manifest, employee_dir, team_membership, feedback_c
                     continue
                 obj = str(rec.get("objectID") or "")
                 status = (rec.get("status") or "").upper()
-                # Страховка (16.10): срок задачи прошёл (+1 сутки) ещё до момента
-                # выгрузки, а статус не финальный — Bruno его так и не закрыла.
-                # По факту задача не выполнена -> MISSED (а не вечное «в работе»).
+                # Preserve original Bruno statuses for the agreed function metric.
+                function_stats.add(rec, d)
+                activity_stats.add(rec, d)
+                # Diagnostic only: a past deadline never changes Bruno's status.
+                # The agreed missed count is strictly the original MISSED marker.
                 if status in ("NEW", "WAITING", "COMPLETING") and fetched_ts is not None:
                     dl_ts = task_deadline_ts(rec)
                     if dl_ts is not None and dl_ts + STALE_GRACE_SEC <= fetched_ts:
-                        status = "MISSED"
-                        qa["staleOpenAsMissed"] += 1
+                        qa["openPastDeadline"] += 1
                 is_planned = bool(rec.get("taskID"))
                 is_feedback = bool(rec.get("feedbackID"))
                 qa["recordsTaskPlan"] += 1
@@ -1096,7 +1103,7 @@ def process_archive(archive, manifest, employee_dir, team_membership, feedback_c
             fb_by_object_day, fb_by_object_hour,
             {k: {"done": v} for k, v in by_worker_func_day.items()},
             {tid: {"objects": dict(o), "func": team_func_seen.get(tid)}
-             for tid, o in team_object_tasks.items()})
+             for tid, o in team_object_tasks.items()}, function_stats.rows, dict(function_stats.completion_anomalies), activity_stats.rows, dict(activity_stats.qa))
 
 
 # --------------------------------------------------------------------- main
@@ -1141,14 +1148,15 @@ def main():
      by_object_role_day, by_object_hour,
      by_employee_object_day, by_employee_task_day, report_cubes,
      fb_by_object_day, fb_by_object_hour,
-     by_worker_func_day, team_usage) = process_archive(
+     by_worker_func_day, team_usage, by_function_team_day, function_completion_anomalies, activity_rows, activity_qa) = process_archive(
         archive, manifest, employee_dir, team_membership, args.feedback_cap,
         role_id_of_employee=role_id_of_employee)
 
     obj_dict = {uid(o): o.get("name") or "" for o in objects if not o.get("deleted")}
     zone_dict = {uid(z): {"name": z.get("name") or "", "objectID": str(z.get("objectID") or "")}
                  for z in zones if not z.get("deleted")}
-    team_dict = {tid: {"name": t["name"], "size": t["size"]} for tid, t in team_membership.items()}
+    team_dict = {tid: {"name": t["name"], "size": t["size"], "memberIDs": t["memberIDs"],
+                       "active": t["active"]} for tid, t in team_membership.items()}
 
     # Численность по функции и объекту (16.10): сколько АКТИВНЫХ учёток в
     # активных командах этой функции, чей «домашний» объект (больше всего
@@ -1189,6 +1197,18 @@ def main():
     days_sorted = sorted(manifest.get("days", {}).keys())
     model = {
         "meta": {
+            "buildId": datetime.now(timezone.utc).isoformat(),
+            "sourceUpdatedAt": max((r.get("fetchedAt") or "" for r in manifest.get("days", {}).values()
+                                    if r.get("complete")), default=""),
+            "functionStatsVersion": 2,
+            "activityVersion": 1,
+            "activityQA": activity_qa,
+            "activityDate": "COMPLETED: date_complete in Moscow; other statuses: dateLocal",
+            "activityWindow": "date to deactivationDate; daily <=24h; prolonged >24h",
+            "functionCompletedRequiresExecutor": True,
+            "functionCompletionAnomalies": function_completion_anomalies,
+            "functionEffFormula": "COMPLETED/(COMPLETED+MISSED)",
+            "functionStatusSource": "COMPLETED with actual employeeID; original MISSED",
             "generatedFromSnapshot": snap_date,
             "archiveDays": len(days_sorted),
             "archiveFrom": days_sorted[0] if days_sorted else None,
@@ -1200,6 +1220,7 @@ def main():
             "funcRoster": func_roster,
             "funcRosterSnapshot": snap_date,
             "staleOpenAsMissed": qa.get("staleOpenAsMissed", 0),
+            "openPastDeadline": qa.get("openPastDeadline", 0),
             # формула эффективности (решение 21.09): выполнено / все задачи
             "effFormula": "completed/all",
         },
@@ -1210,6 +1231,8 @@ def main():
             "teams": team_dict,
         },
         "daily": {
+            "byFunctionTeamDay": by_function_team_day,
+            "byActivity": activity_rows,
             "byObjectDay": by_object_day,
             "byZoneDay": by_zone_day,
             "byEmployeeDay": by_employee_day,
@@ -1267,6 +1290,14 @@ def main():
         core_path, cubes_path = base + ".core.json.gz", base + ".cubes.json.gz"
         core_size = dump_gz(core, core_path)
         cubes_size = dump_gz(cubes, cubes_path)
+
+    # Publish this small version marker only after every model file is complete.
+    base = str(args.out)[:-8] if str(args.out).endswith(".json.gz") else str(args.out)
+    version_path = Path(base + ".version.json")
+    version_tmp = Path(str(version_path) + ".part")
+    version_tmp.write_text(json.dumps({"buildId": model["meta"]["buildId"],
+                                       "sourceUpdatedAt": model["meta"]["sourceUpdatedAt"]}), encoding="utf-8")
+    version_tmp.replace(version_path)
 
     print("\n" + "=" * 66)
     print("ГОТОВО: %s (%s)" % (args.out, human(size)))

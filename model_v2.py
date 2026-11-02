@@ -48,6 +48,8 @@ BUCKET_LIGHT = ["NEW", "WAITING", "COMPLETING", "COMPLETED", "MISSED",
 # Раскладка кубов: имя -> (из скольких частей ключ, список полей значения).
 # "d" — день, "o" — объект, "z" — зона, "e" — сотрудник, "r" — роль, "h" — час.
 CUBES = {
+    "byActivity": {"key": ["d", "h", "o", "r", "t", "e", "z", "w", "f"], "val": ("pu", BUCKET_FULL)},
+    "byFunctionTeamDay": {"key": ["d", "o", "r", "t", "e"], "val": ("pu", BUCKET_LIGHT)},
     # ключ "дата|объект", значение {planned: бакет, unplanned: бакет}
     "byObjectDay":         {"key": ["d", "o"],      "val": ("pu", BUCKET_FULL)},
     # ключ "дата|объект|роль", бакеты урезанные (без delayHours)
@@ -82,7 +84,7 @@ CUBES = {
 # в lazy, рядом с byObjectHour: нужен только по клику на столбик дня.
 CORE_CUBES = ["byObjectDay", "byObjectRoleDay", "byEmployeeDay",
               "byEmployeeObjectDay", "byEmployeeTaskDay", "fbByObjectDay",
-              "byWorkerFuncDay"]
+              "byWorkerFuncDay", "byFunctionTeamDay", "byActivity"]
 LAZY_CUBES = ["byZoneDay", "byObjectHour", "fbByObjectHour"]
 
 
@@ -124,8 +126,10 @@ def encode(model):
     emp_ix = _Index(dirs.get("employees", {}).keys())
     day_ix = _Index()
     role_ix = _Index()
+    team_ix = _Index(dirs.get("teams", {}).keys())
+    window_ix, feedback_ix = _Index(), _Index()
 
-    part_ix = {"d": day_ix, "o": obj_ix, "z": zone_ix, "e": emp_ix, "r": role_ix}
+    part_ix = {"d": day_ix, "o": obj_ix, "z": zone_ix, "e": emp_ix, "r": role_ix, "t": team_ix, "w": window_ix, "f": feedback_ix}
 
     def encode_cube(name):
         spec = CUBES[name]
@@ -180,12 +184,16 @@ def encode(model):
             # и тогда порядок ключей справочника индексу не соответствует.
             "empIds": emp_ix.items,
             "teams": dirs.get("teams", {}),
+            "teamIds": team_ix.items,
+            "windowKinds": window_ix.items,
+            "feedbackIds": feedback_ix.items,
         },
         "feedbackExamples": model.get("feedbackExamples", []),
         "cubes": {n: encoded[n] for n in CORE_CUBES},
     }
     cubes = {
         "f": FORMAT_VERSION,
+        "buildId": model.get("meta", {}).get("buildId"),
         "part": "cubes",
         "cubes": {n: encoded[n] for n in LAZY_CUBES},
     }
@@ -207,7 +215,8 @@ def decode(core, cubes=None):
     zone_obj = d.get("zones", {}).get("obj", [])
     emp_ids = d.get("empIds") or list((d.get("employees") or {}).keys())
 
-    part_items = {"d": days, "o": obj_ids, "z": zone_ids, "e": emp_ids, "r": roles}
+    team_ids = d.get("teamIds") or list((d.get("teams") or {}).keys())
+    part_items = {"d": days, "o": obj_ids, "z": zone_ids, "e": emp_ids, "r": roles, "t": team_ids, "w": d.get("windowKinds", []), "f": d.get("feedbackIds", [])}
 
     def decode_cube(name, packed):
         spec = CUBES[name]

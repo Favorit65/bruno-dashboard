@@ -12,6 +12,7 @@ on:
     branches: [ main ]
     paths:
       - '**.html'
+      - 'dashboard-*.js'
       - 'shared/**'
       - 'docs/demo_tasks.json'
       - '.nojekyll'
@@ -55,6 +56,7 @@ jobs:
           cp .nojekyll site/ 2>/dev/null || touch site/.nojekyll
           cp index.html site/
           cp dashboard_v2.html site/
+          cp dashboard-policy.js dashboard-refresh.js dashboard-activity.js site/
           # планировщик поручений: страница, общая логика статусов/прав, демо-данные
           cp planner.html site/
           mkdir -p site/shared site/docs
@@ -65,6 +67,7 @@ jobs:
           cp data.json.gz site/ 2>/dev/null || true
           if [ -f _model/model.json.gz ]; then
             cp _model/model.json.gz site/
+            cp _model/model.version.json site/ 2>/dev/null || true
             # формат 2: сайт грузит core сразу, cubes догружает фоном
             cp _model/model.core.json.gz _model/model.cubes.json.gz site/ 2>/dev/null || \
               echo "::warning::В ветке data-model нет файлов формата 2 — дашборд откатится на model.json.gz. Перезапустите «Обновление данных»."

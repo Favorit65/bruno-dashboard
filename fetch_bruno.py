@@ -536,7 +536,7 @@ def mode_measure(api, archive, day, page_limit):
     return results
 
 
-def mode_fetch(api, archive, days, fields_mode, page_limit, refresh_last, force):
+def mode_fetch(api, archive, days, fields_mode, page_limit, refresh_last, force, recent_only=False):
     manifest = Manifest(archive / "manifest.json")
     today = datetime.now(timezone.utc).date()
     # refresh_last=5 -> перевыгружаем сегодня и четыре предыдущих дня; 0 -> ничего.
@@ -569,7 +569,7 @@ def mode_fetch(api, archive, days, fields_mode, page_limit, refresh_last, force)
     # ~5 суток) — тоже в работу, иначе недельные/месячные задачи застынут.
     in_range = set(days)
     reopened = sorted(d for d in manifest.data["days"]
-                      if d not in in_range and manifest.needs_refresh(d, now))
+                      if not recent_only and d not in in_range and manifest.needs_refresh(d, now))
     if reopened:
         log("Перевыгрузка %d открытых дней вне диапазона (срок задач прошёл): %s%s"
             % (len(reopened), ", ".join(reopened[:8]), " ..." if len(reopened) > 8 else ""), "step")
@@ -638,6 +638,8 @@ def main():
     ap.add_argument("--refresh-last", type=int, default=5,
                     help="Сколько последних суток перевыгружать всегда (по умолчанию 5)")
     ap.add_argument("--force", action="store_true", help="Перевыгрузить всё заново, игнорируя манифест")
+    ap.add_argument("--recent-only", action="store_true",
+                    help="Почасовой проход: не перевыгружать старые дни вне выбранного диапазона")
     ap.add_argument("--estimate", action="store_true", help="Только оценить объём, не качать")
     ap.add_argument("--measure", action="store_true", help="Замер форматов хранения на одном дне")
     ap.add_argument("--skip-dirs", action="store_true", help="Не обновлять справочники")
@@ -683,7 +685,7 @@ def main():
         fetch_directories(api, archive, datetime.now(timezone.utc).date().isoformat())
 
     mode_fetch(api, archive, days, args.fields, args.page_limit,
-               args.refresh_last, args.force)
+               args.refresh_last, args.force, args.recent_only)
 
 
 if __name__ == "__main__":

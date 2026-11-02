@@ -1,6 +1,6 @@
 name: Обновление данных (архив + модель)
 
-# Ежедневный робот конвейера «Дашборд 2.0»:
+# Почасовой робот конвейера «Дашборд 2.0»:
 #   1. догружает из Bruno API новые сутки в архив (ветка data-archive);
 #   2. пересобирает единый агрегат model.json.gz (build_model.py);
 #   3. кладёт агрегат в ветку data-model (перезапись, история не копится);
@@ -8,8 +8,8 @@ name: Обновление данных (архив + модель)
 
 on:
   schedule:
-    # 20:00 UTC = 23:00 МСК, когда сутки уже почти закрыты
-    - cron: '0 20 * * *'
+    # Каждый час. В 02:17 МСК — расширенная сверка предыдущих дней.
+    - cron: '17 * * * *'
   workflow_dispatch:
     inputs:
       date_from:
@@ -63,13 +63,17 @@ jobs:
         env:
           IN_FROM: ${{ inputs.date_from }}
           IN_TO: ${{ inputs.date_to }}
+          EVENT_NAME: ${{ github.event_name }}
         run: |
           python - <<'PY' >> "$GITHUB_OUTPUT"
           import json, os
           from datetime import date, timedelta, timezone, datetime
 
           MSK = timezone(timedelta(hours=3))
-          today = datetime.now(MSK).date()
+          now = datetime.now(MSK)
+          today = now.date()
+          deep = os.environ.get("EVENT_NAME") != "schedule" or now.hour == 2
+          refresh_last = 5 if deep else 2
 
           d_from = (os.environ.get("IN_FROM") or "").strip()
           d_to = (os.environ.get("IN_TO") or "").strip() or today.isoformat()
@@ -82,13 +86,17 @@ jobs:
               except FileNotFoundError:
                   done = []
               if done:
-                  # с запасом в 5 суток назад — вдруг данные доехали задним числом
-                  d_from = (date.fromisoformat(done[-1]) - timedelta(days=5)).isoformat()
+                  # Не пропускаем разрыв в архиве; обычный проход обновляет
+                  # последние двое суток, ночной — пять и старые открытые дни.
+                  edge = min(date.fromisoformat(done[-1]), today)
+                  d_from = max(date(2026, 1, 1), edge - timedelta(days=refresh_last - 1)).isoformat()
               else:
                   d_from = "2026-01-01"
 
           print("from=" + d_from)
           print("to=" + d_to)
+          print("refresh_last=" + str(refresh_last))
+          print("recent_flag=" + ("" if deep else "--recent-only"))
           PY
 
       - name: Догрузить новые сутки из Bruno API
@@ -105,7 +113,8 @@ jobs:
             --from "${{ steps.period.outputs.from }}" \
             --to "${{ steps.period.outputs.to }}" \
             --archive archive \
-            --refresh-last 5 \
+            --refresh-last "${{ steps.period.outputs.refresh_last }}" \
+            ${{ steps.period.outputs.recent_flag }} \
             ${{ inputs.force_full && '--force' || '' }}
 
       - name: Сохранить архив в ветку data-archive
@@ -134,6 +143,7 @@ jobs:
           cp model.json.gz /tmp/pub/
           # компактный формат 2 — его читает сайт (см. model_v2.py)
           cp model.core.json.gz model.cubes.json.gz /tmp/pub/
+          cp model.version.json /tmp/pub/
           cat > /tmp/pub/README.md <<'MD'
           # Ветка data-model
 
