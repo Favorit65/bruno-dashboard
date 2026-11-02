@@ -246,6 +246,23 @@ class Manifest:
         }
         self.save()
 
+    def has_active_window(self, day, now):
+        """Старое задание ещё можно выполнить: проверять до дедлайна тоже.
+
+        Иначе месячная задача, завершённая через две недели, попадёт в
+        архив только после окончания месяца. Запас суток оставляем Bruno
+        для финализации статуса после крайнего срока.
+        """
+        rec = self.data["days"].get(day) or {}
+        for value in rec.get("openDeadlines") or []:
+            try:
+                deadline = datetime.fromisoformat(str(value).replace("Z", "+00:00"))
+                if deadline + OPEN_GRACE >= now:
+                    return True
+            except (ValueError, TypeError):
+                continue
+        return False
+
     def needs_refresh(self, day, now):
         """Открытый день: есть незакрытые задачи, а последняя выгрузка была
         раньше, чем их срок + 1 сутки. Иначе статусы, которые Bruno проставит
@@ -561,17 +578,19 @@ def mode_fetch(api, archive, days, fields_mode, page_limit, refresh_last, force,
     for day in days:
         d = datetime.strptime(day, "%Y-%m-%d").date()
         stale = fresh_edge is not None and d >= fresh_edge
-        if force or not manifest.is_done(day) or stale or manifest.needs_refresh(day, now):
+        if force or not manifest.is_done(day) or stale or manifest.has_active_window(day, now) or manifest.needs_refresh(day, now):
             todo.append(day)
     skipped = len(days) - len(todo)
 
     # Открытые дни ВНЕ запрошенного диапазона (робот просит только последние
     # ~5 суток) — тоже в работу, иначе недельные/месячные задачи застынут.
+    # Ещё действующие окна проверяем каждый час, завершившиеся — ночью.
     in_range = set(days)
     reopened = sorted(d for d in manifest.data["days"]
-                      if not recent_only and d not in in_range and manifest.needs_refresh(d, now))
+                      if d not in in_range and (manifest.has_active_window(d, now)
+                          or (not recent_only and manifest.needs_refresh(d, now))))
     if reopened:
-        log("Перевыгрузка %d открытых дней вне диапазона (срок задач прошёл): %s%s"
+        log("Перевыгрузка %d открытых дней вне диапазона: %s%s"
             % (len(reopened), ", ".join(reopened[:8]), " ..." if len(reopened) > 8 else ""), "step")
         todo = reopened + todo
 
