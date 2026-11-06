@@ -7,8 +7,19 @@
 <title>Поручения отдела — ВТБ</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Golos+Text:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap">
-<style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0}[hidden]{display:none!important}</style>
+<style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0}[hidden]{display:none!important}
+.fold[data-short-folder]{grid-template-columns:minmax(0,1fr) auto}.current-content .lnk{text-align:left;white-space:normal}#shortQuick input:focus{outline:2px solid var(--accent);outline-offset:2px}
+
+.mod label:has([id^="short"]){display:flex;flex-direction:column;gap:5px;margin:12px 0}.mod label:has([id^="short"]) .inp,.mod label:has([id^="short"]) .sel{width:100%}
+</style>
 <style>
+body.folders-collapsed .shell{grid-template-columns:48px minmax(0,1fr)}
+body.folders-collapsed aside.side{display:flex}
+body.timeline-full .shell{display:block;padding:8px;max-width:none}
+body.timeline-full aside.side,body.timeline-full header.top,body.timeline-full .sp-nav,body.timeline-full .demo{display:none!important}
+body.timeline-full #main{position:fixed;inset:0;z-index:25;background:var(--bg);overflow:auto;padding:12px}
+body.timeline-full .tl{height:calc(100dvh - 210px)}
+body.timeline-full .tl-label{max-width:220px}
 /* Layout: navy header band → sidebar with folders | main view; task card slides in from the right */
 :root{
   --bg:#F3F5F9; --surface:#FFFFFF; --surface-2:#EDF1F7; --line:#D8DFEA; --line-2:#E6EBF3;
@@ -140,8 +151,8 @@ button.tag[aria-pressed="true"]{background:var(--accent);color:var(--accent-fg);
 .bar .bl{position:relative;display:flex;gap:5px;align-items:center;padding:0 6px;font-size:11px;font-weight:600;white-space:nowrap;color:var(--fg)}
 .bar:hover{box-shadow:0 0 0 2px color-mix(in srgb,var(--sc) 40%,transparent)}
 .bar.st-blocker{background-image:repeating-linear-gradient(135deg,transparent 0 6px,color-mix(in srgb,var(--st-overdue) 20%,transparent) 6px 12px)}
-.late{position:absolute;top:18px;height:0;border-top:2px dashed var(--st-overdue)}
-.row.child .late{top:18px}
+.timeline-overdue-tail{position:absolute;top:18px;height:0;border-top:2px dashed var(--st-overdue)}
+.row.child .timeline-overdue-tail{top:18px}
 .today{position:absolute;top:0;bottom:0;width:2px;background:var(--st-overdue);z-index:2;pointer-events:none}
 .today span{position:absolute;top:2px;left:4px;background:var(--st-overdue);color:#fff;font-size:10px;font-weight:700;border-radius:3px;padding:0 4px;white-space:nowrap}
 .legend{display:flex;gap:12px;flex-wrap:wrap;font-size:12px;color:var(--muted)}
@@ -223,7 +234,10 @@ table.t td .bad{color:var(--st-overdue);font-weight:700}
 .flagbox b{color:var(--st-overdue)}
 .cl{display:flex;flex-direction:column}
 .cli{display:grid;grid-template-columns:22px minmax(0,1fr);gap:6px;padding:6px 2px;border-bottom:1px solid var(--line-2);align-items:start}
-.cli input{width:16px;height:16px;margin:2px 0 0;accent-color:var(--st-done)}
+.cli input{appearance:none;width:17px;height:17px;margin:2px 0 0;border:1.5px solid var(--muted);border-radius:50%;display:grid;place-items:center;cursor:pointer}
+.cli input:checked{background:var(--st-done);border-color:var(--st-done)}
+.cli input:checked:after{content:"✓";color:white;font-size:12px;line-height:1}
+.cli input:disabled{cursor:default;opacity:.65}
 .cli .tx{font-size:13.5px}
 .cli.done .tx{color:var(--muted);text-decoration:line-through;text-decoration-color:var(--faint)}
 .cli .sig{display:block;font-size:11.5px;color:var(--st-done);text-decoration:none;font-variant-numeric:tabular-nums}
@@ -281,7 +295,8 @@ pre.json{background:var(--surface-2);border:1px solid var(--line);border-radius:
 @media (max-width:860px){
   .shell{grid-template-columns:minmax(0,1fr)}
   aside.side{display:none}
-  .chips-m{display:flex;gap:6px;overflow-x:auto;padding-bottom:2px;scrollbar-width:none}
+  .chips-m{display:flex;gap:6px;align-items:center;padding-bottom:2px}
+  .chips-m select{min-width:0;flex:1}
   .chips-m button{flex:none;border:1px solid var(--line);background:var(--surface);border-radius:14px;padding:4px 10px;font-size:12px}
   .chips-m button[aria-pressed="true"]{background:var(--accent);color:var(--accent-fg);border-color:var(--accent)}
   .tiles{grid-template-columns:repeat(2,minmax(0,1fr))}
@@ -302,6 +317,8 @@ pre.json{background:var(--surface-2);border:1px solid var(--line);border-radius:
   .vh .sp{margin-left:0}
 }
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+
+.current-row{display:flex;align-items:center;gap:14px;border-bottom:1px solid var(--line);padding:16px 6px}.current-content{min-width:0;overflow-wrap:anywhere}.current-circle{border:2px solid var(--muted);border-radius:50%;width:28px;height:28px;min-width:28px;background:var(--surface);color:var(--accent);font-size:18px;display:grid;place-items:center}.current-circle:disabled{opacity:.35;cursor:default}.current-row.is-overdue .current-circle{border-color:var(--st-overdue)}.current-warning{color:var(--st-overdue)}.short-quick{display:grid;grid-template-columns:2fr 1.4fr .6fr 1fr 1.4fr auto;gap:8px;margin:18px 0}.short-quick>*{min-width:0}#shortQuick .inp,#shortQuick .sel{width:100%}@media(max-width:1100px){.short-quick{grid-template-columns:1fr 1fr}}@media(max-width:600px){.short-quick{grid-template-columns:1fr}.current-row{align-items:flex-start}.current-content .note{font-size:12px}.vh{flex-wrap:wrap}header.top .tabs{overflow-x:auto;max-width:100%}}
 </style>
 <style>
 /* ===== Дополнения рабочей версии к стилям прототипа ===== */
@@ -323,6 +340,11 @@ pre.json{background:var(--surface-2);border:1px solid var(--line);border-radius:
 .toast.bad{background:var(--st-overdue);color:#fff}
 body:has(#loginRoot .login) .sp-nav{position:relative;z-index:85}  /* вкладки доступны и с экрана входа */
 .bar-f .sel{max-width:240px}  /* реальные названия объектов Bruno длинные */
+.task-scope{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:0 0 12px;flex-wrap:wrap}
+.login-in .sel{width:100%}
+#demoTypeField{display:grid;gap:12px}
+.folder-toggle{display:inline-flex}
+@media(max-width:860px){.folder-toggle{display:none}.bar-f .sel{max-width:none}.bar-f .search{min-width:0}}
 .fbk{font-size:11px;color:var(--demo-fg);background:var(--demo-bg);border-radius:4px;padding:0 5px;font-weight:500}
 .spin{width:30px;height:30px;border:3px solid var(--line);border-top-color:var(--accent);border-radius:50%;animation:spin .8s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
@@ -332,6 +354,55 @@ body:has(#loginRoot .login) .sp-nav{position:relative;z-index:85}  /* вклад
   body{background:#fff}
   .box,.tile{break-inside:avoid}
 }
+
+.current-controls{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin:20px 0}.current-controls .seg2{width:auto}.calendar-toolbar{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-top:18px}.calendar-navigation{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.calendar-navigation h2{font-size:17px;margin:0 0 0 10px;text-transform:capitalize}/* Compact calendar overview. Each day opens the full task list. */
+.calendar-frame{container-type:inline-size;min-width:0}
+.calendar-grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:1px;background:var(--line);border:1px solid var(--line);border-radius:9px;overflow:hidden}
+.calendar-dayname{padding:6px 0;text-align:center;font-size:12px;font-weight:600;color:var(--muted);background:var(--surface)}
+.calendar-day{min-width:0;min-height:66px;padding:3px;background:var(--surface)}
+.calendar-day.other-month{background:var(--surface-2)}
+.calendar-day.cal-today{box-shadow:inset 0 0 0 1px var(--accent)}
+.calendar-week .calendar-day{min-height:128px}
+.calendar-date{width:100%;display:flex;align-items:center;justify-content:space-between;gap:2px;text-align:left;border:0;border-radius:4px;background:none;color:var(--fg);padding:3px 4px;font-size:12px;font-weight:600}
+.calendar-date:hover{background:var(--surface-2)}
+.cal-today .calendar-date{color:var(--accent)}
+.other-month .calendar-date{color:var(--muted)}
+.calendar-count{color:var(--muted);font-size:11px;font-weight:500;white-space:nowrap}
+.calendar-count.has-overdue{color:var(--st-overdue)}
+.calendar-event{padding:3px 4px;gap:5px;border:0;border-left:2px solid var(--accent);border-radius:4px;background:var(--surface-2);margin:2px 0;align-items:center}
+.calendar-event.is-overdue{border-left-color:var(--st-overdue)}
+.calendar-event .current-circle{width:15px;height:15px;min-width:15px;font-size:10px;border-width:1px}
+.calendar-event .current-content .lnk{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:11px;line-height:1.35}
+.calendar-event .current-content .note{display:none}
+.calendar-event.is-done{opacity:.65}
+.is-done .current-content>.lnk{text-decoration:line-through}
+.agenda-divider{display:flex;align-items:center;gap:10px;padding:7px 9px;margin:12px 0 0;border-top:1px solid var(--line);background:var(--surface);color:var(--fg);font-size:13px;border-radius:4px}
+.agenda-divider span{color:var(--muted);font-weight:400}
+@container (max-width:560px){
+  .calendar-day,.calendar-week .calendar-day{min-height:43px;padding:0}
+  .calendar-date{min-height:43px;flex-direction:column;justify-content:center;padding:2px 0}
+  .calendar-event{display:none}
+}
+.project-filters{position:relative}.project-filters summary{cursor:pointer;padding:6px 10px;border:1px solid var(--line);border-radius:7px;font-size:13px;white-space:nowrap}.extra-filters{display:flex;gap:8px;flex-wrap:wrap;padding:12px;background:var(--surface);border:1px solid var(--line);border-radius:8px;margin-top:6px}.project-filters[open]{flex-basis:100%}.project-filters[open] summary{width:max-content}.modal label:has(#shortTitle),.modal label:has(#shortOwner){display:block}.modal input,.modal select{max-width:100%}@media(max-width:600px){.current-controls{align-items:stretch}.calendar-navigation h2{font-size:15px;flex-basis:100%;margin:4px 0}.extra-filters{flex-direction:column}.current-controls .seg2{width:100%}}
+
+main.current-view>.note{margin:0}main.current-view .current-controls{margin:0}main.current-view .calendar-toolbar{margin-top:0}.mod label:has([id^="short"]){display:flex;flex-direction:column;gap:5px;margin:12px 0}.mod label:has([id^="short"]) .inp{width:100%}
+.side-head{display:flex;align-items:center;gap:6px;min-height:32px;margin-bottom:8px}.side-head h3{margin:0;flex:1}.side-icon{border:0;background:none;color:var(--muted);font-size:21px;border-radius:6px;cursor:pointer;width:30px;height:30px;flex-shrink:0;display:grid;place-items:center}.side-icon:hover{background:var(--surface-2);color:var(--fg)}.side-contents{display:flex;flex-direction:column;gap:3px}body.folders-collapsed aside.side{padding:8px 4px}body.folders-collapsed .side-head{flex-direction:column}body.folders-collapsed .side-head h3,body.folders-collapsed .side-contents{display:none}.mobile-folder-menu{display:none}.folder-manager-list{display:flex;flex-direction:column;gap:12px;margin:16px 0}.folder-manager-row{border:1px solid var(--line);border-radius:8px;padding:10px;display:flex;flex-direction:column;gap:8px}.folder-name{display:flex;gap:8px;align-items:center}.folder-name input{flex:1;min-width:0}.folder-row-actions{display:flex;gap:5px;flex-wrap:wrap}.new-folder{display:flex;gap:8px}.new-folder input{min-width:0;flex:1}.check-compose{display:flex;flex-direction:column;gap:7px;width:100%}.check-compose-row{display:flex;align-items:flex-start;gap:9px}.check-compose-row input[type=checkbox]{appearance:none;width:20px;height:20px;flex-shrink:0;border:1.5px solid var(--muted);border-radius:50%;margin:7px 0 0;display:grid;place-items:center;cursor:pointer}.check-compose-row input:checked{border-color:var(--accent);background:var(--accent)}.check-compose-row input:checked:after{content:'✓';color:var(--accent-fg);font-size:13px}.check-compose-row:has(input:checked) textarea{color:var(--muted);text-decoration:line-through}.check-compose-row textarea{flex:1;width:100%;min-height:34px!important;resize:none!important;line-height:1.45;overflow:hidden}.checklist-add{display:flex;flex-direction:column;align-items:stretch!important}.checklist-add>.btn{align-self:flex-end}.completion-grace{opacity:.45;transition:opacity .2s ease}.completion-undo{position:fixed;bottom:65px;left:50%;transform:translateX(-50%);z-index:100;display:flex;align-items:center;gap:18px;background:var(--surface);color:var(--fg);border:1px solid var(--line);box-shadow:0 8px 40px #0005;padding:12px 16px;border-radius:10px;max-width:min(700px,94vw);font-size:13px}.completion-undo span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.completion-undo button{flex-shrink:0}.file-picker{position:absolute;width:1px;height:1px;opacity:0;overflow:hidden}.file-controls{display:flex;align-items:center;flex-wrap:wrap;gap:8px}.file-controls label{cursor:pointer}.task-file-list{display:flex;flex-wrap:wrap;gap:7px;margin-top:10px}.task-files{border:1px solid var(--line);border-radius:10px;padding:12px!important}.task-files h3{margin-top:0}.task-files .note{margin:8px 0}.task-files .btn{max-width:100%;white-space:normal;overflow-wrap:anywhere}@media(max-width:860px){body.folders-collapsed .shell{grid-template-columns:minmax(0,1fr)}body.folders-collapsed aside.side{display:none}.mobile-folder-menu{display:inline-block}.completion-undo{width:94vw;gap:8px;padding:10px}.completion-undo span{white-space:normal}.new-folder{flex-wrap:wrap}.file-controls .btn{width:100%;text-align:center}}
+
+/* Current tasks stay in normal flow. Only the project timeline positions its deadline tail. */
+.current-content .lnk{max-width:100%;overflow-wrap:anywhere;line-height:1.4}
+.current-content .note,main.current-view>.note{color:var(--muted);line-height:1.5}
+#shortQuery{width:min(100%,230px)}
+
+.mine-tabs{margin:16px 0}
+main.calendar-overview{gap:8px}
+.calendar-overview .mine-tabs{margin:0}
+.calendar-overview .calendar-toolbar{margin:0}
+.calendar-filters{position:relative;align-self:flex-start}
+.calendar-filters summary{cursor:pointer;color:var(--muted);font-size:12px;padding:4px 6px}
+.calendar-filters[open]{z-index:3;background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:5px}
+.calendar-filters .bar-f{margin:5px 0}
+@media(max-width:600px){.calendar-overview .calendar-navigation h2{flex-basis:auto;margin:0 0 0 4px;font-size:13px}}
+@media(max-height:720px){.calendar-month .calendar-event{display:none}.calendar-month .calendar-day{min-height:43px}}
 </style>
 </head>
 <body>
@@ -343,6 +414,7 @@ body:has(#loginRoot .login) .sp-nav{position:relative;z-index:85}  /* вклад
   <div class="top-r">
     <div id="dateBox" style="display:flex;align-items:center" hidden><span class="seg-l">Дата демо</span><div class="seg" id="dateSeg"></div></div>
     <span class="sync" id="sync" data-s="ok" hidden></span>
+
     <button type="button" class="hbtn" data-act="refresh" title="Загрузить свежие данные" id="refreshBtn" hidden>↻ Обновить</button>
     <button type="button" class="me" id="meBtn" data-act="login"></button>
   </div>
@@ -358,6 +430,9 @@ body:has(#loginRoot .login) .sp-nav{position:relative;z-index:85}  /* вклад
 <div class="toast" id="toast" hidden></div>
 
 <script src="shared/status.js"></script>
+<script src="shared/current.js"></script>
+<script src="shared/demo-current.js"></script>
+<script src="shared/calendar.js?v=2"></script>
 <script src="shared/core.js"></script>
 <script>
 (()=>{
@@ -409,7 +484,7 @@ const env=()=>{const td=today();return {today:td,ts:nowTs(),year:td.slice(2,4),u
 /* ---------- состояние интерфейса (только этот браузер) ---------- */
 const ui=Object.assign({view:'timeline',scale:'week',expanded:{'ПДР-26-001':true,'ОБК-26-001':true},offset:0,user:null},(()=>{try{return JSON.parse(localStorage.getItem(LS_UI))||{}}catch(e){return {}}})(),
   {folder:null,tags:[],status:'',prio:'',owner:'',object:'',q:'',feed:'all',card:null,scrolled:false});
-function saveUi(){try{localStorage.setItem(LS_UI,JSON.stringify({view:ui.view,scale:ui.scale,expanded:ui.expanded,offset:ui.offset,user:ui.user}))}catch(e){}}
+function saveUi(){try{localStorage.setItem(LS_UI,JSON.stringify({view:ui.view,scale:ui.scale,expanded:ui.expanded,offset:ui.offset,user:ui.user,shortLayout:ui.shortLayout,shortAnchor:ui.shortAnchor,mineKind:ui.mineKind,foldersCollapsed:ui.foldersCollapsed}))}catch(e){}}
 
 /* =====================================================================
    Справочники Bruno — из data.json.gz, тем же способом, что дашборд
@@ -460,19 +535,25 @@ const apiRemote={
     return j;
   }
 };
+function normalizeDemoPeople(db){
+  db.shortTasks=db.shortTasks||[];db.users.forEach(u=>{if(!u.email)u.email=u.id+'@vtb.ru';});
+  const examples={mod:['moderator','Модератор · демо'],kom:['commandant','Комендант · демо'],clean:['admin','Администратор 1 · демо'],mms:['inspector','Обходчик · демо'],pdr:['admin','Администратор 2 · демо']};
+  db.users.forEach(u=>{if(!u.subtype&&examples[u.id]){u.subtype=examples[u.id][0];u.name=examples[u.id][1];u.position={moderator:'Модератор',commandant:'Комендант',admin:'Администратор',inspector:'Обходчик'}[u.subtype];}});
+  return PlannerDemoCurrent.seed(db,currentTime().slice(0,10));
+}
 const apiMock={
   failNext:null,                 // для проверки отката: __planner.failNext('conflict')
-  async seed(){const d=await fetchJson(DEMO_URL);return {tasks:d.tasks,activity:d.activity,users:d.users,folders:d.folders}},
-  async db(){let raw=null;try{raw=localStorage.getItem(LS_MOCK)}catch(e){}if(raw){try{return JSON.parse(raw)}catch(e){}}const db=await apiMock.seed();apiMock.save(db);return db},
-  save(db){try{localStorage.setItem(LS_MOCK,JSON.stringify(db))}catch(e){}},
+  async seed(){const d=await fetchJson(DEMO_URL);return normalizeDemoPeople({tasks:d.tasks,activity:d.activity,users:d.users,folders:d.folders})},
+  async db(){let raw=null;try{raw=localStorage.getItem(LS_MOCK)}catch(e){}let db=null;if(raw){try{db=JSON.parse(raw)}catch(e){throw {error:'storage',message:'Демо-хранилище повреждено. Экспортируйте данные перед сбросом.'}}}if(!db)db=await apiMock.seed();else db=normalizeDemoPeople(db);apiMock.save(db);return db},
+  save(db){try{localStorage.setItem(LS_MOCK,JSON.stringify(db))}catch(e){throw {error:'storage',message:'Хранилище браузера заполнено. Изменение не сохранено.'}}},
   async call(action,params){
     await sleep(250+Math.random()*250);   // как будто сеть
     if(apiMock.failNext){const e=apiMock.failNext;apiMock.failNext=null;throw e==='conflict'?{error:'conflict',message:'Задачу изменили, обновите.'}:{error:'network',message:'Нет связи с сервером — изменение не сохранено.'}}
     // Читаем базу заново на каждый запрос, как настоящий сервер: так второе окно
     // с устаревшей копией получает conflict по version.
     const db=await apiMock.db();
-    if(action==='bootstrap')return Object.assign({ok:true,today:today()},clone(PlannerCore.snapshot(db,ui.user,300)));
-    const r=PlannerCore.handle(db,ui.user,action,params,env());
+    if(action==='bootstrap')return Object.assign({ok:true,today:today()},clone(ui.user?PlannerCore.snapshot(db,ui.user,300):Object.assign({me:null},db)));
+    const r=PlannerCore.handle(db,ui.user,action,params,Object.assign(env(),action.startsWith('short')?{ts:currentTime().replace('T',' ')}:{}));
     apiMock.save(db);
     return {ok:true,patch:clone(r.patch),result:r.result};
   }
@@ -495,19 +576,21 @@ function rebuild(){
   pending.forEach(op=>{try{const r=PlannerCore.handle(D,ME,op.action,op.params,op.env);op.optId=r.result&&r.result.id}catch(e){/* сервер всё равно откажет */}});
 }
 function merge(db,patch){
+  db.shortTasks=db.shortTasks||[];
+  (patch.shortTasks||[]).forEach(t=>{const i=db.shortTasks.findIndex(x=>x.id===t.id);if(i<0)db.shortTasks.push(t);else db.shortTasks[i]=t});
   (patch.tasks||[]).forEach(t=>{const i=db.tasks.findIndex(x=>x.id===t.id);if(i<0)db.tasks.push(t);else db.tasks[i]=t});
   (patch.activity||[]).forEach(a=>{if(!db.activity.some(x=>x.id===a.id))db.activity.push(a)});
-  (patch.users||[]).forEach(u=>{const i=db.users.findIndex(x=>x.id===u.id);if(i>=0)db.users[i]=u});
-  (patch.folders||[]).forEach(f=>{const i=db.folders.findIndex(x=>x.code===f.code);if(i<0)db.folders.push(f);else db.folders[i]=f});
+  (patch.users||[]).forEach(u=>{const i=db.users.findIndex(x=>x.id===u.id);if(i>=0)db.users[i]=u;else db.users.push(u)});
+  (patch.folders||[]).forEach(f=>{const i=db.folders.findIndex(x=>x.code===f.code);if(f.deleted){if(i>=0)db.folders.splice(i,1)}else if(i<0)db.folders.push(f);else db.folders[i]=f});
 }
 // Выполнить действие: проверить и применить сразу, отправить в фоне.
 // Возвращает строку-ошибку (для модалки) или {id} при успехе.
 function exec(action,params,okMsg){
-  const e=env(),trial=clone(D);
+  const e=env(),trial=clone(D);if(action.startsWith('short'))e.ts=currentTime().replace('T',' ');
   let r;
   try{r=PlannerCore.handle(trial,ME,action,params,e)}catch(x){if(x&&x.message)return x.message;throw x}
   const id=params.id;
-  const base=id&&confirmed.tasks.find(t=>t.id===id);
+  const base=id&&confirmed.tasks.concat(confirmed.shortTasks||[]).find(t=>t.id===id);
   pending.push({seq:++seq,action,params,env:e,c0:base?base.version:1,k0:ownOk[id]||0,f0:fails[id]||0,optId:r.result&&r.result.id});
   D=trial;renderAll();
   if(okMsg)toast(typeof okMsg==='function'?okMsg(r):okMsg);
@@ -529,16 +612,18 @@ async function pump(){
       merge(confirmed,res.patch||{});
       if(PlannerCore.VERSIONED[op.action])ownOk[key]=(ownOk[key]||0)+1;
       const real=res.result&&res.result.id;
-      if(op.optId&&real&&real!==op.optId){idMap[op.optId]=real;if(ui.card===op.optId)ui.card=real}
+      if(op.optId&&real&&real!==op.optId){idMap[op.optId]=real;if(completionGrace.has(op.optId)){const entry=completionGrace.get(op.optId);completionGrace.delete(op.optId);entry.id=real;completionGrace.set(real,entry);}if(ui.card===op.optId)ui.card=real}
     }catch(err){
       pending.shift();
       if(key)fails[key]=(fails[key]||0)+1;
       if(err&&err.error==='auth'){busy=false;rebuild();showNoKey(err.message);return}
+      if(op.action==='shortToggle'){clearCompletionGrace(key);if(idMap[key])clearCompletionGrace(idMap[key]);}
       failed=true;showError(err);
     }
     rebuild();renderAll();
   }
   busy=false;lastSync=Date.now();setSync(failed?'error':'ok');
+  if(document.getElementById('folderManager'))folderModal();
 }
 function showError(err){
   console.warn('Ошибка синхронизации',err);
@@ -553,7 +638,7 @@ async function refresh(quiet){
     if(!quiet)setSync('saving');
     const s=await api.call('bootstrap',{});
     if(pending.length||busy)return;   // пока ждали, пользователь что-то изменил — обновим позже
-    confirmed={tasks:s.tasks,activity:s.activity,users:s.users,folders:s.folders};
+    confirmed={shortTasks:s.shortTasks||[],tasks:s.tasks,activity:s.activity,users:s.users,folders:s.folders};
     ME=s.me;lastSync=Date.now();rebuild();setSync('ok');renderAll();
     if(!quiet)toast('Данные обновлены');
   }catch(err){if(err&&err.error==='auth'){showNoKey(err.message);return}showError(err)}
@@ -580,9 +665,17 @@ const me=()=>ME;
 const statusOf=t=>{let s=MEMO.get(t);if(s===undefined){s=PlannerStatus.statusOf(t,CTX);MEMO.set(t,s)}return s};
 const progress=t=>{let s=MEMOP.get(t);if(s===undefined){s=PlannerStatus.progress(t,CTX);MEMOP.set(t,s)}return s};
 const activeUsers=()=>Object.entries(USERS).filter(([,u])=>u.active!==false);
+function ownerPicker(prefix,selected){
+  const people=activeUsers(),current=USERS[selected]||{},sub=current.role==='mod'?'moderator':current.subtype||'';
+  return `<label>Тип ответственного <select class="sel" id="${prefix}Type"><option value="">Выберите тип</option>${Object.entries(SUBTYPES).map(([k,v])=>`<option value="${k}" ${k===sub?'selected':''}>${v}</option>`).join('')}</select></label><label>Конкретный человек <select class="sel" id="${prefix}">${people.filter(([,u])=>(u.role==='mod'?'moderator':u.subtype||'')===sub&&u.role!=='head').map(([k,u])=>`<option value="${esc(k)}" ${k===selected?'selected':''}>${esc(u.name)}</option>`).join('')}</select></label>`;
+}
+function mountOwnerPicker(prefix){
+  const type=document.getElementById(prefix+'Type'),person=document.getElementById(prefix);if(!type||!person)return;
+  type.onchange=()=>{person.innerHTML=activeUsers().filter(([,u])=>u.role!=='head'&&(u.role==='mod'?'moderator':u.subtype||'')===type.value).map(([k,u])=>`<option value="${esc(k)}">${esc(u.name)}</option>`).join('')};
+}
 const av=(uid,size)=>{const u=USERS[uid]||{name:'?',color:'#888'};return `<span class="av" style="background:${u.color};${size?`width:${size}px;height:${size}px`:''}" aria-hidden="true">${esc(ini(u.name))}</span>`};
 const uname=id=>(USERS[id]||{name:'—'}).name;
-const FOLDERS=()=>D.folders.filter(f=>f.active!==false).map(f=>[f.code,f.name]);
+const FOLDERS=()=>orderedFolders().filter(f=>f.active!==false).map(f=>[f.code,f.name]);
 
 const isLeaf=t=>!kids(t.id).length;
 const bad=s=>s==='overdue'||s==='blocker';
@@ -591,6 +684,7 @@ const sortKey=(a,b)=>{const sa=statusOf(a),sb=statusOf(b);const x=(bad(sa)?0:1)-
 
 /* ---------- filters ---------- */
 function matches(t){
+  if(ui.onlyMine&&(kids(t.id).length||t.owner!==me()))return false;
   if(ui.folder&&t.folder!==ui.folder)return false;
   if(ui.tags.length&&!ui.tags.some(g=>t.tags.map(x=>x.toLowerCase()).includes(g.toLowerCase())))return false;
   if(ui.status){const s=statusOf(t);if(ui.status==='hot'?!(bad(s)||s==='risk'):s!==ui.status)return false}
@@ -600,7 +694,7 @@ function matches(t){
   if(ui.q){const q=norm(ui.q.trim());if(q&&!norm(t.id+' '+t.title+' '+t.tags.join(' ')).includes(q))return false}
   return true;
 }
-const anyFilter=()=>ui.tags.length||ui.status||ui.prio||ui.owner||ui.object||ui.q;
+const anyFilter=()=>ui.onlyMine||ui.tags.length||ui.status||ui.prio||ui.owner||ui.object||ui.q;
 function visibleTree(){
   const tops=D.tasks.filter(t=>!t.parent&&t.flag!=='cancelled').sort(sortKey);
   const out=[];
@@ -619,7 +713,8 @@ const alive=t=>t.flag!=='cancelled';
 /* ---------- header ---------- */
 function unread(){const lr=(USERS[me()]||{}).lastRead||'';return D.activity.filter(a=>a.ts>lr&&a.author!==me()).length}
 function renderHeader(){
-  const views=[['timeline','Таймлайн'],['mine','Мои задачи'],['feed','Лента отдела'],['summary','Сводка руководителя']];
+  document.getElementById('dateBox').hidden=!DEMO||ui.view==='current'||ui.view==='mine'&&ui.mineKind==='short';
+  const views=[['timeline','Проекты'],['current','Текущие'],['mine','Мои задачи'],['feed','Лента задач'],...(R.isMgr()?[['summary','Сводка']]:[])];
   const u=unread();
   document.getElementById('tabs').innerHTML=views.map(([k,l])=>`<button type="button" data-view="${k}" aria-current="${ui.view===k}">${l}${k==='feed'&&u?`<span class="cnt">${u}</span>`:''}</button>`).join('');
   if(DEMO)document.getElementById('dateSeg').innerHTML=[[0,fd(DEMO_BASE)],[7,'+7 дн'],[30,'+30 дн']].map(([o,l])=>`<button type="button" data-off="${o}" aria-pressed="${ui.offset===o}" title="${o?'Сдвинуть дату демо на '+o+' дней':'Сегодня, '+fdy(DEMO_BASE)}">${l}</button>`).join('');
@@ -634,28 +729,35 @@ function folderCounts(code){
   return {a:st.filter(s=>s!=='done').length,o:st.filter(bad).length};
 }
 function renderSide(){
+  document.body.classList.toggle('folders-collapsed',!!ui.foldersCollapsed);
+  if(ui.view==='current'||ui.view==='mine'&&ui.mineKind==='short'){
+    const ts=(D.shortTasks||[]).filter(t=>!t.done);
+    document.getElementById('side').innerHTML=folderPanelHeader()+'<div class="side-contents">'+[['','Все задачи'],...orderedFolders().map(f=>[f.code,f.name+(f.active===false?' (архив)':'')])].map(([c,n])=>`<button class="fold" data-short-folder="${esc(c)}" aria-pressed="${(ui.shortFolder||'')===c}"><span class="nm">${esc(n)}</span><span class="c">${ts.filter(t=>!c||t.folder===c).length}</span></button>`).join('')+'<button class="btn pri" data-short-new>Новая задача</button></div>';return;
+  }
   const rows=FOLDERS().map(([c,n])=>{const k=folderCounts(c);return `<button type="button" class="fold" data-folder="${esc(c)}" aria-pressed="${ui.folder===c}"><span class="code">${esc(c)}</span><span class="nm">${esc(n)}</span><span class="c">${k.a}${k.o?` / <span class="od">${k.o}</span>`:''}</span></button>`}).join('');
   const all=D.tasks.filter(t=>isLeaf(t)&&alive(t)).map(statusOf);
-  document.getElementById('side').innerHTML=`<h3>Папки</h3>
+  document.getElementById('side').innerHTML=`${folderPanelHeader()}<div class="side-contents">
+
   <button type="button" class="fold" data-folder="" aria-pressed="${!ui.folder}"><span class="code">ВСЕ</span><span class="nm">Все поручения</span><span class="c">${all.filter(s=>s!=='done').length}${all.filter(bad).length?` / <span class="od">${all.filter(bad).length}</span>`:''}</span></button>
   ${rows}
   <div class="hint">Счётчик: активные задачи / <span style="color:var(--st-overdue);font-weight:600">просрочено или блокер</span>. Папки заводит модератор.</div>
-  ${R.create()?'<button type="button" class="btn pri newbtn" data-act="new">+ Поручение</button>':''}`;
+  ${R.create()?'<button type="button" class="btn pri newbtn" data-act="new">+ Поручение</button>':''}</div>`;
 }
 function mobileChips(){
-  return `<div class="chips-m">${[['','Все'],...FOLDERS()].map(([c,n])=>`<button type="button" data-folder="${esc(c)}" aria-pressed="${(ui.folder||'')===c}">${esc(c||'Все')}${c?' · '+esc(n):''}</button>`).join('')}</div>`;
+  return `<div class="chips-m"><label for="mobileFolder">Папка</label><select class="sel" id="mobileFolder">${[['','Все поручения'],...FOLDERS()].map(([c,n])=>`<option value="${esc(c)}" ${(ui.folder||'')===c?'selected':''}>${esc(n)}</option>`).join('')}</select>${R.isMgr()?'<button class="btn sm" data-act="folders" aria-label="Управление папками">⋯</button>':''}</div>`;
 }
 
 /* ---------- filter bar ---------- */
+function scopeBar(){return `<div class="task-scope"><div class="seg2" aria-label="Область задач"><button data-scope="all" aria-pressed="${!ui.onlyMine}">Все доступные</button><button data-scope="mine" aria-pressed="${!!ui.onlyMine}">Только мои</button></div></div>`;}
 function filterBar(){
   const tags=allTags();
   const opt=(v,l,cur)=>`<option value="${esc(v)}" ${cur===v?'selected':''}>${esc(l)}</option>`;
   return `<div class="bar-f">
     <input class="inp search" id="q" type="search" placeholder="Код или название: ПДР-26, пропуска…" value="${esc(ui.q)}" aria-label="Поиск">
     <select class="sel" id="fStatus" aria-label="Статус">${opt('','Все статусы',ui.status)}${opt('hot','Только риск и просрочка',ui.status)}${Object.entries(ST).filter(([k])=>k!=='cancelled').map(([k,l])=>opt(k,l,ui.status)).join('')}</select>
-    <select class="sel" id="fPrio" aria-label="Приоритет">${opt('','Любой приоритет',ui.prio)}${opt('P1','P1 Критичный',ui.prio)}${opt('P2','P2 Высокий',ui.prio)}${opt('P3','P3 Обычный',ui.prio)}</select>
+    <details class="project-filters" id="projectFilters" ${ui.filtersOpen?'open':''}><summary>Ещё фильтры${[ui.prio,ui.owner,ui.object].filter(Boolean).length?' · '+[ui.prio,ui.owner,ui.object].filter(Boolean).length:''}</summary><div class="extra-filters"><select class="sel" id="fPrio" aria-label="Приоритет">${opt('','Любой приоритет',ui.prio)}${opt('P1','P1 Критичный',ui.prio)}${opt('P2','P2 Высокий',ui.prio)}${opt('P3','P3 Обычный',ui.prio)}</select>
     <select class="sel" id="fOwner" aria-label="Ответственный">${opt('','Все ответственные',ui.owner)}${activeUsers().map(([k,u])=>opt(k,u.name,ui.owner)).join('')}</select>
-    <select class="sel" id="fObj" aria-label="Объект">${opt('','Все объекты',ui.object)}${DIR.objects.map(o=>opt(o.id,o.name,ui.object)).join('')}</select>
+    <select class="sel" id="fObj" aria-label="Объект">${opt('','Все объекты',ui.object)}${DIR.objects.map(o=>opt(o.id,o.name,ui.object)).join('')}</select></div></details>
     ${anyFilter()?'<button type="button" class="btn sm" data-act="clearf">Сбросить фильтры</button>':''}
   </div>
   <div class="tagrow">${tags.map(g=>`<button type="button" class="tag" data-tag="${esc(g)}" aria-pressed="${ui.tags.includes(g)}">#${esc(g)}</button>`).join('')}</div>`;
@@ -663,12 +765,16 @@ function filterBar(){
 
 /* ---------- views ---------- */
 const isMobile=()=>window.innerWidth<760;
+document.addEventListener('toggle',e=>{if(e.target.id==='projectFilters')ui.filtersOpen=e.target.open;},true);
 function renderMain(){
   const m=document.getElementById('main');
   const v=ui.view;
+  m.classList.toggle('current-view',v==='current'||v==='mine'&&ui.mineKind==='short');
+  m.classList.toggle('calendar-overview',v==='mine'&&ui.mineKind==='short'&&['week','month'].includes(ui.shortLayout));
   let h='';
   if(v==='timeline')h=viewTimeline();
-  else if(v==='mine')h=viewMine();
+  else if(v==='current')h=viewCurrent(false);
+  else if(v==='mine')h=ui.mineKind==='short'?viewCurrent(true):mineTabs()+viewMine();
   else if(v==='feed')h=viewFeed();
   else h=viewSummary();
   m.innerHTML=h;
@@ -694,11 +800,11 @@ function span(){
 function viewTimeline(){
   const {origin,end}=span();
   const head=`<div class="vh"><h1>Таймлайн поручений</h1><span class="sub">до ${fdy(end)} · сегодня ${fd(today())}</span>
-   <div class="sp">${isMobile()?'':`<div class="seg2"><button type="button" data-scale="week" aria-pressed="${ui.scale==='week'}">Неделя</button><button type="button" data-scale="month" aria-pressed="${ui.scale==='month'}">Месяц</button></div>`}${R.create()&&isMobile()?'<button type="button" class="btn pri" data-act="new">+ Поручение</button>':''}</div></div>`;
+   <div class="sp"><button class="btn sm" data-act="timelineFull">${ui.timelineFull?'Закрыть полный экран':'На весь экран'}</button>${isMobile()?'':`<div class="seg2"><button type="button" data-scale="week" aria-pressed="${ui.scale==='week'}">Неделя</button><button type="button" data-scale="month" aria-pressed="${ui.scale==='month'}">Месяц</button></div>`}${R.create()&&isMobile()?'<button type="button" class="btn pri" data-act="new">+ Поручение</button>':''}</div></div>`;
   const tree=visibleTree();
   const legend=`<div class="legend">${['plan','work','risk','overdue','review','done'].map(s=>`<span class="st-${s}"><i></i>${ST[s]}</span>`).join('')}<span>Заливка полосы = % чек-листа · пунктир = просрочка</span></div>`;
-  if(!tree.length)return head+mobileChips()+filterBar()+`<div class="empty">${D.tasks.length?'Под фильтр ничего не попало. Сбросьте фильтры или выберите другую папку.':'Поручений пока нет.'+(R.create()?' Создайте первое кнопкой «+ Поручение».':'')}</div>`;
-  if(isMobile())return head+mobileChips()+filterBar()+weekList(tree);
+  if(!tree.length)return head+mobileChips()+scopeBar()+filterBar()+`<div class="empty">${D.tasks.length?'Под фильтр ничего не попало. Сбросьте фильтры или выберите другую папку.':'Поручений пока нет.'+(R.create()?' Создайте первое кнопкой «+ Поручение».':'')}</div>`;
+  if(isMobile()&&!ui.timelineFull)return head+mobileChips()+scopeBar()+filterBar()+weekList(tree);
   const dw=ui.scale==='week'?30:11,days=diff(origin,end)+1,W=days*dw,LW=320;
   let mons='';
   for(let m=origin.slice(0,8)+'01';m<=end;){
@@ -712,7 +818,7 @@ function viewTimeline(){
   const row=(t,child,ch,open)=>{
     const s=statusOf(t),p=Math.round(progress(t)*100);
     const x=diff(origin,t.start)*dw,w=(diff(t.start,t.due)+1)*dw;
-    const late=(s==='overdue'||(s==='blocker'&&today()>t.due))?`<div class="late" style="left:${x+w}px;width:${Math.max(0,(tdx-diff(origin,t.due)))*dw}px"></div>`:'';
+    const late=(s==='overdue'||(s==='blocker'&&today()>t.due))?`<div class="timeline-overdue-tail" style="left:${x+w}px;width:${Math.max(0,(tdx-diff(origin,t.due)))*dw}px"></div>`:'';
     const lbl=w>90?`${prB(t.prio)}<span class="mono">${esc(t.id.replace(/^.*?-\d\d-/,''))}</span> ${p}%`:(w>40?`${p}%`:'');
     return `<div class="row${child?' child':''}"><div class="lab">
       ${!child&&ch.length?`<button type="button" class="cv" data-exp="${esc(t.id)}" aria-expanded="${open}" aria-label="Подзадачи">▶</button>`:(!child?'<span style="width:20px;flex:none"></span>':'')}
@@ -724,7 +830,7 @@ function viewTimeline(){
   let body='';
   tree.forEach(({t,ch,forceOpen})=>{const open=forceOpen||!!ui.expanded[t.id];body+=row(t,false,kids(t.id),open);if(open)ch.forEach(c=>body+=row(c,true,[],false))});
   const todayLine=tdx>=0&&tdx<=days?`<div class="today" style="left:${LW+tdx*dw+dw/2}px"><span>${fd(today())}</span></div>`:'';
-  return head+filterBar()+legend+`<div class="tl" id="tl" style="--dw:${dw}"><div class="tl-in">
+  return head+mobileChips()+scopeBar()+filterBar()+legend+`<div class="tl" id="tl" style="--dw:${dw}"><div class="tl-in">
     <div class="row head"><div class="lab">Поручение · подзадача</div><div class="trk" style="width:${W}px">${mons}${wks}</div></div>
     ${body}${todayLine}</div></div>`;
 }
@@ -756,7 +862,7 @@ function viewMine(){
   const mine=D.tasks.filter(t=>t.owner===u&&isLeaf(t)&&alive(t)&&parentAlive(t)&&matches(t));
   const g={over:[],week:[],soon:[],rev:[],review:[]};
   mine.forEach(t=>{const s=statusOf(t);if(s==='done')return;if(s==='review'){g.review.push(t);return}if(bad(s))g.over.push(t);else if(diff(td,t.due)<=7&&t.start<=add(td,7))g.week.push(t);else g.soon.push(t)});
-  g.rev=D.tasks.filter(t=>(t.controller===u||((USERS[u]||{}).role==='mod'))&&statusOf(t)==='review');
+  g.rev=D.tasks.filter(t=>R.accept(t));
   const sec=(title,arr,color)=>arr.length?`<div class="grp"><h2${color?` style="color:${color}"`:''}>${title} <span class="n">${arr.length}</span></h2>${arr.sort(sortKey).map(t=>itemHtml(t)).join('')}</div>`:'';
   let h=`<div class="vh"><h1>Мои задачи</h1><span class="sub">${esc(uname(u))} · ответственный или контролёр</span></div>${mobileChips()}${filterBar()}`;
   const body=sec('Просрочено и блокеры',g.over,'var(--st-overdue)')+sec('На этой неделе',g.week)+sec('Скоро',g.soon)+sec('Сдано мной, ждёт проверки',g.review)+sec('Ждут моей проверки',g.rev,'var(--st-review)');
@@ -775,7 +881,7 @@ const SYS_C={check:'done',uncheck:'plan',created:'work',submit:'review',accept:'
 function evHtml(a,withRef,unreadMark){
   const t=T(a.task);
   const ref=withRef&&t?`<div class="ref"><button type="button" class="lnk" data-open="${esc(t.id)}">${esc(t.id)}</button> <span style="color:var(--muted)">${esc(t.title)}</span></div>`:'';
-  if(a.type==='comment')return `<div class="ev${unreadMark?' unread':''}">${av(a.author,withRef?30:28)}<div><div class="who">${esc(uname(a.author))}<span class="when">${fts(a.ts)}</span></div><div class="tx">${fmtText(a.text)}</div>${ref}</div></div>`;
+  if(a.type==='comment')return `<div class="ev${unreadMark?' unread':''}">${av(a.author,withRef?30:28)}<div><div class="who">${esc(uname(a.author))}<span class="when">${fts(a.ts)}</span></div><div class="tx">${fmtText(a.text)}</div>${((a.payload||{}).attachments||[]).map(f=>`<button class="btn sm" data-download="${esc(f.id)}" data-task="${esc(a.task)}">📎 ${esc(f.name)}</button>`).join('')}${ref}</div></div>`;
   return `<div class="ev sys${unreadMark?' unread':''}"><span class="sysdot st-${SYS_C[a.type]||'plan'}"><i></i></span><div><div class="tx"><b style="color:var(--fg);font-weight:600">${esc(uname(a.author))}</b> ${fmtText(a.text)} <span class="when">${fts(a.ts)}</span></div>${ref}</div></div>`;
 }
 function viewFeed(){
@@ -825,7 +931,10 @@ function openCard(id){ui.card=id;renderCard()}
 function closeCard(){ui.card=null;document.getElementById('cardRoot').innerHTML=''}
 function renderCard(){
   const root=document.getElementById('cardRoot');const t=T(ui.card);if(!t){root.innerHTML='';return}
-  const prevCmt=document.getElementById('cmt'),draft=prevCmt?prevCmt.value:'',prevCl=document.getElementById('newCl'),draftCl=prevCl?prevCl.value:'';
+  const sameCard=root.querySelector('.card')?.dataset.taskId===t.id;
+  const draft=sameCard?document.getElementById('cmt')?.value||'':'';
+  const draftCl=sameCard?readChecklist('newCl'):[];
+  const previousFileInput=sameCard?document.getElementById('commentFiles'):null;
   const s=statusOf(t),p=Math.round(progress(t)*100),par=t.parent?T(t.parent):null,ch=kids(t.id);
   const fold=D.folders.find(f=>f.code===t.folder);
   const canC=R.check(t);
@@ -842,7 +951,7 @@ function renderCard(){
   const feed=D.activity.filter(a=>a.task===t.id).sort((a,b)=>a.ts<b.ts?-1:a.ts>b.ts?1:0);
   const others=activeUsers().filter(([k])=>k!==me()).slice(0,2).map(([,u])=>'@'+esc(u.handle)).join(', ');
   root.innerHTML=`<div class="scrim" data-act="close"></div>
-  <section class="card" role="dialog" aria-label="Карточка ${esc(t.id)}">
+  <section class="card" data-task-id="${esc(t.id)}" role="dialog" aria-label="Карточка ${esc(t.id)}">
     <div class="card-h">
       <div class="r1"><span class="code">${esc(t.id)}</span>${prB(t.prio)}${pill(s)}${brunoBadge(t)}${t.resched>=2?`<span class="resch">переносилось ×${t.resched}</span>`:''}<button type="button" class="x" data-act="close" aria-label="Закрыть">×</button></div>
       ${par?`<div style="font-size:12px;color:var(--muted)">Поручение: <button type="button" class="lnk" data-open="${esc(par.id)}">${esc(par.id)} ${esc(par.title)}</button></div>`:''}
@@ -854,6 +963,9 @@ function renderCard(){
       ${t.flag==='cancelled'?`<div class="flagbox"><b>Отменено:</b> ${esc(t.flagNote)}</div>`:''}
       ${dep?`<div class="flagbox" style="border-color:var(--line);background:var(--surface-2)">Зависит от <button type="button" class="lnk" data-open="${esc(dep.id)}">${esc(dep.id)}</button> «${esc(dep.title)}» — сейчас ${pill(statusOf(dep))}</div>`:''}
       ${acts.length?`<div class="acts">${acts.join('')}</div>`:`<div class="note">Вы — ${esc(uname(me()))}: в этой задаче доступны просмотр и комментарии.</div>`}
+      <div class="sec task-files" id="taskFiles"><h3>Фото и документы</h3><p class="note">До 3 файлов за раз, суммарно 2 МБ. Можно загрузить без комментария.</p>
+      <div class="file-controls"><label class="btn" for="commentFiles">📎 Прикрепить фото или документ</label><input type="file" id="commentFiles" multiple accept=".pdf,.png,.jpg,.jpeg,.webp,.heic,.heif,.txt,.csv,.docx,.xlsx,.pptx" class="file-picker"><button class="btn pri" data-act="comment">Загрузить файлы</button></div><p class="note" id="selectedFileNames"></p>
+      <div class="task-file-list">${D.activity.filter(a=>a.task===t.id).flatMap(a=>((a.payload||{}).attachments||[])).map(f=>`<button class="btn sm" data-download="${esc(f.id)}" data-task="${esc(t.id)}">📎 ${esc(f.name)}</button>`).join('')||'<span class="note">Вложений пока нет</span>'}</div></div>
       <div class="sec"><h3>Поля</h3><dl class="fields">
         <div><dt>Папка</dt><dd>${esc(t.folder)} · ${esc(fold?fold.name:'')}</dd></div>
         <div><dt>Код</dt><dd class="mono">${esc(t.id)}</dd></div>
@@ -861,8 +973,8 @@ function renderCard(){
         <div><dt>Объект</dt><dd>${esc(t.objects.map(objName).join(', ')||'—')}</dd></div>
         <div><dt>Зона</dt><dd>${esc(t.zone||'—')}</dd></div>
         <div><dt>Вид работ</dt><dd>${esc(t.workType?wtName(t.workType):'—')}${t.workType?fbNote():''}</dd></div>
-        <div><dt>Ответственный</dt><dd>${esc(uname(t.owner))}</dd></div>
-        <div><dt>Контролёр</dt><dd>${esc(uname(t.controller))}</dd></div>
+        <div><dt>${ch.length?'Исполнители':'Ответственный'}</dt><dd>${esc(ch.length?[...new Set(ch.map(c=>c.owner))].map(uname).join(', '):uname(t.owner))}</dd></div>
+        <div><dt>Руководитель</dt><dd>${esc(uname(t.controller))}</dd></div>
         <div><dt>Старт</dt><dd class="num">${fdy(t.start)}</dd></div>
         <div><dt>Дедлайн</dt><dd class="num">${fdy(t.due)} · ${(()=>{const l=diff(today(),t.due);return l<0?`<span style="color:var(--st-overdue);font-weight:600">просрочка ${-l} дн.</span>`:`осталось ${l} дн.`})()}</dd></div>
         <div><dt>Теги</dt><dd>${t.tags.length?t.tags.map(g=>`<button type="button" class="tag" data-tag="${esc(g)}" data-close="1">#${esc(g)}</button>`).join(' '):'—'}</dd></div>
@@ -871,13 +983,15 @@ function renderCard(){
       ${ch.length||R.sub(t)?`<div class="sec"><h3>Подзадачи · ${ch.length}</h3><div class="subs">${ch.slice().sort((a,b)=>a.id.localeCompare(b.id,'ru',{numeric:true})).map(c=>{const cs=statusOf(c);return `<button type="button" data-open="${esc(c.id)}"><span class="cd">${esc(c.id.slice(c.id.lastIndexOf('.')))}</span><span class="ti">${esc(c.title)}</span><span class="num" style="font-size:12px;color:var(--muted)">${fd(c.start)}–${fd(c.due)} · ${Math.round(progress(c)*100)}%</span>${pill(cs)}</button>`}).join('')||'<div class="note">Подзадач пока нет.</div>'}</div></div>`:''}
       ${!ch.length||t.checklist.length?`<div class="sec"><h3>Чек-лист · ${t.checklist.filter(c=>c.done).length} из ${t.checklist.length}</h3><div class="cl">
         ${t.checklist.map(c=>`<label class="cli${c.done?' done':''}"><input type="checkbox" data-chk="${esc(c.id)}" ${c.done?'checked':''} ${canC?'':'disabled'}><span><span class="tx">${esc(c.text)}</span>${c.done?`<span class="sig">✓ ${esc(uname(c.by))} · ${fts(c.at)}</span>`:''}</span></label>`).join('')||'<div class="note">Пунктов нет.</div>'}
-      </div>${canC?`<div class="addrow"><input class="inp" id="newCl" placeholder="Новый пункт чек-листа" aria-label="Новый пункт" value="${esc(draftCl)}"><button type="button" class="btn sm" data-act="addcl">Добавить</button></div>`:''}</div>`:''}
+      </div>${canC?`<div class="addrow checklist-add">${checklistComposer('newCl',draftCl)}<button type="button" class="btn sm" data-act="addcl">Добавить пункты</button></div>`:''}</div>`:''}
       <div class="sec"><h3>Обсуждение и события · ${feed.length}</h3><div class="cfeed">${feed.map(a=>evHtml(a,false,false)).join('')||'<div class="note">Пока пусто.</div>'}</div>
         <div class="composer"><textarea class="inp" id="cmt" placeholder="Комментарий. @ — упомянуть коллегу">${esc(draft)}</textarea><div class="ac" id="cmtAc" hidden></div>
+
         <div class="rowc"><span class="note">${others?others+' … ':''}упомянутый увидит это в ленте${DEMO?'':' и получит письмо, если указан email'}</span><button type="button" class="btn pri sm" data-act="comment">Отправить</button></div></div>
       </div>
     </div>
   </section>`;
+  if(previousFileInput&&previousFileInput.files.length){document.getElementById('commentFiles').replaceWith(previousFileInput);showSelectedFiles();}
   attachAC(document.getElementById('cmt'),document.getElementById('cmtAc'),'@',q=>activeUsers().map(([,u])=>u.handle).filter(h=>h&&norm(h).startsWith(norm(q))).map(h=>({v:h,l:'@'+h})));
 }
 
@@ -938,18 +1052,20 @@ function taskForm(parent){
    `<div class="g2"><div class="fl"><label for="fFolder">Папка</label><select class="sel" id="fFolder">${FOLDERS().map(([c,n])=>opt(c,c+' · '+n,f0)).join('')}</select></div>
     <div class="fl"><label>Код</label><div style="padding-top:6px"><span class="codeprev" id="codePrev">${esc(nextCode(f0))}</span> <span class="note">автоматически</span></div></div></div>`}
   <div class="fl"><label for="fTitle">Название <span class="note">— #теги пишите прямо здесь</span></label><input class="inp" id="fTitle" placeholder="${parent?'Например: Сверка актов за ноябрь':'Например: Замена диванов в переговорных #VIP'}" autocomplete="off"><div class="ac" id="fTitleAc" hidden></div><div class="tagrow" id="tagPrev"></div></div>
+  <div class="fl"><label for="fGoal">${parent?'Описание результата':'Цель поручения'}</label><textarea class="inp" id="fGoal" placeholder="Какой результат нужно получить?"></textarea></div>
   <div class="g2">
     ${parent?'':`<div class="fl"><label for="fPr">Приоритет</label><select class="sel" id="fPr">${opt('P1','P1 Критичный — риск за 5 дн.','P2')}${opt('P2','P2 Высокий — риск за 3 дн.','P2')}${opt('P3','P3 Обычный — риск за 2 дн.','P2')}</select></div>
     <div class="fl"><label for="fOb">Объект</label><select class="sel" id="fOb">${objOptions(defaultObject())}</select></div>`}
-    <div class="fl"><label for="fOw">Ответственный</label><select class="sel" id="fOw">${people.map(([k,u])=>opt(k,u.name,parent?parent.owner:me())).join('')}</select></div>
-    <div class="fl"><label for="fCt">Контролёр</label><select class="sel" id="fCt">${people.map(([k,u])=>opt(k,u.name,(people.find(([,x])=>x.role==='head')||[me()])[0])).join('')}</select></div>
+    <div class="fl">${ownerPicker('fOw',parent?parent.owner:me())}</div>
+    <div class="fl"><label for="fCt">Руководитель</label><select class="sel" id="fCt" disabled>${people.filter(([,u])=>u.role==='head').map(([k,u])=>opt(k,u.name,k)).join('')}</select></div>
     ${parent?'':`<div class="fl"><label for="fWt">Вид работ (каталог Bruno)${fbNote()}</label><select class="sel" id="fWt">${DIR.workTypes.map(([k,l])=>opt(k,l,'')).join('')}</select></div><div></div>`}
     <div class="fl"><label for="fSt">Старт</label><input class="inp" type="date" id="fSt" value="${st}"></div>
     <div class="fl"><label for="fDu">Дедлайн</label><input class="inp" type="date" id="fDu" value="${du}"></div>
   </div>
-  <div class="fl"><label for="fCl">Чек-лист — по пункту в строке</label><textarea class="inp" id="fCl" placeholder="Получить КП&#10;Согласовать с руководителем"></textarea></div>`;
+  <div class="fl"><label>Чек-лист</label>${checklistComposer('fCl',[])}<p class="note">Enter — новый пункт. Можно вставить готовый список.</p></div>`;
 }
 function mountTaskForm(){
+  mountOwnerPicker('fOw');
   const ti=document.getElementById('fTitle'),prev=document.getElementById('tagPrev');
   const upd=()=>{const {tags}=extractTags(ti.value);prev.innerHTML=tags.map(g=>`<span class="tag">#${esc(g)}</span>`).join('')+(tags.length?'<span class="note">теги будут вынесены в поле «Теги»</span>':'')};
   ti.addEventListener('input',upd);
@@ -958,8 +1074,9 @@ function mountTaskForm(){
 }
 function createTask(parent){
   modal(parent?'Новая подзадача':'Новое поручение',taskForm(parent),[{l:parent?'Создать подзадачу':'Создать поручение',cls:'pri',fn:()=>{
-    const cl=val('fCl').split('\n').map(x=>x.trim()).filter(Boolean);
-    const common={title:val('fTitle'),owner:val('fOw'),controller:val('fCt'),start:val('fSt'),due:val('fDu'),checklist:cl};
+    if(!val('fOwType'))return 'Выберите тип ответственного. Для старых сотрудников сначала укажите тип через «Сотрудники…».';
+    const cl=readChecklist('fCl');
+    const common={desc:val('fGoal'),title:val('fTitle'),owner:val('fOw'),controller:val('fCt'),start:val('fSt'),due:val('fDu'),checklist:cl};
     const r=parent?exec('addSubtask',Object.assign({parent:parent.id},common),x=>`Создано: ${x.result.id}`)
       :exec('createTask',Object.assign({folder:val('fFolder'),prio:val('fPr'),objects:[val('fOb')],workType:val('fWt')},common),x=>`Создано: ${x.result.id}`);
     if(typeof r==='string')return r;
@@ -980,17 +1097,18 @@ function editTask(t){
     <div class="g2">
       ${t.parent?'':`<div class="fl"><label for="eOb">Объект</label><select class="sel" id="eOb">${multi?opt('__keep','Без изменений: '+t.objects.map(objName).join(', '),'__keep'):''}${objOptions(multi?'':t.objects[0])}</select></div>
       <div class="fl"><label for="eWt">Вид работ${fbNote()}</label><select class="sel" id="eWt">${opt('','—',t.workType)}${DIR.workTypes.map(([k,l])=>opt(k,l,t.workType)).join('')}</select></div>`}
-      <div class="fl"><label for="eOw">Ответственный</label><select class="sel" id="eOw">${people.map(([k,u])=>opt(k,u.name,t.owner)).join('')}</select></div>
-      <div class="fl"><label for="eCt">Контролёр</label><select class="sel" id="eCt">${people.map(([k,u])=>opt(k,u.name,t.controller)).join('')}</select></div>
+      <div class="fl">${ownerPicker('eOw',t.owner)}</div>
+      <div class="fl"><label for="eCt">Руководитель</label><select class="sel" id="eCt" disabled>${people.filter(([,u])=>u.role==='head').map(([k,u])=>opt(k,u.name,k)).join('')}</select></div>
       <div class="fl"><label for="eZone">Зона <span class="note">— текстом, необязательно</span></label><input class="inp" id="eZone" value="${esc(t.zone)}"></div>
       <div class="fl"><label for="eSt">Старт</label><input class="inp" type="date" id="eSt" value="${t.start}" max="${t.due}"></div>
     </div>
     <div class="note">Дедлайн ${fdy(t.due)} меняется только кнопкой «Перенести срок» — с причиной.</div>`,
   [{l:'Сохранить',cls:'pri',fn:()=>{
+    if(!val('eOwType'))return 'Выберите тип ответственного.';
     const fields={title:val('eTitle'),desc:val('eDesc'),owner:val('eOw'),controller:val('eCt'),zone:val('eZone'),start:val('eSt')};
     if(!t.parent){fields.folder=val('eFolder');fields.prio=val('ePr');fields.workType=val('eWt');if(val('eOb')!=='__keep')fields.objects=[val('eOb')]}
     return exec('updateTask',{id:t.id,fields},'Сохранено');
-  }}],()=>attachAC(document.getElementById('eTitle'),document.getElementById('eTitleAc'),'#',q=>allTags().filter(g=>norm(g).startsWith(norm(q))).map(g=>({v:g,l:'#'+g}))));
+  }}],()=>{mountOwnerPicker('eOw');attachAC(document.getElementById('eTitle'),document.getElementById('eTitleAc'),'#',q=>allTags().filter(g=>norm(g).startsWith(norm(q))).map(g=>({v:g,l:'#'+g})))});
 }
 
 /* ---------- Bruno transfer (v1.1 §C) ---------- */
@@ -1030,17 +1148,76 @@ function brunoModal(t){
 }
 
 /* ---------- actions ---------- */
+const SUBTYPES={admin:'Администратор',commandant:'Комендант',inspector:'Обходчик',moderator:'Модератор'};
+function personModal(){
+  const rows=Object.entries(USERS);
+  modal('Добавить / изменить сотрудника',`<p class="note">Для изменения укажите существующий id. Руководитель один; модератор имеет самостоятельные права управления и приёмки.</p>
+    <label>Существующий сотрудник <select class="sel" id="personExisting"><option value="">Новый сотрудник</option>${rows.map(([id,u])=>`<option value="${esc(id)}">${esc(u.name)}</option>`).join('')}</select></label>
+    <label>id <input class="inp" id="personId" autocomplete="off"></label><label>Имя <input class="inp" id="personName"></label><label>Почта @vtb.ru <input class="inp" id="personEmail" type="email"></label>
+    <label>Роль <select class="sel" id="personRole"><option value="owner">Ответственный</option><option value="head">Руководитель</option></select></label>
+    <label>Тип ответственного <select class="sel" id="personSubtype">${Object.entries(SUBTYPES).map(([k,v])=>`<option value="${k}">${v}</option>`).join('')}</select></label>
+    <label>Ник для упоминаний <input class="inp" id="personHandle"></label><label><input id="personActive" type="checkbox" checked> Доступ включён</label>`,
+    [{l:'Сохранить',cls:'pri',fn:()=>exec('saveUser',{userId:val('personId'),name:val('personName'),email:val('personEmail'),role:val('personRole')==='head'?'head':val('personSubtype')==='moderator'?'mod':'owner',subtype:val('personSubtype'),handle:val('personHandle'),active:document.getElementById('personActive').checked},'Сотрудник сохранён')}],()=>{
+      const selectRole=()=>{document.getElementById('personSubtype').disabled=val('personRole')==='head';};
+      document.getElementById('personRole').onchange=selectRole;
+      document.getElementById('personExisting').onchange=e=>{const u=USERS[e.target.value];
+        document.getElementById('personId').value=u?u.id:'';document.getElementById('personId').readOnly=!!u;
+        document.getElementById('personName').value=u?u.name:'';document.getElementById('personHandle').value=u?u.handle:'';
+        document.getElementById('personRole').value=u&&u.role==='head'?'head':'owner';
+        document.getElementById('personSubtype').value=u?(u.role==='mod'?'moderator':u.subtype||'admin'):'admin';
+        document.getElementById('personEmail').value=u?u.email||'':'';document.getElementById('personActive').checked=!u||u.active!==false;selectRole();};
+
+    });
+}
+function preferencesModal(){
+  const p=(USERS[me()]||{}).preferences||{};
+  modal('Настройки писем',`<p>Письма приходят на зарегистрированную банковскую почту.</p>${[['assign','Новые назначения'],['mention','Упоминания в комментариях'],['returned','Возврат на доработку'],['digest','Ежедневная сводка незавершённых задач, включая просроченные'],['shortAssign','Текущие: назначение'],['shortReschedule','Текущие: изменение срока'],['shortReminder','Текущие: за час до срока']].map(([k,l])=>`<label style="display:block"><input type="checkbox" id="pref_${k}" ${(k==='digest'?p[k]===true:p[k]!==false)?'checked':''}> ${l}</label>`).join('')}<p class="note">Сводка — утром, когда настроен серверный триггер. По умолчанию выключена.</p>`,[{l:'Сохранить',cls:'pri',fn:()=>exec('savePreferences',Object.fromEntries(['assign','mention','returned','digest','shortAssign','shortReschedule','shortReminder'].map(k=>[k,document.getElementById('pref_'+k).checked])),'Настройки сохранены')}]);
+}
+let fileUploadInProgress=false;
+async function sendComment(t){
+  if(fileUploadInProgress)return;
+  const text=val('cmt'), input=document.getElementById('commentFiles'), files=Array.from(input.files||[]);
+  if(!text&&!files.length)return;
+  if(files.length>3||files.reduce((n,f)=>n+f.size,0)>2*1024*1024){toast('До 3 файлов, суммарно до 2 МБ.',null,true);return}
+  if(files.some(f=>!/\.(pdf|png|jpe?g|webp|heic|heif|txt|csv|docx|xlsx|pptx)$/i.test(f.name))){toast('Этот формат файла не поддерживается.',null,true);return;}
+  fileUploadInProgress=true;document.querySelectorAll('[data-act="comment"]').forEach(b=>b.disabled=true);
+  try{
+    const encoded=await Promise.all(files.map(f=>new Promise((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve({name:f.name,data:String(reader.result).split(',')[1]});reader.onerror=reject;reader.readAsDataURL(f)})));
+    if(files.length){
+      if(pending.length||busy)throw {message:'Дождитесь сохранения остальных изменений.'};
+      const attachments=DEMO?encoded.map((f,i)=>({id:'demo-'+Date.now()+'-'+i,name:f.name,data:f.data})):[];
+      const r=await api.call('addComment',{id:t.id,text,files:encoded,attachments});input.value='';
+      merge(confirmed,r.patch);rebuild();renderAll();toast('Комментарий с вложениями сохранён');
+    }else{const r=exec('addComment',{id:t.id,text},'Комментарий добавлен');if(typeof r==='string')throw {message:r};}
+    const field=document.getElementById('cmt');if(field&&ui.card===t.id)field.value='';
+  }catch(e){toast(e.message||'Не удалось сохранить комментарий.',null,true)}finally{fileUploadInProgress=false;document.querySelectorAll('[data-act="comment"]').forEach(b=>b.disabled=false);showSelectedFiles();}
+}
+async function downloadFile(taskId,fileId){
+  try{
+    let f;
+    if(DEMO){for(const a of D.activity)if(a.task===taskId)f=f||((a.payload||{}).attachments||[]).find(x=>x.id===fileId);}
+    else f=await apiRemote.call('downloadAttachment',{id:taskId,fileId});
+    if(!f||!f.data)throw {message:'Вложение недоступно.'};
+    const bytes=Uint8Array.from(atob(f.data),x=>x.charCodeAt(0)),url=URL.createObjectURL(new Blob([bytes],{type:'application/octet-stream'})),a=document.createElement('a');
+    a.href=url;a.download=f.name;a.click();setTimeout(()=>URL.revokeObjectURL(url),10000);
+  }catch(e){toast(e.message||'Не удалось скачать вложение.',null,true)}
+}
 function act(a){
   const t=ui.card?T(ui.card):null;
   switch(a){
+    case 'toggleFolders':ui.foldersCollapsed=!ui.foldersCollapsed;saveUi();renderSide();return;
+    case 'timelineFull':ui.timelineFull=!ui.timelineFull;document.body.classList.toggle('timeline-full',ui.timelineFull);renderMain();return;
+    case 'folders':folderModal();return;
+    case 'people':personModal();return;
+    case 'preferences':preferencesModal();return;
     case 'close':closeCard();return;
-    case 'login':if(DEMO)showLogin();else showMe();return;
+    case 'login':showMe();return;
     case 'new':createTask(null);return;
     case 'addsub':createTask(t);return;
     case 'edit':editTask(t);return;
     case 'print':window.print();return;
     case 'refresh':refresh();return;
-    case 'clearf':Object.assign(ui,{tags:[],status:'',prio:'',owner:'',object:'',q:''});renderAll();return;
+    case 'clearf':Object.assign(ui,{onlyMine:false,tags:[],status:'',prio:'',owner:'',object:'',q:''});renderAll();return;
     case 'readall':exec('markRead',{});return;
     case 'reset':modal('Сбросить демо?','<p style="margin:0">Все изменения в этом браузере удалятся, вернутся исходные демо-данные.</p>',[{l:'Сбросить',cls:'warn',fn:()=>{
       if(pending.length)return 'Дождитесь сохранения изменений.';
@@ -1049,8 +1226,8 @@ function act(a){
       refresh(true).then(()=>toast('Демо сброшено'));
     }}]);return;
     case 'bruno':brunoModal(t);return;
-    case 'addcl':{const v=val('newCl');if(!v)return;const el=document.getElementById('newCl');if(el)el.value='';const r=exec('addCheckItem',{id:t.id,text:v});if(typeof r==='string')toast(r,null,true);return}
-    case 'comment':{const v=val('cmt');if(!v)return;document.getElementById('cmt').value='';const r=exec('addComment',{id:t.id,text:v},x=>x.result.mentions.length?`Упомянуто: ${x.result.mentions.map(m=>USERS[m].handle).join(', ')}`:'Комментарий добавлен');if(typeof r==='string'){document.getElementById('cmt').value=v;toast(r,null,true)}return}
+    case 'addcl':{const items=readChecklist('newCl');if(!items.length)return;resetChecklist('newCl');const r=exec('addCheckItem',{id:t.id,items});if(typeof r==='string'){restoreChecklist('newCl',items);toast(r,null,true);}return}
+    case 'comment':sendComment(t);return;
     case 'submit':{const n=t.checklist.length,d=t.checklist.filter(c=>c.done).length;const go=()=>exec('submit',{id:t.id},'Сдано на проверку');
       if(isLeaf(t)&&n&&d<n)modal('Сдать на проверку?',`<p style="margin:0">Отмечено ${d} из ${n} пунктов чек-листа. Контролёр увидит незакрытые пункты.</p>`,[{l:'Сдать всё равно',cls:'pri',fn:go}]);else{const r=go();if(typeof r==='string')toast(r,null,true)}return}
     case 'accept':{const r=exec('accept',{id:t.id},'Принято');if(typeof r==='string')toast(r,null,true);return}
@@ -1065,26 +1242,44 @@ function act(a){
 /* ---------- вход ---------- */
 // Демо: выбор «кто я», как в прототипе.
 function showLogin(){
+  clearCompletionGrace();
   const r=document.getElementById('loginRoot');
   r.innerHTML=`<div class="login"><div class="login-in"><div><div class="mono" style="color:var(--accent);font-size:12px;letter-spacing:.08em">BRUNO · ПЛАНИРОВЩИК · ДЕМО</div><h1>Поручения отдела</h1></div>
-    <p>Выберите, от чьего имени смотреть демо. Права в интерфейсе меняются по роли. В рабочей версии вход по персональной ссылке-ключу.</p>
-    <div class="who-list">${Object.entries(USERS).map(([k,u])=>`<button type="button" data-login="${esc(k)}">${av(k,36)}<span><b>Я — ${esc(u.name)}</b><span>${u.role==='head'?'Создаёт, назначает, принимает, переносит сроки':u.role==='mod'?'Всё + справочники и передача в Bruno':u.role==='observer'?'Просмотр и комментарии':'Свои задачи: чек-лист, подзадачи, сдача'}</span></span></button>`).join('')}</div>
-    <p class="note">Данные условные, без реальных ФИО. Изменения сохраняются только в вашем браузере.</p></div></div>`;
+    <p>Выберите роль и сотрудника для просмотра демо.</p>
+    <label for="demoRole">Роль</label><select class="sel" id="demoRole"><option value="head">Руководитель</option><option value="owner">Ответственный</option></select>
+    <div id="demoTypeField" hidden><label for="demoType">Тип ответственного</label><select class="sel" id="demoType">${Object.entries(SUBTYPES).map(([k,v])=>`<option value="${k}">${v}</option>`).join('')}</select></div>
+    <label for="demoPerson">Сотрудник</label><select class="sel" id="demoPerson"></select>
+    <p class="note" id="demoRights"></p><button class="btn pri" id="demoEnter">Открыть планировщик</button>
+    <p class="note">Все сотрудники и задачи в демо условные. В рабочей версии роль определяется после входа по коду на @vtb.ru.</p></div></div>`;
+  const update=()=>{const head=val('demoRole')==='head',type=val('demoType');document.getElementById('demoTypeField').hidden=head;
+    document.getElementById('demoPerson').innerHTML=activeUsers().filter(([,u])=>head?u.role==='head':u.role!=='head'&&(u.role==='mod'?'moderator':u.subtype)===type).map(([id,u])=>`<option value="${esc(id)}">${esc(u.name)}</option>`).join('');
+    document.getElementById('demoRights').textContent=head||type==='moderator'?'Управление всеми поручениями, папками и сотрудниками; самостоятельная приёмка результатов.':'Участие в поручениях, свои подзадачи, обсуждение и сдача результатов. Изменение назначенных сроков недоступно.';
+    document.getElementById('demoEnter').disabled=!val('demoPerson');};
+  document.getElementById('demoRole').onchange=update;document.getElementById('demoType').onchange=update;update();
+  document.getElementById('demoEnter').onclick=()=>{if(pending.length||busy){toast('Дождитесь сохранения.');return}ui.user=ME=val('demoPerson');ui.view='timeline';ui.onlyMine=false;ui.card=null;saveUi();document.getElementById('cardRoot').innerHTML='';refresh(true)};
 }
 // Рабочая версия без ключа.
 function showNoKey(msg){
-  document.getElementById('loginRoot').innerHTML=`<div class="login"><div class="login-in"><div><div class="mono" style="color:var(--accent);font-size:12px;letter-spacing:.08em">BRUNO · ПЛАНИРОВЩИК</div><h1>Нужна персональная ссылка</h1></div>
-    <p>${esc(msg||'Вход в планировщик — по персональной ссылке с ключом доступа. Обратитесь к модератору.')}</p>
+  document.getElementById('loginRoot').innerHTML=`<div class="login"><div class="login-in"><div><h1>Вход по банковской почте</h1></div>
+    <p>${esc(msg||'Введите адрес @vtb.ru, добавленный руководителем или модератором.')}</p>
+    ${API_URL?'<label>Почта <input class="inp" id="loginEmail" type="email" autocomplete="email" placeholder="name@vtb.ru"></label><button class="btn" id="requestCode">Получить код</button><label>Код из письма <input class="inp" id="loginCode" inputmode="numeric" autocomplete="one-time-code" maxlength="6"></label><button class="btn pri" id="verifyCode">Войти</button><p id="loginMessage" role="status"></p>':''}
     <p>Посмотреть, как всё устроено, можно в <a class="lnk" href="planner.html?demo=1">демо-версии</a> — на условных данных, без входа.</p>
     <p class="note"><a class="lnk" href="dashboard_v2.html">← Вернуться к дашборду</a></p></div></div>`;
+  if(API_URL){
+    const run=async(action,button)=>{button.disabled=true;const m=document.getElementById('loginMessage');
+      try{const r=await apiRemote.call(action,{email:val('loginEmail'),code:val('loginCode')});if(r.key){localStorage.setItem(LS_KEY,r.key);location.reload()}else m.textContent=r.message}
+      catch(e){m.textContent=e.message||'Не удалось выполнить вход.'}finally{button.disabled=false}};
+    document.getElementById('requestCode').onclick=e=>run('requestCode',e.target);
+    document.getElementById('verifyCode').onclick=e=>run('verifyCode',e.target);
+  }
 }
 function showLoading(msg){document.getElementById('loginRoot').innerHTML=`<div class="login"><div class="login-in" style="align-items:center;text-align:center"><div class="spin"></div><p>${esc(msg)}</p></div></div>`}
 function showFatal(msg){document.getElementById('loginRoot').innerHTML=`<div class="login"><div class="login-in"><h1>Не удалось загрузить</h1><p>${msg}</p><p><button type="button" class="btn pri" onclick="location.reload()">Повторить</button></p></div></div>`}
 function showMe(){
   const u=USERS[me()]||{};
   modal('Вы вошли',`<p style="margin:0"><b>${esc(u.name)}</b> · ${esc(u.roleL||'')}${u.position&&u.position!==u.roleL?' · '+esc(u.position):''}</p>
-    <p class="note" style="margin:0">Ключ доступа хранится в этом браузере. На чужом устройстве нажмите «Выйти» — ссылку можно открыть снова.${u.hasEmail?' Письма о назначениях и упоминаниях приходят на почту из листа Users.':' Почта не указана — письма не приходят.'}</p>`,
-  [{l:'Выйти на этом устройстве',cls:'warn',fn:()=>{try{localStorage.removeItem(LS_KEY)}catch(e){}location.reload()}}]);
+    <p class="note" style="margin:0">Сеанс входа действует до 7 дней и хранится в этом браузере. На чужом устройстве нажмите «Выйти».${u.hasEmail?' Условия писем можно выбрать в настройках.':' Почта не указана — письма не приходят.'}</p>`,
+  [...(DEMO?[{l:'Сменить роль в демо',fn:()=>{setTimeout(showLogin,0)}}]:[]),...(R.isMgr()?[{l:'Сотрудники',fn:()=>setTimeout(personModal,0)}]:[]),{l:'Настройки писем',fn:()=>{setTimeout(preferencesModal,0)}},{l:'Выйти на этом устройстве',cls:'warn',fn:()=>{try{localStorage.removeItem(LS_KEY)}catch(e){}location.reload()}}]);
 }
 
 /* ---------- render ---------- */
@@ -1092,15 +1287,19 @@ function renderAll(){
   if(!D)return;
   setCtx();
   if(!ME||!USERS[ME]){if(DEMO)showLogin();return}
+  if(!R.isMgr()&&ui.view==='summary')ui.view='timeline';
   document.getElementById('loginRoot').innerHTML='';
-  renderHeader();renderSide();renderMain();if(ui.card)renderCard();
+  renderHeader();renderSide();renderMain();if(ui.card)renderCard();renderCompletionUndo();
+  const day=document.getElementById('calendarDayTasks');if(day)day.innerHTML=calendarDayItems(day.dataset.date);
 }
 
 /* ---------- events (как в прототипе) ---------- */
 document.addEventListener('click',e=>{
   const g=k=>e.target.closest('['+k+']');
   let el;
-  if(el=g('data-login')){ui.user=ME=el.dataset.login;saveUi();ui.card=null;document.getElementById('cardRoot').innerHTML='';renderAll();toast('Вы вошли как: '+USERS[ME].name);return}
+  if(el=g('data-scope')){ui.onlyMine=el.dataset.scope==='mine';renderMain();return}
+  if(el=g('data-login')){if(pending.length||busy){toast('Дождитесь сохранения.');return}ui.user=ME=el.dataset.login;saveUi();ui.card=null;document.getElementById('cardRoot').innerHTML='';refresh(true);return}
+  if(el=g('data-download')){downloadFile(el.dataset.task,el.dataset.download);return}
   if(el=g('data-view')){ui.view=el.dataset.view;ui.scrolled=false;saveUi();renderAll();return}
   if(el=g('data-off')){ui.offset=+el.dataset.off;ui.scrolled=false;saveUi();renderAll();toast(ui.offset?`Дата демо: ${fdy(today())}`:'Дата демо: сегодня');return}
   if(el=g('data-scale')){ui.scale=el.dataset.scale;ui.scrolled=false;saveUi();renderMain();return}
@@ -1113,6 +1312,8 @@ document.addEventListener('click',e=>{
 });
 document.addEventListener('change',e=>{
   const t=e.target;
+  if(t.id==='mobileFolder'){ui.folder=t.value||null;renderAll();return}
+  if(t.id==='onlyMine'){ui.onlyMine=t.checked;renderMain();return}
   if(t.dataset&&t.dataset.chk){
     const task=T(ui.card);if(!task)return;
     const r=exec('toggleCheck',{id:task.id,item:t.dataset.chk,done:t.checked});
@@ -1126,7 +1327,6 @@ let qT;
 document.addEventListener('input',e=>{if(e.target.id==='q'){ui.q=e.target.value;clearTimeout(qT);qT=setTimeout(()=>{const pos=e.target.selectionStart;renderMain();const q=document.getElementById('q');if(q){q.focus();q.setSelectionRange(pos,pos)}},200)}});
 document.addEventListener('keydown',e=>{
   if(e.key==='Escape'){if(document.getElementById('modalRoot').innerHTML){document.getElementById('modalRoot').innerHTML='';return}if(ui.card)closeCard()}
-  if(e.key==='Enter'&&e.target.id==='newCl'){e.preventDefault();act('addcl')}
   if(e.key==='Enter'&&(e.ctrlKey||e.metaKey)&&e.target.id==='cmt'){e.preventDefault();act('comment')}
 });
 let lastMob=isMobile();
@@ -1137,25 +1337,202 @@ document.addEventListener('visibilitychange',()=>{if(document.visibilityState===
 window.addEventListener('hashchange',()=>{const h=new URLSearchParams(location.hash.slice(1));if(h.get('k'))location.reload();else if(h.get('t')&&D&&T(h.get('t')))openCard(h.get('t'))});
 window.addEventListener('beforeunload',e=>{if(pending.length){e.preventDefault();e.returnValue=''}});
 
+// Included inside planner.html by tools/integrate-current.py.
+function mineTabs(){return `<div class="seg2 mine-tabs"><button data-mine-kind="long" aria-pressed="${ui.mineKind!=='short'}">Долгосрочные</button><button data-mine-kind="short" aria-pressed="${ui.mineKind==='short'}">Текущие</button></div>`;}
+function currentTime(){const p=mskParts();return `${p.year}-${p.month}-${p.day}T${p.hour}:${p.minute}`;}
+function currentItem(t,compact=false){
+  const inGrace=completionGrace.has(t.id);
+  const late=(!t.done||inGrace)&&t.dueAt<currentTime(),can=CurrentTasks.closable(t,USERS[ME]),different=t.done&&t.doneBy!==t.owner;
+  return `<article class="current-row ${late?'is-overdue':''} ${compact?'calendar-event':''} ${t.done?'is-done':''} ${inGrace?'completion-grace':''}"><button class="current-circle" data-short-toggle="${esc(t.id)}" aria-label="${t.done?'Вернуть в работу':'Выполнить'}: ${esc(t.title)}" ${can?'':'disabled'}>${t.done?'✓':''}</button><div class="current-content"><button class="lnk" data-short-open="${esc(t.id)}" title="${esc(t.title)}"><b>${compact?esc(t.dueAt.slice(11))+' ':''}${esc(t.title)}</b></button><div class="note">${compact?'':esc(t.dueAt.replace('T',' '))+' МСК · '}${esc(t.folder)} · ${esc(uname(t.owner))} · ${esc(t.prio)} ${late?'<b class="current-warning">Просрочено</b>':''}</div>${t.done&&!inGrace?`<div class="note">Закрыл(а): ${esc(uname(t.doneBy))} · ${esc(t.doneAt)} ${different?'<strong class="current-warning" title="Закрыл другой сотрудник">! Закрыл другой сотрудник</strong>':''}</div>`:''}</div></article>`;
+}
+function currentRows(mine){
+  return (D.shortTasks||[]).filter(t=>CurrentTasks.visible(t,USERS[ME])
+    && ((!mine&&!ui.shortMine)||t.owner===ME)
+    && (!ui.shortFolder||t.folder===ui.shortFolder)
+    && (!ui.shortQuery||norm(t.title+' '+uname(t.owner)).includes(norm(ui.shortQuery))))
+    .sort((a,b)=>a.dueAt.localeCompare(b.dueAt)||a.prio.localeCompare(b.prio)||a.id.localeCompare(b.id));
+}
+function calendarRows(rows){
+  return rows.filter(t=>ui.calendarDone||!t.done||completionGrace.has(t.id));
+}
+function currentCalendar(rows,mode,filters){
+  const now=currentTime(),today=now.slice(0,10),anchor=ui.shortAnchor||today;
+  let days=PlannerCalendar.days(anchor,mode);
+  if(mode==='month'&&days.slice(-7).every(d=>d.slice(0,7)!==anchor.slice(0,7)))days=days.slice(0,-7);
+  const map=PlannerCalendar.buckets(calendarRows(rows),days,true);
+  const heading=mode==='month'?new Intl.DateTimeFormat('ru-RU',{month:'long',year:'numeric',timeZone:'UTC'}).format(new Date(anchor+'T12:00:00Z')):`${fd(days[0])} — ${fd(days[6])} · ${days[6].slice(0,4)}`;
+  const names=['Пн','Вт','Ср','Чт','Пт','Сб','Вс'];
+  const cells=days.map(date=>{
+    const tasks=map[date],hasOverdue=tasks.some(t=>!t.done&&t.dueAt<now);
+    return `<section class="calendar-day ${mode==='month'&&date.slice(0,7)!==anchor.slice(0,7)?'other-month':''} ${date===today?'cal-today':''}">
+      <button class="calendar-date" data-calendar-day="${date}" aria-label="${fdy(date)} · задач ${tasks.length}"><span>${mode==='week'?fd(date):Number(date.slice(8))}</span><span class="calendar-count ${hasOverdue?'has-overdue':''}">${tasks.length||'—'}</span></button>
+      ${tasks.slice(0,mode==='month'?2:4).map(t=>currentItem(t,true)).join('')}
+    </section>`;
+  }).join('');
+  return `<div class="calendar-toolbar"><div class="calendar-navigation"><button class="btn sm" data-calendar-step="-1" aria-label="Предыдущий период">‹</button><button class="btn sm" data-calendar-today>Сегодня</button><button class="btn sm" data-calendar-step="1" aria-label="Следующий период">›</button><h2>${esc(heading)}</h2></div></div>
+    <details class="calendar-filters"><summary>Фильтры${ui.shortFolder||ui.shortQuery||ui.calendarDone?' · включены':''}</summary>${filters}<label class="note"><input id="calendarDone" type="checkbox" ${ui.calendarDone?'checked':''}> Показать выполненные</label></details>
+    <div class="calendar-frame"><div class="calendar-grid calendar-${mode}" role="region" aria-label="Календарь на ${mode==='month'?'месяц':'неделю'}">${names.map(n=>`<div class="calendar-dayname">${n}</div>`).join('')}${cells}</div></div><p class="note">Нажмите на дату, чтобы открыть задачи дня · время по Москве</p>`;
+}
+function calendarDayItems(date){
+  const tasks=calendarRows(currentRows(true)).filter(t=>t.dueAt.slice(0,10)===date);
+  return tasks.map(t=>currentItem(t)).join('')||'<p class="note">На этот день задач нет</p>';
+}
+function showCalendarDay(date){
+  modal(`Задачи на ${fdy(date)}`,`<button class="btn pri" data-short-new="${date}">Новая задача</button><div id="calendarDayTasks" data-date="${date}">${calendarDayItems(date)}</div>`,[]);
+}
+function currentAgenda(open,done){
+  const groups=PlannerCalendar.agenda(open,currentTime().slice(0,10));
+  return `<section aria-label="Невыполненные текущие задачи">${groups.map(group=>`<section><h2 class="agenda-divider">${esc(group.label)} <span>${group.tasks.length}</span></h2>${group.tasks.map(t=>currentItem(t)).join('')}</section>`).join('')||'<div class="empty">Невыполненных задач нет</div>'}</section><details><summary>Выполнено · ${done.length}</summary>${done.map(t=>currentItem(t)).join('')}</details>`;
+}
+function viewCurrent(mine){
+  const rows=currentRows(mine);
+  const open=rows.filter(t=>!t.done||completionGrace.has(t.id));
+  const done=rows.filter(t=>t.done&&!completionGrace.has(t.id)).sort((a,b)=>b.doneAt.localeCompare(a.doneAt));
+  const layout=mine&&['week','month'].includes(ui.shortLayout)?ui.shortLayout:'list';
+  const controls=mine
+    ? `<div class="seg2" aria-label="Вид текущих задач">${[['list','Список'],['week','Неделя'],['month','Месяц']].map(([k,v])=>`<button data-current-layout="${k}" aria-pressed="${layout===k}">${v}</button>`).join('')}</div>`
+    : `<div class="seg2" aria-label="Область текущих задач"><button data-short-scope="all" aria-pressed="${!ui.shortMine}">${R.isMgr()?'Все задачи':'Все доступные'}</button><button data-short-scope="mine" aria-pressed="${!!ui.shortMine}">Только мои</button></div>`;
+  const filters=`<div class="bar-f"><input class="inp" id="shortQuery" aria-label="Поиск текущих задач" placeholder="Поиск задач" value="${esc(ui.shortQuery||'')}"/><select class="sel" id="shortFolder" aria-label="Папка текущих задач"><option value="">Все папки</option>${orderedFolders().map(f=>`<option value="${esc(f.code)}" ${ui.shortFolder===f.code?'selected':''}>${esc(f.name)}${f.active===false?' (архив)':''}</option>`).join('')}</select><button class="btn sm" data-short-reset>Сбросить</button>${R.isMgr()?'<button class="btn sm mobile-folder-menu" data-act="folders" aria-label="Управление папками">⋯</button>':''}</div>`;
+  return `${mine?mineTabs():''}<div class="vh"><h1>${mine?'Мои текущие задачи':'Текущие задачи'}</h1><button class="btn pri" data-short-new>Новая задача</button></div>
+  ${layout==='list'?`<p class="note">Открытых задач — ${open.length} · время по Москве</p>`:''}
+  <div class="current-controls">${controls}</div>
+  ${layout==='list'?filters+currentAgenda(open,done):currentCalendar(rows,layout,filters)}`;
+}
+function currentOwner(value){const found=activeUsers().filter(([,u])=>u.role!=='observer'&&[u.id,u.email,u.name].some(v=>v&&norm(v)===norm(value.trim())));return found.length===1?found[0][0]:null;}
+function currentForm(t,day){
+  const can=!t||CurrentTasks.editable(t,USERS[ME]);
+  modal(t?'Текущая задача':'Новая задача',`<p class="note">Время по Москве. Исполнитель — зарегистрированный пользователь.</p>
+  <label>Название<input class="inp" id="shortTitle" maxlength="300" value="${esc(t?t.title:'')}" ${can?'':'disabled'}></label>
+  <label>Дедлайн<input class="inp" id="shortDue" type="datetime-local" value="${t?t.dueAt:day?day+'T09:00':currentTime()}" ${can?'':'disabled'}></label>
+  <label>Приоритет<select class="sel" id="shortPrio" ${can?'':'disabled'}>${['P1','P2','P3'].map(p=>`<option ${(t?t.prio:'P3')===p?'selected':''}>${p}</option>`).join('')}</select></label>
+  <label>Папка<select class="sel" id="shortFolderEdit" ${can?'':'disabled'}>${D.folders.filter(f=>f.active!==false||t&&t.folder===f.code).map(f=>`<option value="${esc(f.code)}" ${(t?t.folder:ui.shortFolder)===f.code?'selected':''}>${esc(f.name)}</option>`).join('')}</select></label>
+  <label>Исполнитель: имя или email<input class="inp" id="shortOwner" list="currentPeople" value="${esc((USERS[t?t.owner:ME]||{}).email||uname(t?t.owner:ME))}" ${can?'':'disabled'} autocomplete="off"></label><datalist id="currentPeople">${activeUsers().filter(([,u])=>u.role!=='observer').map(([id,u])=>`<option value="${esc(u.email||u.name)}">${esc(u.name)}</option>`).join('')}</datalist>
+  ${t?`<h3>История</h3>${t.history.map(e=>`<p class="note">${esc(e.at)} · ${esc(uname(e.by))} · ${{create:'Создано',edit:'Изменено',done:'Выполнено',reopen:'Возвращено в работу'}[e.type]||esc(e.type)}${e.owner&&e.type==='done'&&e.owner!==e.by?' · ! другой исполнитель':''}${e.before?` · прежний срок: ${esc(e.before.dueAt)} · прежний исполнитель: ${esc(uname(e.before.owner))}`:''}</p>`).join('')}`:''}`,
+  can&&!(t&&t.done)?[{l:'Сохранить',cls:'pri',fn:()=>{if(pending.length)return 'Дождитесь сохранения.';return exec(t?'shortUpdate':'shortCreate',{id:t&&t.id,version:t&&t.version,title:val('shortTitle'),dueAt:val('shortDue'),prio:val('shortPrio'),folder:val('shortFolderEdit'),owner:currentOwner(val('shortOwner'))},'Задача сохранена');}}]:[]);
+}
+document.addEventListener('click',e=>{
+  let el;
+  if(el=e.target.closest('[data-mine-kind]')){ui.mineKind=el.dataset.mineKind;saveUi();renderHeader();renderSide();renderMain();}
+  if(el=e.target.closest('[data-short-scope]')){ui.shortMine=el.dataset.shortScope==='mine';renderMain();}
+  if(el=e.target.closest('[data-short-folder]')){ui.shortFolder=el.dataset.shortFolder;renderSide();renderMain();}
+  if(el=e.target.closest('[data-short-new]'))currentForm(null,el.dataset.shortNew||null);
+  if(el=e.target.closest('[data-current-layout]')){ui.shortLayout=el.dataset.currentLayout;saveUi();renderMain();}
+  if(el=e.target.closest('[data-calendar-day]'))showCalendarDay(el.dataset.calendarDay);
+  if(el=e.target.closest('[data-calendar-step]')){ui.shortAnchor=PlannerCalendar.shift(ui.shortAnchor||currentTime().slice(0,10),ui.shortLayout,Number(el.dataset.calendarStep));saveUi();renderMain();}
+  if(e.target.closest('[data-calendar-today]')){ui.shortAnchor=currentTime().slice(0,10);saveUi();renderMain();}
+  if(e.target.closest('[data-short-reset]')){ui.shortFolder='';ui.shortQuery='';ui.shortMine=false;renderMain();}
+  if(el=e.target.closest('[data-short-open]')){const t=(D.shortTasks||[]).find(t=>t.id===el.dataset.shortOpen);if(t)currentForm(t);}
+  if(el=e.target.closest('[data-short-toggle]')){toggleCurrentWithUndo(el.dataset.shortToggle);}
+
+});
+document.addEventListener('change',e=>{if(e.target.id==='calendarDone'){ui.calendarDone=e.target.checked;renderMain();}if(e.target.id==='shortFolder'){ui.shortFolder=e.target.value;renderSide();renderMain();}if(e.target.id==='shortQuery'){ui.shortQuery=e.target.value;renderMain();}});
+
+window.addEventListener('hashchange',()=>{const id=new URLSearchParams(location.hash.slice(1)).get('s');if(id&&D){ui.view='current';renderAll();const t=(D.shortTasks||[]).find(t=>t.id===id);if(t)currentForm(t);}});
+const completionGrace=new Map();
+function clearCompletionGrace(id){
+  if(id){const entry=completionGrace.get(id);if(entry)clearTimeout(entry.timer);completionGrace.delete(id);}
+  else{completionGrace.forEach(e=>clearTimeout(e.timer));completionGrace.clear();}
+  renderCompletionUndo();
+}
+function renderCompletionUndo(){
+  let bar=document.getElementById('completionUndo');if(!bar){bar=document.createElement('div');bar.id='completionUndo';bar.className='completion-undo';bar.setAttribute('role','status');document.body.append(bar);}
+  const candidates=[...completionGrace.entries()].filter(([id])=>D&&(D.shortTasks||[]).some(t=>t.id===id&&t.done)),last=candidates.at(-1);
+  bar.hidden=!last;if(!last)return;
+  const task=(D.shortTasks||[]).find(t=>t.id===last[0]);
+  bar.innerHTML=`<span>Выполнено: ${esc(task.title)}${candidates.length>1?' · ещё '+(candidates.length-1):''}</span><button class="btn" data-completion-undo="${esc(task.id)}">Отменить (Undo)</button>`;
+}
+function toggleCurrentWithUndo(id){
+  const task=(D.shortTasks||[]).find(t=>t.id===id);if(!task)return;
+  const done=!task.done;
+  if(done){
+    const entry={id:id};entry.timer=setTimeout(()=>{completionGrace.delete(entry.id);renderAll();},5000);
+    completionGrace.set(id,entry);
+  }else clearCompletionGrace(id);
+  const result=exec('shortToggle',{id:task.id,version:task.version,done:done});
+  if(typeof result==='string'){clearCompletionGrace(id);toast(result,null,true);}
+  renderCompletionUndo();
+}
+document.addEventListener('click',e=>{const button=e.target.closest('[data-completion-undo]');if(button)toggleCurrentWithUndo(button.dataset.completionUndo);});
+
+function orderedFolders(){return D.folders.slice().sort((a,b)=>(+a.order||0)-(+b.order||0)||a.code.localeCompare(b.code));}
+function folderPanelHeader(){return `<div class="side-head"><button class="side-icon" data-act="toggleFolders" aria-label="${ui.foldersCollapsed?'Развернуть папки':'Свернуть папки'}" aria-expanded="${!ui.foldersCollapsed}" title="${ui.foldersCollapsed?'Развернуть папки':'Свернуть папки'}">${ui.foldersCollapsed?'☷':'◧'}</button><h3>Папки</h3>${R.isMgr()?'<button class="side-icon folder-more" data-act="folders" aria-label="Управление папками" title="Управление папками">⋯</button>':''}</div>`;}
+function folderModal(){
+  const folders=orderedFolders(),saving=pending.length>0||busy;
+  modal('Управление папками',`<div id="folderManager"><p class="note">Код новой папки создаётся из названия. Папку с задачами можно архивировать; удалить — только пустую.</p><div class="new-folder"><input class="inp" id="newFolderName" aria-label="Название новой папки" placeholder="Новая папка" maxlength="100" ${saving?'disabled':''}><button class="btn pri" data-folder-operation="create" ${saving?'disabled':''}>Создать папку</button></div><div class="folder-manager-list">${folders.map((f,i)=>`<div class="folder-manager-row" data-folder-code="${esc(f.code)}"><div class="folder-name"><input class="inp" aria-label="Название папки ${esc(f.code)}" value="${esc(f.name)}" maxlength="100" ${saving?'disabled':''}><span class="note">${esc(f.code)}${f.active===false?' · архив':''}</span></div><div class="folder-row-actions"><button class="btn sm" data-folder-operation="rename" ${saving?'disabled':''}>Сохранить название</button><button class="btn sm" data-folder-operation="up" aria-label="Поднять ${esc(f.name)}" ${saving||i===0?'disabled':''}>↑</button><button class="btn sm" data-folder-operation="down" aria-label="Опустить ${esc(f.name)}" ${saving||i===folders.length-1?'disabled':''}>↓</button><button class="btn sm" data-folder-operation="archive" ${saving?'disabled':''}>${f.active===false?'Восстановить':'В архив'}</button><button class="btn sm warn" data-folder-operation="delete" ${saving?'disabled':''}>Удалить</button></div></div>`).join('')}</div>${saving?'<p class="note">Сохранение…</p>':''}</div>`,[],root=>{
+    root.querySelector('#folderManager').addEventListener('click',e=>{
+      const b=e.target.closest('[data-folder-operation]');if(!b)return;
+      if(pending.length||busy){toast('Дождитесь сохранения.');return;}
+      const operation=b.dataset.folderOperation,row=b.closest('[data-folder-code]'),code=row&&row.dataset.folderCode,f=D.folders.find(f=>f.code===code);
+      let action='saveFolder',params;
+      if(operation==='create')params={name:val('newFolderName')};
+      else if(operation==='rename')params={code:code,name:row.querySelector('input').value};
+      else if(operation==='archive')params={code:code,name:f.name,active:f.active===false};
+      else if(operation==='delete'){action='deleteFolder';params={code:code};}
+      else{action='moveFolder';params={code:code,direction:operation==='up'?-1:1};}
+      const result=exec(action,params);
+      if(typeof result==='string')toast(result,null,true);else folderModal();
+    });
+  });
+}
+
+function checklistRow(item={},index=0){
+  const text=typeof item==='string'?item:item.text||'';
+  return `<div class="check-compose-row"><input type="checkbox" ${item.done?'checked':''} aria-label="Выполнен пункт ${index+1}"><textarea class="inp" rows="1" placeholder="Новый пункт" aria-label="Пункт чек-листа ${index+1}">${esc(text)}</textarea></div>`;
+}
+function checklistComposer(id,items){
+  if(!Array.isArray(items))items=String(items||'').split(/\r?\n/).map(text=>({text}));
+  if(!items.length)items=[{}];
+  return `<div class="check-compose" data-check-composer="${id}"><textarea id="${id}" hidden>${esc(items.map(i=>typeof i==='string'?i:i.text||'').join('\n'))}</textarea>${items.map(checklistRow).join('')}</div>`;
+}
+function readChecklist(id){
+  const editor=document.querySelector(`[data-check-composer="${id}"]`);if(!editor)return [];
+  return [...editor.querySelectorAll('.check-compose-row')].map(row=>({text:row.querySelector('textarea').value.trim(),done:row.querySelector('input').checked})).filter(i=>i.text);
+}
+function syncChecklist(editor){
+  const rows=[...editor.querySelectorAll('.check-compose-row')];
+  editor.querySelector('textarea[hidden]').value=rows.map(r=>r.querySelector('textarea').value).join('\n');
+  rows.forEach((r,i)=>{const field=r.querySelector('textarea');field.setAttribute('aria-label','Пункт чек-листа '+(i+1));r.querySelector('input').setAttribute('aria-label','Выполнен пункт '+(i+1));field.style.height='auto';field.style.height=field.scrollHeight+'px';});
+}
+function restoreChecklist(id,items){const old=document.querySelector(`[data-check-composer="${id}"]`);if(old)old.outerHTML=checklistComposer(id,items);}
+function resetChecklist(id){restoreChecklist(id,[]);}
+function splitChecklistField(field,text){
+  const editor=field.closest('.check-compose'),row=field.closest('.check-compose-row'),at=field.selectionStart,end=field.selectionEnd;
+  const parts=(field.value.slice(0,at)+text+field.value.slice(end)).split(/\r?\n/);
+  field.value=parts.shift();let last=row;
+  parts.forEach(value=>{last.insertAdjacentHTML('afterend',checklistRow({text:value}));last=last.nextElementSibling;});
+  syncChecklist(editor);const focus=last.querySelector('textarea');focus.focus();focus.setSelectionRange(focus.value.length,focus.value.length);
+}
+document.addEventListener('input',e=>{const field=e.target;if(field.matches('.check-compose-row textarea'))syncChecklist(field.closest('.check-compose'));});
+document.addEventListener('change',e=>{if(e.target.matches('.check-compose-row input'))syncChecklist(e.target.closest('.check-compose'));if(e.target.id==='commentFiles')showSelectedFiles();});
+document.addEventListener('keydown',e=>{
+  const field=e.target;if(!field.matches('.check-compose-row textarea'))return;
+  if(e.key==='Enter'){e.preventDefault();splitChecklistField(field,'\n');}
+  if(e.key==='Backspace'&&!field.value){const row=field.closest('.check-compose-row'),previous=row.previousElementSibling;if(previous&&previous.matches('.check-compose-row')){e.preventDefault();const editor=row.closest('.check-compose');row.remove();previous.querySelector('textarea').focus();syncChecklist(editor);}}
+});
+document.addEventListener('paste',e=>{if(!e.target.matches('.check-compose-row textarea'))return;const text=e.clipboardData.getData('text/plain');if(/[\r\n]/.test(text)){e.preventDefault();splitChecklistField(e.target,text.replace(/^\s*[•○◯]\s*/gm,''));}});
+function showSelectedFiles(){const field=document.getElementById('commentFiles'),label=document.getElementById('selectedFileNames');if(label&&field)label.textContent=[...field.files].map(f=>f.name).join(' · ');}
+
 /* ---------- старт ---------- */
 (async()=>{
   if(DEMO){document.getElementById('demoBar').hidden=false;document.getElementById('dateBox').hidden=false}
   // #k=ключ — запоминаем и сразу убираем из адресной строки, чтобы ссылку не переслали вместе с ключом.
   const h=new URLSearchParams(location.hash.slice(1));
   if(h.get('k')){try{localStorage.setItem(LS_KEY,h.get('k'))}catch(e){}h.delete('k');history.replaceState(null,'',location.pathname+location.search+(h.toString()?'#'+h.toString():''))}
-  const openId=h.get('t');
+  const openId=h.get('t'),openShort=h.get('s');
   if(location.protocol==='file:'){showFatal('Страница открыта как локальный файл (file://), а браузер запрещает в этом режиме читать данные.<br><br>Запустите в папке проекта <code>python -m http.server 8000</code> и откройте <code>http://localhost:8000/planner.html?demo=1</code>.');return}
   if(!DEMO&&!API_URL){showNoKey('Планировщик ещё не подключён к таблице (в planner.html не указан API_URL). Обратитесь к модератору.');return}
   if(!DEMO&&!apiRemote.key()){showNoKey();return}
   showLoading('Загружаю поручения…');
   try{
     const [s]=await Promise.all([api.call('bootstrap',{}),loadDirectories()]);
-    confirmed={tasks:s.tasks,activity:s.activity,users:s.users,folders:s.folders};
+    confirmed={shortTasks:s.shortTasks||[],tasks:s.tasks,activity:s.activity,users:s.users,folders:s.folders};
     ME=DEMO?ui.user:s.me;lastSync=Date.now();
     rebuild();setSync('ok');
     document.getElementById('sync').hidden=false;document.getElementById('refreshBtn').hidden=false;
     if(openId&&confirmed.tasks.some(t=>t.id===openId))ui.card=openId;
+    if(openShort)ui.view='current';
     renderAll();
+    if(openShort){const t=(D.shortTasks||[]).find(t=>t.id===openShort);if(t)currentForm(t);else toast('Задача не найдена или нет доступа.',null,true);}
     if(!DIR.ok)toast('Справочник Bruno (data.json.gz) не загрузился — объекты показаны идентификаторами.',null,true);
   }catch(err){
     if(err&&err.error==='auth'){try{localStorage.removeItem(LS_KEY)}catch(e){}showNoKey(err.message);return}

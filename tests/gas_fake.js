@@ -18,6 +18,7 @@ function fakeGas() {
       getLastRow: () => { for (let r = cells.length - 1; r >= 0; r--) if ((cells[r] || []).some((v) => v !== '' && v != null)) return r + 1; return 0; },
       getLastColumn: () => cells.reduce((m, row) => { let l = 0; (row || []).forEach((v, i) => { if (v !== '' && v != null) l = i + 1; }); return Math.max(m, l); }, 0),
       getMaxRows: () => Math.max(1000, cells.length),
+      deleteRow:n=>{cells.splice(n-1,1);},
       setFrozenRows: (n) => { sh.frozen = n; },
       getRange: (r, c, nr, nc) => {
         nr = nr || 1; nc = nc || 1;
@@ -51,10 +52,10 @@ function fakeGas() {
   const g = {
     console: { log() {}, warn() {}, error: (...a) => console.error(...a) },
     SpreadsheetApp: { getActiveSpreadsheet: () => ss, openById: () => ss, flush() {}, newDataValidation: () => vb },
-    PropertiesService: { getScriptProperties: () => ({ getProperty: (k) => props[k] || null, setProperty: (k, v) => { props[k] = v; } }) },
+    PropertiesService: { getScriptProperties: () => ({ getProperty: (k) => props[k] || null, setProperty: (k, v) => { props[k] = v; }, deleteProperty:(k)=>{delete props[k];} }) },
     LockService: { getScriptLock: () => ({ tryLock: () => true, waitLock() {}, releaseLock() {} }) },
     ContentService: { MimeType: { JSON: 'json' }, createTextOutput: (s) => ({ setMimeType() { return this; }, text: s }) },
-    MailApp: { quota: 100, getRemainingDailyQuota() { return this.quota; }, sendEmail(o) { mails.push(o); } },
+    MailApp: { quota: 100, getRemainingDailyQuota() { return this.quota; }, sendEmail(o,subject,body) { mails.push(typeof o==='string'?{to:o,subject,body}:o); } },
     UrlFetchApp: { fetch: () => ({ getContentText: () => fs.readFileSync(path.join(ROOT, 'docs/demo_tasks.json'), 'utf8') }) },
     Utilities: {
       DigestAlgorithm: { SHA_256: 'sha256' }, Charset: { UTF_8: 'utf8' },
@@ -67,9 +68,16 @@ function fakeGas() {
       }
     }
   };
+  const blobs=new Map();let fileSeq=0;
+  function blob(bytes,type,name){return {getBytes:()=>Array.from(bytes),name};}
+  g.Utilities.base64Decode=s=>Array.from(Buffer.from(s,'base64'));
+  g.Utilities.base64Encode=b=>Buffer.from(b).toString('base64');
+  g.Utilities.newBlob=blob;
+  const folder={getId:()=> 'private-folder',createFile:b=>{const id='file-'+(++fileSeq),f={getId:()=>id,getName:()=>b.name,getBlob:()=>b,setSharing:()=>f};blobs.set(id,f);return f;}};
+  g.DriveApp={Access:{PRIVATE:'PRIVATE'},Permission:{NONE:'NONE'},createFolder:()=>folder,getFolderById:()=>folder,getFileById:id=>{if(!blobs.has(id))throw Error('No file');return blobs.get(id);}};
   const ctx = vm.createContext(g);
-  for (const f of ['Code.gs', 'Core.gs', 'Status.gs']) vm.runInContext(fs.readFileSync(path.join(ROOT, 'apps-script', f), 'utf8'), ctx, { filename: f });
-  const post = (body) => JSON.parse(ctx.doPost({ postData: { contents: JSON.stringify(body) } }).text);
+  for (const f of ['Code.gs', 'Core.gs', 'Status.gs', 'Access.gs','Current.gs','CurrentMail.gs']) vm.runInContext(fs.readFileSync(path.join(ROOT, 'apps-script', f), 'utf8'), ctx, { filename: f });
+  const post = (body) => {ctx.TABLES_={};return JSON.parse(ctx.doPost({ postData: { contents: JSON.stringify(body) } }).text);};
   const rows = (name) => { const s = ss.getSheetByName(name); const [h, ...r] = s.cells; return r.filter((x) => x && x[0]).map((x) => Object.fromEntries(h.map((k, i) => [k, x[i] == null ? '' : x[i]]))); };
   return { ctx, post, rows, mails, ss };
 }

@@ -22,11 +22,11 @@ var PlannerCore = (function () {
   var ROLES = ['head', 'mod', 'owner', 'observer'];
   // Действия, которые меняют саму задачу и поэтому сверяют version.
   // Пункты чек-листа, комментарии и подзадачи — точечные добавления, version не трогают.
-  var VERSIONED = { updateTask: 1, submit: 1, accept: 1, 'return': 1, setBlocker: 1, clearBlocker: 1, reschedule: 1, cancel: 1, setBrunoRef: 1 };
+  var VERSIONED = { shortUpdate:1, shortToggle:1, updateTask: 1, submit: 1, accept: 1, 'return': 1, setBlocker: 1, clearBlocker: 1, reschedule: 1, cancel: 1, setBrunoRef: 1 };
 
   function fail(code, message) { throw { error: code, message: message }; }
   function str(v) { return v == null ? '' : String(v).trim(); }
-  function isDate(s) { return /^\d{4}-\d\d-\d\d$/.test(s); }
+  function isDate(s) { if(!/^\d{4}-\d\d-\d\d$/.test(s))return false;var d=new Date(s+'T00:00:00Z');return isFinite(+d)&&d.toISOString().slice(0,10)===s; }
   function fd(s) { return s ? s.slice(8, 10) + '.' + s.slice(5, 7) : '—'; }
   function lc(s) { return String(s).toLowerCase(); }
 
@@ -41,6 +41,14 @@ var PlannerCore = (function () {
     };
   }
   function userOf(db, id) { for (var i = 0; i < db.users.length; i++) if (db.users[i].id === id) return db.users[i]; return null; }
+  function canView(db, meId, t) {
+    var me = userOf(db, meId);
+    if (!me || me.active === false || !t) return false;
+    if (me.role === 'head' || me.role === 'mod') return true;
+    var root = t.parent || t.id;
+    var children = db.tasks.filter(function (x) { return x.parent === root; });
+    return children.length ? children.some(function (x) { return x.owner === meId; }) : t.owner === meId;
+  }
 
   /* ---------- права (ТЗ §2; как объект R в прототипе) ---------- */
   function rights(db, meId, env) {
@@ -51,18 +59,19 @@ var PlannerCore = (function () {
     var isLeaf = function (t) { return !c.kids(t.id).length; };
     var R = {
       isMgr: function () { return mgr; },
-      edit: function (t) { return mgr || t.owner === meId || !!(t.parent && c.T(t.parent) && c.T(t.parent).owner === meId); },
+      view: function (t) { return canView(db, meId, t); },
+      edit: function (t) { return R.view(t) && (mgr || t.owner === meId); },
       check: function (t) { return R.edit(t) && not(t, ['done', 'review', 'cancelled']); },
       submit: function (t) { return (t.owner === meId || mgr) && not(t, ['done', 'review', 'cancelled']); },
-      accept: function (t) { return (t.controller === meId || mod) && st(t) === 'review'; },
+      accept: function (t) { return mgr && st(t) === 'review'; },
       block: function (t) { return (t.owner === meId || mgr) && not(t, ['done', 'cancelled']); },
-      resched: function (t) { return (t.controller === meId || mod) && not(t, ['done', 'cancelled']); },
-      sub: function (t) { return !t.parent && t.flag !== 'cancelled' && (mgr || t.owner === meId); },
+      resched: function (t) { return mgr && not(t, ['done', 'cancelled']); },
+      sub: function (t) { return !t.parent && not(t, ['done', 'review', 'cancelled']) && R.view(t); },
       bruno: function (t) { return mgr && isLeaf(t) && t.flag !== 'cancelled'; },
       update: function (t) { return mgr && t.flag !== 'cancelled'; },
       cancel: function (t) { return mgr && not(t, ['done', 'cancelled']); },
       create: function () { return mgr; },
-      comment: function () { return !!userOf(db, meId); }
+      comment: function (t) { return !!t && R.view(t); }
     };
     return R;
   }
@@ -99,6 +108,13 @@ var PlannerCore = (function () {
     });
     return ids;
   }
+  function newFolderCode(db,name){
+    var words=String(name).toUpperCase().match(/[А-ЯЁA-Z0-9]+/g)||[];
+    var base=(words.length>1?words.map(function(w){return w[0];}).join(''):words.join('').slice(0,3)).slice(0,8)||'ПП';
+    if(base.length<2)base+='1';var code=base,n=2;
+    while(db.folders.some(function(f){return f.code===code;})){code=base+String(n++);}
+    return code;
+  }
   function folderOf(db, code) { for (var i = 0; i < db.folders.length; i++) if (db.folders[i].code === code) return db.folders[i]; return null; }
   // ПАПКА-ГГ-NNN: свой счётчик у папки на каждый год, номер не переиспользуется.
   function nextCode(db, code, year) {
@@ -120,6 +136,7 @@ var PlannerCore = (function () {
   // Возвращает {patch:{tasks,activity,users,folders}, notify:[...], result:{...}}.
   function handle(db, meId, action, p, env) {
     p = p || {};
+    if(action.indexOf('short')===0)return (typeof CurrentTasks!=='undefined'?CurrentTasks:require('./current.js')).handle(db,meId,action,p,env);
     var me = userOf(db, meId);
     if (!me || me.active === false) fail('auth', 'Пользователь не найден или отключён.');
     var R = rights(db, meId, env), c = ctxOf(db, env);
@@ -136,18 +153,24 @@ var PlannerCore = (function () {
     var task = function () {
       var t = c.T(str(p.id));
       if (!t) fail('not_found', 'Задача ' + str(p.id) + ' не найдена.');
+      need(R.view(t));
       if (VERSIONED[action] && p.version != null && +p.version !== +t.version) fail('conflict', 'Задачу изменили, обновите.');
       return t;
     };
-    var userId = function (id, what) { if (!userOf(db, id)) fail('bad_request', 'Не выбран ' + what + '.'); return id; };
+    var userId = function (id, what) { var u = userOf(db, id); if (!u || u.active === false) fail('bad_request', 'Не выбран ' + what + '.'); return id; };
+    var headId = function () {
+      var heads = db.users.filter(function (u) { return u.role === 'head' && u.active !== false; });
+      if (heads.length !== 1) fail('bad_request', 'В списке сотрудников должен быть один действующий руководитель.');
+      return heads[0].id;
+    };
     var dates = function (st, du) {
       if (!isDate(st) || !isDate(du)) fail('bad_request', 'Укажите старт и дедлайн.');
       if (du < st) fail('bad_request', 'Дедлайн раньше старта.');
     };
     var clItems = function (id, list) {
-      return (list || []).map(function (x) { return str(x); }).filter(Boolean).map(function (x, i) {
-        return { id: id + '-c' + env.uid(), text: x, done: false, by: '', at: '', order: i + 1, createdBy: meId, createdAt: env.ts };
-      });
+      var rows=[];(list||[]).forEach(function(x){var text=str(x&&typeof x==='object'?x.text:x),done=!!(x&&typeof x==='object'&&x.done);text.split(/\r?\n/).forEach(function(line){line=line.replace(/^\s*[•○◯]\s*/, '').trim();if(line)rows.push({text:line,done:done});});});
+      if(rows.length>100)fail('bad_request','До 100 пунктов за один раз.');
+      return rows.map(function(x,i){return {id:id+'-c'+env.uid(),text:x.text,done:x.done,by:x.done?meId:'',at:x.done?env.ts:'',order:i+1,createdBy:meId,createdAt:env.ts};});
     };
     var newTask = function (id, parent, o) {
       var t = { id: id, parent: parent ? parent.id : null, folder: o.folder, title: o.title, desc: o.desc || '', objects: o.objects || [], zone: o.zone || '', zoneId: '', teamId: '',
@@ -166,6 +189,56 @@ var PlannerCore = (function () {
     };
 
     switch (action) {
+      case 'saveUser': {
+        need(R.isMgr());
+        var uid = str(p.userId), role = str(p.role), email = str(p.email).toLowerCase(), subtype = str(p.subtype);
+        if (role === 'head') subtype = '';
+        if (!/^[a-zA-Z0-9_-]{1,64}$/.test(uid) || !str(p.name) || !/^[^\s@]+@vtb\.ru$/.test(email)) fail('bad_request', 'Укажите id, имя и почту @vtb.ru.');
+        if (['head','mod','owner'].indexOf(role) < 0) fail('bad_request', 'Неизвестная роль.');
+        if (role !== 'head' && ['admin','commandant','inspector','moderator'].indexOf(subtype) < 0) fail('bad_request', 'Выберите тип ответственного.');
+        if ((role === 'mod') !== (subtype === 'moderator')) fail('bad_request', 'Тип «Модератор» соответствует правам модератора.');
+        if (role === 'head' && db.users.some(function (u) { return u.id !== uid && u.role === 'head' && u.active !== false; })) fail('bad_request', 'Руководитель может быть только один.');
+        if (db.users.some(function (u) { return u.id !== uid && lc(u.email || '') === email; })) fail('bad_request', 'Этот адрес уже используется.');
+        var person = userOf(db, uid);
+        if(person&&person.role==='head'&&person.active!==false&&(role!=='head'||p.active===false))fail('bad_request','В планировщике должен оставаться один активный руководитель.');
+        if (person && person.id === meId && (role !== person.role || p.active === false)) fail('bad_request', 'Нельзя отключить или понизить собственный доступ.');
+        if (!person) { person = {id:uid, keyHash:'', lastRead:'', active:true}; db.users.push(person); }
+        if (person.email && person.email !== email) { person.keyHash = ''; person.sessionExpires = ''; }
+        person.name = str(p.name); person.email = email; person.role = role; person.subtype = role === 'head' ? '' : subtype;
+        person.handle = str(p.handle) || uid; person.active = p.active !== false; dirtyU[uid] = person;
+        break;
+      }
+      case 'saveFolder': {
+        need(R.isMgr());
+        var fn = str(p.name),fc = str(p.code).toUpperCase()||newFolderCode(db,fn);
+        if (!/^[А-ЯЁA-Z0-9]{2,12}$/.test(fc) || !fn || fn.length > 100) fail('bad_request', 'Укажите код папки (2–12 букв/цифр) и название до 100 знаков.');
+        var folder = folderOf(db, fc);
+        if (!folder) { folder = {code:fc, counters:{}, order:db.folders.reduce(function(m,f){return Math.max(m,+f.order||0);},0)+1}; db.folders.push(folder); }
+        folder.name = fn; if(p.active!=null)folder.active=p.active!==false;else if(folder.active==null)folder.active=true;dirtyF[fc] = folder;result.code=fc;
+        break;
+      }
+      case 'moveFolder': {
+        need(R.isMgr());var ordered=db.folders.slice().sort(function(a,b){return (+a.order||0)-(+b.order||0)||a.code.localeCompare(b.code);});
+        var at=ordered.findIndex(function(f){return f.code===str(p.code);}),step=+p.direction;
+        if(at<0)fail('not_found','Папка не найдена.');if(step!==1&&step!==-1)fail('bad_request','Выберите направление.');
+        var to=at+step;if(to<0||to>=ordered.length)break;
+        var moved=ordered.splice(at,1)[0];ordered.splice(to,0,moved);
+        ordered.forEach(function(f,i){f.order=i+1;dirtyF[f.code]=f;});break;
+      }
+      case 'deleteFolder': {
+        need(R.isMgr());
+        var df = folderOf(db, str(p.code));
+        if (!df) fail('not_found', 'Папка не найдена.');
+        if (db.tasks.concat(db.shortTasks||[]).some(function (t) { return t.folder === df.code; })) fail('bad_request', 'Папка содержит задачи. Используйте архивирование.');
+        db.folders = db.folders.filter(function (f) { return f.code !== df.code; });
+        dirtyF[df.code] = {code:df.code, deleted:true};
+        break;
+      }
+      case 'savePreferences': {
+        me.preferences = {assign:p.assign !== false, mention:p.mention !== false, returned:p.returned !== false, digest:!!p.digest, shortAssign:p.shortAssign!==false, shortReschedule:p.shortReschedule!==false, shortReminder:p.shortReminder!==false};
+        dirtyU[me.id] = me;
+        break;
+      }
       case 'createTask': {
         need(R.create(), 'Создавать поручения могут руководитель и модератор.');
         var f = folderOf(db, str(p.folder));
@@ -177,7 +250,7 @@ var PlannerCore = (function () {
         var code = nextCode(db, f.code, env.year);
         f.counters = f.counters || {}; f.counters[env.year] = code.n; dirtyF[f.code] = f;
         var t = newTask(code.id, null, { folder: f.code, title: ex.clean, desc: str(p.desc), prio: prio, tags: ex.tags,
-          objects: (p.objects || []).map(str).filter(Boolean), owner: userId(p.owner, 'ответственный'), controller: userId(p.controller, 'контролёр'),
+          objects: (p.objects || []).map(str).filter(Boolean), owner: userId(p.owner, 'ответственный'), controller: headId(),
           workType: str(p.workType), start: str(p.start), due: str(p.due), checklist: p.checklist });
         log(t.id, 'created', 'создал(а) поручение');
         assigned(t);
@@ -190,9 +263,10 @@ var PlannerCore = (function () {
         var raw2 = str(p.title); if (!raw2) fail('bad_request', 'Укажите название.');
         var ex2 = extractTags(raw2, allTags(db)); if (!ex2.clean) fail('bad_request', 'Название не может состоять только из тегов.');
         dates(str(p.start), str(p.due));
+        if (str(p.due) > par.due) fail('bad_request', 'Дедлайн подзадачи не может быть позже срока поручения.');
         var sid = nextSub(db, par.id);
-        var s = newTask(sid, par, { folder: par.folder, title: ex2.clean, prio: par.prio, tags: mergeTags(par.tags, ex2.tags), objects: par.objects.slice(), zone: par.zone,
-          owner: userId(p.owner, 'ответственный'), controller: userId(p.controller, 'контролёр'), workType: par.workType, start: str(p.start), due: str(p.due), checklist: p.checklist });
+        var s = newTask(sid, par, { desc:str(p.desc), folder: par.folder, title: ex2.clean, prio: par.prio, tags: mergeTags(par.tags, ex2.tags), objects: par.objects.slice(), zone: par.zone,
+          owner: userId(p.owner, 'ответственный'), controller: headId(), workType: par.workType, start: str(p.start), due: str(p.due), checklist: p.checklist });
         log(par.id, 'subtask_added', 'добавил(а) подзадачу ' + sid + ' «' + ex2.clean + '»');
         log(sid, 'created', 'создал(а) подзадачу');
         assigned(s);
@@ -219,7 +293,7 @@ var PlannerCore = (function () {
         if (fl.objects != null) { var ob = fl.objects.map(str).filter(Boolean); if (ob.join(',') !== u.objects.join(',')) { u.objects = ob; changed.push('объект'); } }
         if (fl.zone != null && str(fl.zone) !== u.zone) { u.zone = str(fl.zone); changed.push('зона'); }
         if (fl.workType != null && str(fl.workType) !== u.workType) { u.workType = str(fl.workType); changed.push('вид работ'); }
-        if (fl.controller != null && fl.controller !== u.controller) { u.controller = userId(fl.controller, 'контролёр'); changed.push('контролёр'); }
+        if (fl.controller != null && fl.controller !== u.controller) { u.controller = headId(); changed.push('руководитель'); }
         if (fl.start != null && str(fl.start) !== u.start) { dates(str(fl.start), u.due); u.start = str(fl.start); changed.push('старт'); }
         if (fl.photo != null && !!fl.photo !== !!u.photo) { u.photo = !!fl.photo; changed.push('фото'); }
         if (fl.dep != null && str(fl.dep) !== u.dep) { if (str(fl.dep) && !c.T(str(fl.dep))) fail('bad_request', 'Нет задачи ' + str(fl.dep) + '.'); u.dep = str(fl.dep); changed.push('зависимость'); }
@@ -234,12 +308,10 @@ var PlannerCore = (function () {
       case 'addCheckItem': {
         var a = c.T(str(p.id)); if (!a) fail('not_found', 'Задача не найдена.');
         need(R.check(a), 'Пункты добавляет ответственный, пока задача не сдана.');
-        var txt = str(p.text); if (!txt) fail('bad_request', 'Пустой пункт.');
-        var item = clItems(a.id, [txt])[0];
-        item.order = a.checklist.reduce(function (m, x) { return Math.max(m, +x.order || 0); }, 0) + 1;
-        a.checklist.push(item); touch(a, false);
-        log(a.id, 'check', 'добавил(а) пункт «' + txt + '»');
-        result.item = item.id;
+        var items=clItems(a.id,p.items||[p.text]);if(!items.length)fail('bad_request','Пустой пункт.');
+        var offset=a.checklist.reduce(function(m,x){return Math.max(m,+x.order||0);},0);
+        items.forEach(function(item,i){item.order=offset+i+1;a.checklist.push(item);log(a.id,'check','добавил(а) пункт «'+item.text+'»');});
+        touch(a,false);result.item=items[0].id;
         break;
       }
       case 'toggleCheck': {
@@ -257,11 +329,11 @@ var PlannerCore = (function () {
       }
       case 'addComment': {
         var cm = c.T(str(p.id)); if (!cm) fail('not_found', 'Задача не найдена.');
-        need(R.comment());
-        var body = str(p.text); if (!body) fail('bad_request', 'Пустой комментарий.');
+        need(R.comment(cm));
+        var body = str(p.text); if (!body && !(p.attachments || []).length) fail('bad_request', 'Пустой комментарий.');
         if (body.length > 5000) fail('bad_request', 'Комментарий длиннее 5000 знаков.');
         var men = parseMentions(db, body);
-        log(cm.id, 'comment', body, men);
+        log(cm.id, 'comment', body, men, {attachments:p.attachments || []});
         men.forEach(function (uid) { if (uid !== meId) notify.push({ type: 'mention', user: uid, task: cm.id, text: body }); });
         var tg = extractTags(body, allTags(db)).tags, mt2 = mergeTags(cm.tags, tg);
         if (mt2.length !== cm.tags.length) { cm.tags = mt2; touch(cm, false); }
@@ -308,6 +380,8 @@ var PlannerCore = (function () {
         if (!isDate(d)) fail('bad_request', 'Укажите дату.');
         if (d === rs.due) fail('bad_request', 'Новая дата совпадает с текущей.');
         if (d < rs.start) fail('bad_request', 'Дедлайн не может быть раньше старта.');
+        if (rs.parent && d > c.T(rs.parent).due) fail('bad_request', 'Дедлайн подзадачи позже срока поручения.');
+        if (c.kids(rs.id).some(function (x) { return x.flag !== 'cancelled' && x.due > d; })) fail('bad_request', 'Сначала измените сроки подзадач, выходящих за новый дедлайн.');
         if (!reason) fail('bad_request', 'Без причины перенос невозможен.');
         log(rs.id, 'due_change', 'Срок ' + fd(rs.due) + ' → ' + fd(d) + '. Причина: ' + reason, [], { from: rs.due, to: d });
         rs.due = d; rs.resched = (+rs.resched || 0) + 1; touch(rs, true);
@@ -351,19 +425,23 @@ var PlannerCore = (function () {
     return { patch: patch, notify: notify, result: result };
   }
 
-  // То, что о пользователе видят все: без ключа и адреса почты.
+  // Авторизованному клиенту: рабочая почта для поиска, без ключей и сеансов.
   function publicUser(u) {
     return { id: u.id, name: u.name, handle: u.handle, role: ROLES.indexOf(u.role) >= 0 ? u.role : 'observer', position: u.position || '',
-      objects: u.objects || [], bruno: u.bruno || '', active: u.active !== false, lastRead: u.lastRead || '', color: u.color || '', hasEmail: !!u.email };
+      objects: u.objects || [], bruno: u.bruno || '', active: u.active !== false, lastRead: u.lastRead || '', color: u.color || '', hasEmail: !!u.email,
+      email: u.email || '', subtype: u.subtype || '', preferences: u.preferences || {assign:true, mention:true, returned:true, digest:false} };
   }
   // Ответ bootstrap: всё, что нужно фронту, плюс «кто я».
   function snapshot(db, meId, limit) {
     var act = db.activity.slice().sort(function (a, b) { return a.ts < b.ts ? -1 : a.ts > b.ts ? 1 : 0; });
-    return { me: meId, tasks: db.tasks, activity: act.slice(Math.max(0, act.length - (limit || 300))),
+    var tasks = db.tasks.filter(function (t) { return canView(db, meId, t); });
+    var ids = {}; tasks.forEach(function (t) { ids[t.id] = true; });
+    act = act.filter(function (a) { return ids[a.task]; });
+    return { shortTasks:(typeof CurrentTasks!=='undefined'?CurrentTasks:require('./current.js')).snapshot(db,meId), me: meId, tasks: tasks, activity: act.slice(Math.max(0, act.length - (limit || 300))),
       users: db.users.map(publicUser), folders: db.folders.slice().sort(function (a, b) { return (+a.order || 0) - (+b.order || 0); }) };
   }
 
-  return { handle: handle, rights: rights, snapshot: snapshot, publicUser: publicUser, extractTags: extractTags, allTags: allTags,
+  return { handle: handle, rights: rights, snapshot: snapshot, publicUser: publicUser, canView: canView, extractTags: extractTags, allTags: allTags,
     parseMentions: parseMentions, nextCode: nextCode, nextSub: nextSub, VERSIONED: VERSIONED, BRUNO_ST: BRUNO_ST };
 })();
 if (typeof module !== 'undefined' && module.exports) module.exports = PlannerCore;

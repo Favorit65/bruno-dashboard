@@ -14,9 +14,9 @@ function sandbox(files) {
 }
 
 function copies() {
-  const web = sandbox(['shared/status.js', 'shared/core.js']);
+  const web = sandbox(['shared/status.js', 'shared/core.js','shared/current.js']);
   // Core.gs идёт ПЕРВЫМ: в Apps Script порядок файлов не гарантирован.
-  const gas = sandbox(['apps-script/Core.gs', 'apps-script/Status.gs']);
+  const gas = sandbox(['apps-script/Core.gs', 'apps-script/Status.gs','apps-script/Current.gs']);
   return [
     { name: 'shared/*.js', Status: web.PlannerStatus, Core: web.PlannerCore },
     { name: 'apps-script/*.gs', Status: gas.PlannerStatus, Core: gas.PlannerCore }

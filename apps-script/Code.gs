@@ -26,12 +26,13 @@ var KEY_USER_ID = '';
 // и дописывает недостающие колонки в конец — порядок колонок можно менять руками,
 // скрипт ищет их по заголовку.
 var SCHEMA = {
+  CurrentTasks: ['id','data_json'],
   Tasks: ['id', 'parent_id', 'folder_code', 'title', 'description', 'object', 'zone', 'zone_id', 'team_id', 'owner_id', 'controller_id',
     'work_type_id', 'start_date', 'due_date', 'status', 'manual_flag', 'flag_note', 'workflow', 'priority', 'tags', 'depends_on',
     'bruno_ref', 'bruno_status', 'photo_required', 'reschedule_count', 'created_by', 'created_at', 'updated_at', 'version'],
   Checklist: ['id', 'task_id', 'order', 'text', 'due_date', 'done', 'done_by', 'done_at', 'created_by', 'created_at'],
   Activity: ['id', 'task_id', 'ts', 'author_id', 'type', 'text', 'payload_json', 'mentions'],
-  Users: ['id', 'name', 'handle', 'role', 'position', 'objects', 'email', 'bruno_employee_id', 'key_hash', 'active', 'last_read_ts'],
+  Users: ['id', 'name', 'handle', 'role', 'position', 'objects', 'email', 'bruno_employee_id', 'key_hash', 'active', 'last_read_ts', 'subtype', 'preferences_json', 'session_expires'],
   Folders: ['code', 'name', 'order', 'active', 'counters_json'],
   Settings: ['key', 'value', 'note']
 };
@@ -42,8 +43,8 @@ var SETTINGS = [
   ['backup_folder', 'Планировщик — резервные копии', 'Папка на Google Диске для еженедельной копии таблицы']
 ];
 var START_FOLDERS = [['ПДР', 'Подрядчики'], ['РМТ', 'Ремонт и VIP-обращения'], ['ОБК', 'Обклейка и маркировка'], ['ВНД', 'Внедрение Bruno'], ['ОТЧ', 'Отчётность'], ['ОРГ', 'Прочее и орг.']];
-var WRITE_ACTIONS = ['createTask', 'addSubtask', 'updateTask', 'addCheckItem', 'toggleCheck', 'addComment', 'submit', 'accept', 'return',
-  'setBlocker', 'clearBlocker', 'reschedule', 'cancel', 'setBrunoRef', 'markRead'];
+var WRITE_ACTIONS = ['moveFolder','shortCreate','shortUpdate','shortToggle','createTask', 'addSubtask', 'updateTask', 'addCheckItem', 'toggleCheck', 'addComment', 'submit', 'accept', 'return',
+  'setBlocker', 'clearBlocker', 'reschedule', 'cancel', 'setBrunoRef', 'markRead', 'saveFolder', 'deleteFolder', 'savePreferences', 'saveUser'];
 
 /* =====================================================================
    Вход
@@ -66,8 +67,11 @@ function doPost(e) {
 
 function route_(req) {
   var action = String(req.action || ''), params = req.params || {};
+  if (action === 'requestCode') return requestCode_(params);
+  if (action === 'verifyCode') return verifyCode_(params);
   var me = auth_(req.key);
   if (action === 'bootstrap') return bootstrap_(me);
+  if (action === 'downloadAttachment') return downloadAttachment_(me, params);
   if (WRITE_ACTIONS.indexOf(action) < 0) fail_('bad_request', 'Неизвестное действие: ' + action);
   if (PlannerCore.VERSIONED[action] && params.version == null) fail_('bad_request', 'Не передана версия задачи (version).');
 
@@ -76,8 +80,10 @@ function route_(req) {
   var out, notify, db;
   try {
     TABLES_ = {}; // после захвата блокировки — только свежие данные
+    me = auth_(req.key);
     db = loadDb_();
     var env = env_();
+    if (action === 'addComment') params = prepareAttachments_(db, me, params);
     var r = PlannerCore.handle(db, me.id, action, params, env);
     saveDb_(db, r.patch, env);
     SpreadsheetApp.flush();
@@ -111,6 +117,7 @@ function auth_(key) {
     var u = users[i];
     if (u.key_hash && u.key_hash === h) {
       if (!bool_(u.active)) fail_('auth', 'Доступ отключён. Обратитесь к модератору.');
+      if (!u.session_expires || +u.session_expires < Date.now()) fail_('auth', 'Войдите по коду из письма.');
       return { id: u.id, name: u.name };
     }
   }
@@ -120,13 +127,7 @@ function auth_(key) {
 // Выдать (или перевыпустить) ключ. Старый ключ сразу перестаёт работать.
 // Возвращает персональную ссылку; сам ключ нигде не сохраняется.
 function issueKey(userId) {
-  userId = String(userId || KEY_USER_ID || '').trim();
-  if (!userId) throw new Error('Не указан пользователь. Впишите id в KEY_USER_ID вверху Code.gs или воспользуйтесь меню «Планировщик → Выдать ключ…» в таблице.');
-  var key = Utilities.getUuid().replace(/-/g, '') + Utilities.getUuid().replace(/-/g, '');
-  setUserKeyHash_(userId, sha256Hex_(key));
-  var link = setting_('planner_url') + '#k=' + key;
-  console.log('Ключ для ' + userId + ' (показывается один раз): ' + link);
-  return link;
+  throw new Error('Вход по персональным ссылкам отключён. Используйте код на почту @vtb.ru.');
 }
 
 function revokeKey(userId) {
@@ -161,7 +162,7 @@ function sha256Hex_(s) {
    ===================================================================== */
 function onOpen() {
   SpreadsheetApp.getUi().createMenu('Планировщик')
-    .addItem('Выдать ключ…', 'menuIssueKey')
+
     .addItem('Отозвать ключ…', 'menuRevokeKey')
     .addSeparator()
     .addItem('Пересчитать колонку status', 'refreshStatuses')
@@ -254,10 +255,12 @@ function seedDemo() {
    ===================================================================== */
 function installTriggers() {
   ScriptApp.getProjectTriggers().forEach(function (t) {
-    if (['backup', 'refreshStatuses'].indexOf(t.getHandlerFunction()) >= 0) ScriptApp.deleteTrigger(t);
+    if (['backup', 'refreshStatuses', 'sendDailyDigests','sendCurrentNotifications'].indexOf(t.getHandlerFunction()) >= 0) ScriptApp.deleteTrigger(t);
   });
   ScriptApp.newTrigger('backup').timeBased().onWeekDay(ScriptApp.WeekDay.MONDAY).atHour(3).create();
   ScriptApp.newTrigger('refreshStatuses').timeBased().everyDays(1).atHour(5).create();
+  ScriptApp.newTrigger('sendDailyDigests').timeBased().everyDays(1).atHour(8).create();
+  ScriptApp.newTrigger('sendCurrentNotifications').timeBased().everyMinutes(5).create();
   console.log('Триггеры включены: копия по понедельникам в 3:00, пересчёт статусов ежедневно в 5:00.');
 }
 
@@ -297,6 +300,9 @@ function sendMails_(notify, me, db) {
     db.users.forEach(function (x) { if (x.id === n.user) u = x; });
     db.tasks.forEach(function (x) { if (x.id === n.task) t = x; });
     if (!u || !u.email || u.active === false || !t) return;
+    var prefs = u.preferences || {};
+    if (prefs[n.type === 'return' ? 'returned' : n.type] === false) return;
+    if (!PlannerCore.canView(db, u.id, t)) return;
     if (MailApp.getRemainingDailyQuota() < 1) { console.warn('Квота писем на сегодня исчерпана, письмо для ' + u.id + ' не отправлено.'); return; }
     var body = me.name + ': ' + SUBJ[n.type] + '.\n\n' + t.id + ' · ' + t.title + '\nСрок: ' + t.due.split('-').reverse().join('.') +
       (n.text ? '\n\n«' + n.text + '»' : '') + '\n\nОткрыть: ' + url + '#t=' + encodeURIComponent(t.id) +
@@ -399,7 +405,8 @@ function loadDb_(opt) {
   });
   var users = readTable_('Users').rows.map(function (r) {
     return { id: r.id, name: r.name, handle: r.handle || String(r.name).split(/\s+/)[0], role: r.role, position: r.position, objects: list_(r.objects),
-      email: r.email, bruno: r.bruno_employee_id, keyHash: r.key_hash, active: bool_(r.active), lastRead: r.last_read_ts };
+      email: r.email, bruno: r.bruno_employee_id, keyHash: r.key_hash, active: bool_(r.active), lastRead: r.last_read_ts,
+      subtype:r.subtype, preferences:parsePreferences_(r.preferences_json), sessionExpires:r.session_expires };
   });
   var folders = readTable_('Folders').rows.map(function (r) {
     var c = {};
@@ -411,7 +418,7 @@ function loadDb_(opt) {
     if (r.payload_json) { try { o.payload = JSON.parse(r.payload_json); } catch (e) { /* не JSON — пропускаем */ } }
     return o;
   }) : [];
-  return { tasks: tasks, activity: activity, users: users, folders: folders };
+  return { shortTasks:readTable_('CurrentTasks').rows.map(function(r){try{return JSON.parse(r.data_json);}catch(e){fail_('server','Повреждена текущая задача '+r.id);}}), tasks: tasks, activity: activity, users: users, folders: folders };
 }
 
 function ctxFor_(db, env) {
@@ -438,7 +445,8 @@ function activityRow_(a) {
 }
 function userRow_(u) {
   return { id: u.id, name: u.name, handle: u.handle, role: u.role, position: u.position, objects: (u.objects || []).join(', '), email: u.email,
-    bruno_employee_id: u.bruno, key_hash: u.keyHash, active: u.active ? 'TRUE' : 'FALSE', last_read_ts: u.lastRead };
+    bruno_employee_id: u.bruno, key_hash: u.keyHash, active: u.active ? 'TRUE' : 'FALSE', last_read_ts: u.lastRead,
+    subtype:u.subtype || '', preferences_json:JSON.stringify(u.preferences || {}), session_expires:u.sessionExpires || '' };
 }
 function folderRow_(f) {
   return { code: f.code, name: f.name, order: f.order, active: f.active === false ? 'FALSE' : 'TRUE', counters_json: JSON.stringify(f.counters || {}) };
@@ -446,6 +454,7 @@ function folderRow_(f) {
 
 // Записать то, что изменило действие. Лист Activity только дописывается.
 function saveDb_(db, patch, env) {
+  if((patch.shortTasks||[]).length)upsert_(readTable_('CurrentTasks'),patch.shortTasks.map(function(p){var t=db.shortTasks.filter(function(t){return t.id===p.id;})[0];return {id:t.id,data_json:JSON.stringify(t)};}),'id');
   if (patch.tasks.length) {
     upsert_(readTable_('Tasks'), patch.tasks.map(function (t) { return taskRow_(t, db, env); }), 'id');
     var cl = [];
@@ -456,7 +465,14 @@ function saveDb_(db, patch, env) {
     var full = patch.users.map(function (p) { var u = null; db.users.forEach(function (x) { if (x.id === p.id) u = x; }); return userRow_(u); });
     upsert_(readTable_('Users'), full, 'id');
   }
-  if (patch.folders.length) upsert_(readTable_('Folders'), patch.folders.map(folderRow_), 'code');
+  if (patch.folders.length) {
+    patch.folders.filter(function (f) { return f.deleted; }).forEach(function (f) {
+      var table = readTable_('Folders');
+      table.rows.filter(function (r) { return r.code === f.code; }).forEach(function (r) { table.sh.deleteRow(r.__row); });
+      delete TABLES_.Folders;
+    });
+    upsert_(readTable_('Folders'), patch.folders.filter(function (f) { return !f.deleted; }).map(folderRow_), 'code');
+  }
   if (patch.activity.length) appendRows_(readTable_('Activity'), patch.activity.map(activityRow_));
 }
 

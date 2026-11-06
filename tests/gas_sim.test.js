@@ -9,7 +9,7 @@ const { fakeGas } = require('./gas_fake.js');
 test('Apps Script: setup → seedDemo → ключи → действия через doPost', () => {
   const G = fakeGas();
   G.ctx.setup();
-  assert.deepEqual(G.ss.getSheets().map((s) => s.name), ['Tasks', 'Checklist', 'Activity', 'Users', 'Folders', 'Settings']);
+  assert.deepEqual(G.ss.getSheets().map((s) => s.name), ['CurrentTasks','Tasks', 'Checklist', 'Activity', 'Users', 'Folders', 'Settings']);
   assert.equal(G.rows('Folders').length, 6);
   G.ctx.setup(); // повторный запуск ничего не ломает
   assert.equal(G.rows('Folders').length, 6);
@@ -25,8 +25,21 @@ test('Apps Script: setup → seedDemo → ключи → действия чер
   assert.equal(G.post({ action: 'bootstrap' }).error, 'auth');
   assert.equal(G.post({ action: 'bootstrap', key: 'abc' }).error, 'auth');
 
-  const keyOf = (link) => link.split('#k=')[1];
-  const head = keyOf(G.ctx.issueKey('head')), kom = keyOf(G.ctx.issueKey('kom'));
+  const login = (id) => {
+    const sheet=G.ss.getSheetByName('Users'), headers=sheet.cells[0], row=sheet.cells.find(r=>r[0]===id);
+    row[headers.indexOf('email')]=id+'@vtb.ru';
+    const email=id+'@vtb.ru';
+    G.post({action:'requestCode',params:{email}});
+    const mail=G.mails.filter(m=>m.to===email).at(-1),code=mail.body.match(/Код: (\d{6})/)[1];
+    assert.equal(G.post({action:'verifyCode',params:{email,code:'wrong'}}).error,'auth');
+    const r=G.post({action:'verifyCode',params:{email,code}});
+    assert.equal(r.ok,true);
+    assert.equal(G.post({action:'verifyCode',params:{email,code}}).error,'auth');
+    return r.key;
+  };
+  assert.throws(()=>G.ctx.issueKey('head'),/отключён/);
+  const head = login('head'), kom = login('kom');
+  G.mails.length=0;
   assert.match(head, /^[0-9a-f]{64}$/);
   const users = G.rows('Users');
   assert.ok(users.every((u) => !u.key_hash || /^[0-9a-f]{64}$/.test(u.key_hash)));
@@ -35,7 +48,7 @@ test('Apps Script: setup → seedDemo → ключи → действия чер
   const b = G.post({ action: 'bootstrap', key: head });
   assert.equal(b.ok, true); assert.equal(b.me, 'head');
   assert.equal(b.tasks.length, 29); assert.equal(b.activity.length, 20);
-  assert.ok(b.users.every((u) => !('keyHash' in u) && !('email' in u)));
+  assert.ok(b.users.every((u) => !('keyHash' in u) && !('sessionExpires' in u)));
   const t = b.tasks.find((x) => x.id === 'ОБК-26-001');
   assert.deepEqual(t.objects.length, 2); assert.equal(t.version, 1);
   assert.equal(b.tasks.find((x) => x.id === 'РМТ-26-001.1').checklist[0].by, 'mod');
@@ -87,7 +100,7 @@ test('Apps Script: setup → seedDemo → ключи → действия чер
 
   // квота писем: при нуле письма не уходят, действие всё равно проходит
   G.ctx.MailApp.quota = 0;
-  assert.equal(G.post({ action: 'addComment', key: kom, params: { id: c.result.id, text: '@Подрядчики посмотрите' } }).ok, true);
+  assert.equal(G.post({ action: 'addComment', key: head, params: { id: c.result.id, text: '@Подрядчики посмотрите' } }).ok, true);
   assert.equal(G.mails.length, 1);
 
   // отзыв ключа
@@ -95,7 +108,10 @@ test('Apps Script: setup → seedDemo → ключи → действия чер
   assert.equal(G.post({ action: 'bootstrap', key: kom }).error, 'auth');
   assert.equal(G.post({ action: 'bootstrap', key: head }).ok, true);
   // перевыпуск: старая ссылка перестаёт работать
-  const head2 = keyOf(G.ctx.issueKey('head'));
+  G.ctx.MailApp.quota=100;
+  // Сбрасываем тестовый лимит повторной отправки только в окружении имитации.
+  G.ctx.PropertiesService.getScriptProperties().deleteProperty('OTP_'+G.ctx.sha256Hex_('head'));
+  const head2 = login('head');
   assert.equal(G.post({ action: 'bootstrap', key: head }).error, 'auth');
   assert.equal(G.post({ action: 'bootstrap', key: head2 }).ok, true);
 });
