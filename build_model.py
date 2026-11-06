@@ -1294,11 +1294,13 @@ def main():
     core_size = cubes_size = 0
     if not args.no_v2:
         import model_v2
+        import dashboard_periods
         core, cubes = model_v2.encode(model)
         base = str(args.out)[:-8] if str(args.out).endswith(".json.gz") else str(args.out)
         core_path, cubes_path = base + ".core.json.gz", base + ".cubes.json.gz"
         core_size = dump_gz(core, core_path)
         cubes_size = dump_gz(cubes, cubes_path)
+        dashboard_periods.publish(core, Path(base + ".periods"))
 
     # Publish this small version marker only after every model file is complete.
     base = str(args.out)[:-8] if str(args.out).endswith(".json.gz") else str(args.out)
