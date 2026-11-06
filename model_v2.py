@@ -188,6 +188,7 @@ def encode(model):
             "windowKinds": window_ix.items,
             "feedbackIds": feedback_ix.items,
         },
+        "feedbackRegister": model.get("feedbackRegister"),
         "feedbackExamples": model.get("feedbackExamples", []),
         "cubes": {n: encoded[n] for n in CORE_CUBES},
     }
@@ -261,5 +262,6 @@ def decode(core, cubes=None):
             "teams": d.get("teams", {}),
         },
         "daily": daily,
+        "feedbackRegister": core.get("feedbackRegister"),
         "feedbackExamples": core.get("feedbackExamples", []),
     }

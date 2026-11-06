@@ -1,5 +1,15 @@
 /* Shared activity cube for every task view. Kept separate from legacy report cubes. */
 let ACTIVITY_ROWS = null, ACTIVITY_VIEW_KEY = null;
+let ACTIVITY_EMPTY_RESTORE = null;
+function activityMaps() {
+  return {ROWS_BY_DATE, ROWS_ROLE_BY_DATE, FUNCTION_ROWS_BY_DATE, ROWS_HOUR_BY_KEY,
+    ZONE_ROWS_BY_DATE, ROWS_FB_BY_DATE, ROWS_FB_HOUR_BY_KEY};
+}
+function installActivityMaps(maps) {
+  ({ROWS_BY_DATE, ROWS_ROLE_BY_DATE, FUNCTION_ROWS_BY_DATE, ROWS_HOUR_BY_KEY,
+    ZONE_ROWS_BY_DATE, ROWS_FB_BY_DATE, ROWS_FB_HOUR_BY_KEY} = maps);
+  _cacheKey=null; _cachePeriod=null; _cacheDay=new Map(); _grpKey=null;
+}
 const ACTIVITY_STATUSES = [
   {key:'completed', status:'COMPLETED', label:'Выполнено', color:'#002882'},
   {key:'missed', status:'MISSED', label:'Пропущено', color:'#E62632'},
@@ -19,7 +29,7 @@ function activityLabel() { return state.duration === 'prolonged' ? 'Пролон
 function decodeActivity(packed) {
   if (!packed) return;
   if (packed.stride !== 27 || packed.rows.length % 27) throw new Error('Неверный формат данных по датам выполнения');
-  ACTIVITY_ROWS = []; ACTIVITY_VIEW_KEY = null;
+  ACTIVITY_ROWS = []; ACTIVITY_VIEW_KEY = null; ACTIVITY_EMPTY_RESTORE = null;
   const a = packed.rows;
   for (let i=0; i<a.length; i+=27) ACTIVITY_ROWS.push({date:V2.days[a[i]], hour:String(a[i+1]).padStart(2,'0'),
     objId:V2.objIds[a[i+2]], role:V2.roles[a[i+3]], teamId:V2.teamIds[a[i+4]], empId:V2.empIds[a[i+5]],
@@ -28,7 +38,7 @@ function decodeActivity(packed) {
 }
 function legacyActivity(cube) {
   if (!cube) return;
-  ACTIVITY_VIEW_KEY = null;
+  ACTIVITY_VIEW_KEY = null; ACTIVITY_EMPTY_RESTORE = null;
   ACTIVITY_ROWS = Object.entries(cube).map(([key,value]) => {
     const [date,hour,objId,role,teamId,empId,zoneId,duration,feedbackId] = key.split('|');
     return {date,hour,objId,role,teamId,empId,zoneId,duration,feedbackId,...value};
@@ -36,10 +46,25 @@ function legacyActivity(cube) {
 }
 function applyActivityView() {
   if (!ACTIVITY_ROWS) return;
-  const key = state.duration + '|' + [...state.roles].sort().join(',');
+  const key = state.duration + '|' + Boolean(state.noRoles) + '|' + [...state.roles].sort().join(',');
   if (key === ACTIVITY_VIEW_KEY) return;
+  // Keep the current aggregates while the selection is empty; reset restores
+  // them without another scan. Decoding a new model invalidates this snapshot.
+  if (state.noRoles) {
+    if (ACTIVITY_VIEW_KEY && !ACTIVITY_EMPTY_RESTORE) ACTIVITY_EMPTY_RESTORE = {key:ACTIVITY_VIEW_KEY, maps:activityMaps()};
+    ACTIVITY_VIEW_KEY = key;
+    installActivityMaps(Object.fromEntries(Object.keys(activityMaps()).map(k=>[k,new Map()])));
+    HAS_FB=true; HAS_FUNCTION_STATS=true;
+    return;
+  }
+  if (ACTIVITY_EMPTY_RESTORE?.key === key) {
+    installActivityMaps(ACTIVITY_EMPTY_RESTORE.maps);
+    ACTIVITY_EMPTY_RESTORE=null; ACTIVITY_VIEW_KEY=key;
+    return;
+  }
+  ACTIVITY_EMPTY_RESTORE=null;
   ACTIVITY_VIEW_KEY = key;
-  const selected = ACTIVITY_ROWS.filter(r => r.duration === state.duration && (!state.roles.size || state.roles.has(r.role)));
+  const selected = state.noRoles ? [] : ACTIVITY_ROWS.filter(r => DP.enabled(r.objId) && r.duration === state.duration && (!state.roles.size || state.roles.has(r.role)));
   function group(fields, rows=selected) {
     const m = new Map();
     for (const r of rows) {
@@ -71,6 +96,11 @@ function applyActivityView() {
     }),hour);
   }
   ROWS_FB_BY_DATE=feedback(); ROWS_FB_HOUR_BY_KEY=feedback(true);
+  if (typeof META !== 'undefined' && Array.isArray(META.feedbackRegister)) {
+    const counts = requestCounts(META.feedbackRegister);
+    ROWS_FB_BY_DATE = byDate(counts.days);
+    ROWS_FB_HOUR_BY_KEY = byDate(counts.hours, true);
+  }
   HAS_FB=true; HAS_FUNCTION_STATS=true;
   _cacheKey=null; _cachePeriod=null; _cacheDay=new Map(); _grpKey=null;
 }
@@ -100,6 +130,7 @@ function statusBucket(b, extra={}) {
 function dailyTableData(def, variant) {
   // Existing builders share the page's filter functions. Isolate each day and
   // restore state/caches even if a builder fails; never leave a changed filter.
+  if (def.register && FB_MODE_FB()) return requestTable();
   const dates=periodDates().slice(), period=state.period, time=state.time;
   let result=null;
   try {
@@ -139,4 +170,56 @@ function activityZones(objectID,dates=periodDates()) {
   }
   return [...map].map(([id,b])=>({id,name:(zoneById[id]||{}).name||'Зона не указана',count:bucketAll(b),completed:b.COMPLETED,
     missed:b.MISSED,waiting:b.WAITING,eff:activityEfficiency(b.COMPLETED,b.MISSED,b.WAITING)})).filter(r=>r.count>0).sort((a,b)=>b.count-a.count);
+}
+
+function requestTasks(request) {
+  if (state.noRoles) return [];
+  return request.tasks.filter(task => task.window === state.duration &&
+    (!state.roles.size || state.roles.has(task.role)));
+}
+
+function requestMatches(request, tasks) {
+  return tasks.length > 0 || (!request.tasks.length && roleFilterAllSel());
+}
+
+function requestCounts(requests) {
+  const days = new Map(), hours = new Map();
+  function count(map, key, date, hour, objId, tasks) {
+    if (!map.has(key)) map.set(key, {date, hour, objId, fb:0, tasks:0, ...emptyBucket()});
+    const bucket = map.get(key);
+    bucket.fb++;
+    bucket.tasks += tasks.length;
+    for (const task of tasks) if (FB_ST.includes(task.status)) bucket[task.status]++;
+  }
+  for (const request of requests) {
+    const tasks = requestTasks(request);
+    if (!request.registered || !requestMatches(request, tasks)) continue;
+    const day = request.registered.slice(0, 10), hour = request.registered.slice(11, 13);
+    count(days, day+'|'+request.object, day, hour, request.object, tasks);
+    count(hours, day+'|'+hour+'|'+request.object, day, hour, request.object, tasks);
+  }
+  return {days:[...days.values()], hours:[...hours.values()]};
+}
+
+function requestCompletion(tasks) {
+  if (!tasks.length) return '—';
+  const done = tasks.filter(t => t.done).length;
+  return done === tasks.length ? 'Да' : done + '/' + tasks.length;
+}
+
+function requestTable() {
+  const cols = ['Дата и время', 'Объект', 'Этаж', 'Зона', 'Выполнено', 'Исполнитель', 'Обращение'].map(h => ({h,t:'txt'}));
+  const result = {cols, rows:[], head:[['Категория задач','обращения'],['Детализация','по обращениям'],['Дата учёта','Регистрация обращения, МСК']], note:'Дата регистрации по Москве. Одна строка на обращение. «Да» — все связанные задания выполнены; иначе выполнено/всего создано. Указаны фактические исполнители выполненных заданий.'};
+  if (!Array.isArray(META.feedbackRegister)) {
+    result.note = 'Реестр будет доступен после обновления модели.';
+    return result;
+  }
+  for (const r of META.feedbackRegister) {
+    if (!r.registered || !inPeriod(r.registered.slice(0,10)) || !DP.selected(r.object,state.objects) || !requestMatches(r, requestTasks(r))) continue;
+    const people = [...new Set(r.tasks.filter(t=>t.done).map(t=>EMPLOYEES[t.executor]?.name || t.executor))];
+    result.rows.push([r.registered.slice(0,19).replace('T',' '), objById[r.object]?.name || r.object,
+      r.floor, r.zone, requestCompletion(r.tasks), people.join(', '), r.text]);
+  }
+  result.rows.sort((a,b)=>b[0].localeCompare(a[0]));
+  return result;
 }

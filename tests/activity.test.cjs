@@ -47,5 +47,30 @@ test('one activity source reconciles functions, objects, hours, zones and durati
   assert.equal(c.ROWS_BY_DATE.get('2026-10-27')[0].planned.WAITING,5);
   c.state.duration='daily';c.applyActivityView();
   assert.equal(c.ROWS_BY_DATE.get('2026-10-26')[0].planned.COMPLETED,3);
+  const saved=c.ROWS_BY_DATE; c.state.noRoles=true; c.applyActivityView();assert.equal(c.ROWS_BY_DATE.size,0); c.state.noRoles=false;c.applyActivityView();assert.equal(c.ROWS_BY_DATE,saved);
   c.state.roles=new Set(['missing']);c.applyActivityView();assert.equal(c.ROWS_BY_DATE.size,0);
 });
+
+ test('register completion includes tasks outside selected role and duration',()=>{
+  const c={state:{duration:'daily',roles:new Set(['r']),objects:new Set([DP.enabledIds[0]])},DP,
+    META:{feedbackRegister:[{registered:'2026-10-26T09:00:00+03:00',object:DP.enabledIds[0],floor:'2',zone:'z',text:'text',
+      tasks:[{window:'daily',role:'r',done:true,executor:'e'},{window:'prolonged',role:'other',done:false}]}]},
+    EMPLOYEES:{e:{name:'Person'}},objById:{[DP.enabledIds[0]]:{name:'Object'}},inPeriod:()=>true,
+    emptyBucket:()=>({}), FB_ST:[]};
+  c.roleFilterAllSel = () => !c.state.noRoles && [0,2].includes(c.state.roles.size);
+  vm.createContext(c);vm.runInContext(code,c);
+  assert.equal(c.requestTable().rows[0][4],'1/2');
+  assert.equal(c.requestTable().rows[0][5],'Person');
+  assert.equal(c.requestCompletion([]),'—');
+  assert.equal(c.requestCompletion([{done:true},{done:true}]),'Да');
+  assert.equal(c.requestCompletion([{done:false},{done:false},{done:false}]),'0/3');
+  c.META.feedbackRegister.push({...c.META.feedbackRegister[0], tasks:[]});
+  assert.equal(c.requestTable().rows.length,1);
+  c.state.roles.clear();
+  assert.equal(c.requestTable().rows[1][4],'—');
+  assert.equal(c.requestCounts(c.META.feedbackRegister).days[0].fb,2);
+  c.state.roles = new Set(['r','other']);
+  assert.equal(c.requestTable().rows[1][4],'—');
+  c.state.noRoles = true;
+  assert.equal(c.requestTable().rows.length,0);
+ });

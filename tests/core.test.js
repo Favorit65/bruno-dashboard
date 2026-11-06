@@ -160,19 +160,20 @@ both('markRead и наблюдатель', (C, db) => {
   run(C, db, 'kom', 'markRead', {}, envAt('2026-10-27', '15:30'));
   assert.equal(db.users.find((u) => u.id === 'kom').lastRead, '2026-10-27 15:30');
   db.users.push({ id: 'obs', name: 'Наблюдатель', handle: 'Наблюдатель', role: 'observer', active: true });
-  assert.equal(run(C, db, 'obs', 'addComment', { id: 'ВНД-26-001', text: 'вопрос' }).patch.activity.length, 1);
+  assert.equal(run(C, db, 'obs', 'addComment', { id: 'ВНД-26-001', text: 'вопрос' }).error, 'forbidden');
   assert.equal(run(C, db, 'obs', 'submit', { id: 'ВНД-26-001.1', version: 1 }).error, 'forbidden');
   db.users.find((u) => u.id === 'obs').active = false;
   assert.equal(run(C, db, 'obs', 'addComment', { id: 'ВНД-26-001', text: 'вопрос' }).error, 'auth');
 });
 
-test('snapshot для bootstrap не отдаёт почту и ключи', () => {
+test('snapshot отдаёт рабочую почту для поиска, скрывает ключи', () => {
   for (const C of COPIES) {
     const db = freshDb();
     db.users[0].email = 'boss@example.com'; db.users[0].keyHash = 'abc';
     const s = plain(C.Core.snapshot(db, 'head', 5));
     assert.equal(s.activity.length, 5);
     assert.equal(s.users[0].hasEmail, true);
-    assert.ok(!('email' in s.users[0]) && !('keyHash' in s.users[0]));
+    assert.equal(s.users[0].email,'boss@example.com');
+    assert.ok(!('keyHash' in s.users[0]) && !('sessionExpires' in s.users[0]));
   }
 });
