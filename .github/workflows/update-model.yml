@@ -154,6 +154,7 @@ jobs:
           # компактный формат 2 — его читает сайт (см. model_v2.py)
           cp model.core.json.gz model.cubes.json.gz /tmp/pub/
           cp model.version.json /tmp/pub/
+          cp -r model.periods /tmp/pub/
           cat > /tmp/pub/README.md <<'MD'
           # Ветка data-model
 

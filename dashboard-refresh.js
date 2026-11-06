@@ -64,6 +64,24 @@ window.BrunoRefresh = (function () {
     try {
       await CUBES_PROMISE;
       const revision = await readModelRevision();
+      if (typeof DashboardPeriods !== 'undefined' && DashboardPeriods.ready()) {
+        const index = revision && revision !== META.buildId ? await DashboardPeriods.readIndex(revision) : undefined;
+        const previousPeriod = state.period;
+        const nextPeriod = state.periodMode === 'week' ? DP.weekPeriod() : previousPeriod;
+        state.period = nextPeriod;
+        try {
+          DashboardPeriods.resetFailure();
+          await DashboardPeriods.ensure(index);
+        } catch (error) {
+          if (state.period === nextPeriod) state.period = previousPeriod;
+          throw error;
+        }
+        state.objects = DP.sanitizeObjects(state.objects, OBJECTS);
+        setupObjectMenu(); setupRoleMenu(); setupPeriodMenu(); syncControlsFromState(); renderAll();
+        if (OPEN_FUNCTION_DETAIL) showRoleDetail(OPEN_FUNCTION_DETAIL);
+        label();
+        return true;
+      }
       const incoming = await readSnapshot(revision);
       const nextMeta = incoming.core ? incoming.core.meta : incoming.legacy.meta;
       const changed = !nextMeta.buildId || nextMeta.buildId !== META.buildId;

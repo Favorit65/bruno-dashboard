@@ -28,13 +28,16 @@ function activityFormula() {
 function activityLabel() { return state.duration === 'prolonged' ? 'Пролонгированные · >24 ч' : 'Ежедневные · ≤24 ч'; }
 function decodeActivity(packed) {
   if (!packed) return;
+  ACTIVITY_ROWS = unpackActivity(packed); ACTIVITY_VIEW_KEY = null; ACTIVITY_EMPTY_RESTORE = null;
+}
+function unpackActivity(packed, index=V2) {
   if (packed.stride !== 27 || packed.rows.length % 27) throw new Error('Неверный формат данных по датам выполнения');
-  ACTIVITY_ROWS = []; ACTIVITY_VIEW_KEY = null; ACTIVITY_EMPTY_RESTORE = null;
-  const a = packed.rows;
-  for (let i=0; i<a.length; i+=27) ACTIVITY_ROWS.push({date:V2.days[a[i]], hour:String(a[i+1]).padStart(2,'0'),
-    objId:V2.objIds[a[i+2]], role:V2.roles[a[i+3]], teamId:V2.teamIds[a[i+4]], empId:V2.empIds[a[i+5]],
-    zoneId:V2.zoneIds[a[i+6]], duration:V2.windowKinds[a[i+7]], feedbackId:V2.feedbackIds[a[i+8]],
+  const a = packed.rows, rows = [];
+  for (let i=0; i<a.length; i+=27) rows.push({date:index.days[a[i]], hour:String(a[i+1]).padStart(2,'0'),
+    objId:index.objIds[a[i+2]], role:index.roles[a[i+3]], teamId:index.teamIds[a[i+4]], empId:index.empIds[a[i+5]],
+    zoneId:index.zoneIds[a[i+6]], duration:index.windowKinds[a[i+7]], feedbackId:index.feedbackIds[a[i+8]],
     planned:bucketAt(a,i+9,true), unplanned:bucketAt(a,i+18,true)});
+  return rows;
 }
 function legacyActivity(cube) {
   if (!cube) return;
@@ -64,7 +67,11 @@ function applyActivityView() {
   }
   ACTIVITY_EMPTY_RESTORE=null;
   ACTIVITY_VIEW_KEY = key;
-  const selected = state.noRoles ? [] : ACTIVITY_ROWS.filter(r => DP.enabled(r.objId) && r.duration === state.duration && (!state.roles.size || state.roles.has(r.role)));
+  installActivityMaps(aggregateActivity(ACTIVITY_ROWS, typeof META !== 'undefined' ? META.feedbackRegister : null));
+  HAS_FB=true; HAS_FUNCTION_STATS=true;
+}
+function aggregateActivity(rows, requests, hourly=true) {
+  const selected = state.noRoles ? [] : rows.filter(r => DP.enabled(r.objId) && r.duration === state.duration && (!state.roles.size || state.roles.has(r.role)));
   function group(fields, rows=selected) {
     const m = new Map();
     for (const r of rows) {
@@ -80,11 +87,13 @@ function applyActivityView() {
     for(const r of rows) { const k=r.date+(hour?'|'+r.hour:''); if(!m.has(k))m.set(k,[]); m.get(k).push(r); }
     return m;
   }
-  ROWS_BY_DATE=byDate(group(['date','objId']));
-  ROWS_ROLE_BY_DATE=byDate(group(['date','objId','role']));
-  FUNCTION_ROWS_BY_DATE=byDate(group(['date','objId','role','teamId','empId']));
-  ROWS_HOUR_BY_KEY=byDate(group(['date','hour','objId']),true);
-  ZONE_ROWS_BY_DATE=byDate(group(['date','objId','zoneId']).map(r=>({...r,objectID:r.objId})));
+  const maps = {
+    ROWS_BY_DATE:byDate(group(['date','objId'])),
+    ROWS_ROLE_BY_DATE:byDate(group(['date','objId','role'])),
+    FUNCTION_ROWS_BY_DATE:byDate(group(['date','objId','role','teamId','empId'])),
+    ROWS_HOUR_BY_KEY:hourly ? byDate(group(['date','hour','objId']),true) : new Map(),
+    ZONE_ROWS_BY_DATE:byDate(group(['date','objId','zoneId']).map(r=>({...r,objectID:r.objId}))),
+  };
   const fbRows=selected.filter(r=>r.feedbackId);
   function feedback(hour=false) {
     const fields=hour?['date','hour','objId']:['date','objId'];
@@ -95,14 +104,15 @@ function applyActivityView() {
       return {...r,...b,fb:counts.get(fields.map(f=>r[f]).join('|')).size,tasks:bucketAll(b)};
     }),hour);
   }
-  ROWS_FB_BY_DATE=feedback(); ROWS_FB_HOUR_BY_KEY=feedback(true);
-  if (typeof META !== 'undefined' && Array.isArray(META.feedbackRegister)) {
-    const counts = requestCounts(META.feedbackRegister);
-    ROWS_FB_BY_DATE = byDate(counts.days);
-    ROWS_FB_HOUR_BY_KEY = byDate(counts.hours, true);
+  if (Array.isArray(requests)) {
+    const counts = requestCounts(requests);
+    maps.ROWS_FB_BY_DATE = byDate(counts.days);
+    maps.ROWS_FB_HOUR_BY_KEY = hourly ? byDate(counts.hours, true) : new Map();
+  } else {
+    maps.ROWS_FB_BY_DATE = feedback();
+    maps.ROWS_FB_HOUR_BY_KEY = hourly ? feedback(true) : new Map();
   }
-  HAS_FB=true; HAS_FUNCTION_STATS=true;
-  _cacheKey=null; _cachePeriod=null; _cacheDay=new Map(); _grpKey=null;
+  return maps;
 }
 function activityControls() {
   const host=document.getElementById('activity-controls');

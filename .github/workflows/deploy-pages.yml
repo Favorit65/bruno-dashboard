@@ -56,7 +56,7 @@ jobs:
           cp .nojekyll site/ 2>/dev/null || touch site/.nojekyll
           cp index.html site/
           cp dashboard_v2.html site/
-          cp dashboard-policy.js dashboard-refresh.js dashboard-activity.js site/
+          cp dashboard-policy.js dashboard-refresh.js dashboard-activity.js dashboard-periods.js site/
           # планировщик поручений: страница, общая логика статусов/прав, демо-данные
           cp planner.html site/
           mkdir -p site/shared site/docs
@@ -74,6 +74,11 @@ jobs:
           else
             echo "::warning::Ветка data-model пуста — сайт уедет без свежей модели. Запустите workflow «Обновление данных»."
           fi
+          test -f _model/model.periods/index.json || {
+            echo "::error::Для этого выпуска требуется сборка модели по периодам. Запустите «Обновление данных»."
+            exit 1
+          }
+          cp -r _model/model.periods site/
           ls -lh site
 
       - uses: actions/configure-pages@v5

@@ -864,6 +864,7 @@
 
 <script src="dashboard-policy.js"></script>
 <script src="dashboard-activity.js"></script>
+<script src="dashboard-periods.js"></script>
 <script src="dashboard-refresh.js"></script>
 <script>
 /* ==============================================================
@@ -2039,12 +2040,20 @@ function b1MonthlyRaw() {
   const dates = b1SparkDates(6);
   const map = new Map();
   dates.forEach(date => {
-    const d = dayAgg(date), b = combinedDay(d), all = bucketAll(b);
+    const b = historyBucket(date), all = bucketAll(b);
     const ym = date.slice(0, 7);
     if (!map.has(ym)) map.set(ym, { completed: 0, missed: 0, waiting: 0, all: 0 });
     const m = map.get(ym); m.completed += b.COMPLETED; m.missed += b.MISSED; m.waiting += b.WAITING; m.all += all;
   });
   return [...map.keys()].sort().map(k => map.get(k));
+}
+function historyBucket(date) {
+  if (!DashboardPeriods.ready()) return combinedDay(dayAgg(date));
+  const bucket = emptyBucket();
+  for (const row of DashboardPeriods.rowsForHistory(date)) {
+    if (DP.selected(row.objId,state.objects)) addBucket(bucket,combinedDay(row));
+  }
+  return bucket;
 }
 // Эффективность = выполнено / ВСЕ задачи (решение 21.09, отменяет «вып/(вып+проп)»
 // от 22.08): иначе общее число задач на экране больше вып+проп и проценты не
@@ -2074,7 +2083,7 @@ function b1MoMBuckets() {
     const ym = date.slice(0, 7);
     const t = ym === lastYm ? 'last' : ym === prevYm ? 'prev' : null;
     if (!t) return;
-    const b = combinedDay(dayAgg(date));
+    const b = historyBucket(date);
     acc[t].completed += b.COMPLETED; acc[t].missed += b.MISSED; acc[t].all += bucketAll(b); acc[t].n++;
   });
   return (acc.last.n && acc.prev.n) ? Object.assign(acc, { dayCut, prevMonth: mm }) : null;
@@ -2366,7 +2375,8 @@ function functionOptions(role) {
 }
 function rolesAgg() {
   if (!HAS_FUNCTION_STATS) return [];
-  const today = new Map(DP.summary(functionRows([DP.today()]), functionOptions()).map(r => [r.role, r.all]));
+  const todayRows = DashboardPeriods.ready() ? DashboardPeriods.rowsForHistory(DP.today()) : functionRows([DP.today()]);
+  const today = new Map(DP.summary(todayRows, functionOptions()).map(r => [r.role, r.all]));
   return DP.summary(functionRows(), functionOptions()).map(r => ({ ...r, today: today.get(r.role) || 0 }));
 }
 function functionDetailRows(role) {
@@ -2482,7 +2492,8 @@ function renderB1Roles() {
     el.addEventListener('click', () => applyRoleFilter([roles[i].role]));
     el.querySelector('.rt-info-btn').addEventListener('click', e => { e.stopPropagation(); showRoleDetail(roles[i].role); });
     const spark = monthKeys.map(ym => {
-      const rows = functionRows(b1SparkDates(6).filter(d => d.startsWith(ym)));
+      const dates = b1SparkDates(6).filter(d => d.startsWith(ym));
+      const rows = DashboardPeriods.ready() ? dates.flatMap(DashboardPeriods.rowsForHistory) : functionRows(dates);
       const v = DP.summary(rows, functionOptions(roles[i].role))[0];
       return v && v.eff != null ? v.eff*100 : null;
     });
@@ -3028,9 +3039,23 @@ function renderCoverageNote() {
   note.hidden = !missing;
   note.textContent = missing ? 'За выбранный период данные ещё не загружены. Архив содержит данные за ' + ARCHIVE_FROM + ' — ' + ARCHIVE_TO + '.' : '';
 }
+function showPeriodError(error, retry) {
+  showError(esc(error.message || String(error)));
+  const button = document.createElement('button');
+  button.type = 'button';
+  button.className = 'btn-detail';
+  button.textContent = 'Повторить';
+  button.onclick = retry;
+  statusEl().append(' ',button);
+}
 function renderAll() {
+  if (DashboardPeriods.ready() && !DashboardPeriods.current()) {
+    DashboardPeriods.ensure().then(changed => { if (changed) renderAll(); })
+      .catch(error => showPeriodError(error,() => { DashboardPeriods.resetFailure(); renderAll(); }));
+    return;
+  }
   if (!ACTIVITY_ROWS) { showError("Для новой версии требуется модель с фактическими датами выполнения. Дождитесь обновления данных."); return; }
-  applyActivityView();
+  if (!DashboardPeriods.ready()) applyActivityView();
   activityControls();
   cacheSync();
   syncHash();
@@ -3638,7 +3663,9 @@ function applyHashState(str) {
     let { from, to } = DP.weekPeriod();
     state.periodMode = 'week';
     const m = /^(\d{4}-\d{2}-\d{2})_(\d{4}-\d{2}-\d{2})$/.exec(q.p || '');
-    if (m && m[1] <= m[2]) { from = m[1]; to = m[2]; state.periodMode = 'absolute'; }
+    if (m && m[1] <= m[2] && [m[1],m[2]].every(value => fmtISO(dISO(value)) === value)) {
+      from = m[1]; to = m[2]; state.periodMode = 'absolute';
+    }
     state.period = { from, to };
     state.time.stack = [];
     _grpKey = null;
@@ -4112,12 +4139,13 @@ function openTable(key, variant) {
     state.table = { key, variant: tableVariant(def, variant) };
     _hashPushNext = true;
     syncHash();
-    renderTableLayer();
+    renderAll();
   });
 }
 function closeTable() {
   if (!state.table) return;
   state.table = null;
+  if (DashboardPeriods.current()) DashboardPeriods.ensure();
   syncHash();
   renderTableLayer();
 }
@@ -4266,7 +4294,10 @@ let APP_STARTED = false;
 async function startApp() {
   if (APP_STARTED) return; APP_STARTED = true;
   try {
-    await loadAndMap();
+    showStatus('Загружаю описание данных…');
+    const revision = await readModelRevision();
+    if (!revision) throw new Error('Версия данных пока недоступна.');
+    DashboardPeriods.installIndex(await DashboardPeriods.readIndex(revision));
     if (!ACTIVITY_ROWS) throw new Error("Для новой версии требуется пересборка модели. Дождитесь завершения обновления данных.");
     if (!OBJECTS.length || !ALL_DATES.length) {
       showError('Данные загружены, но пусты. Проверьте, что model.json.gz актуален и не пуст.');
@@ -4294,6 +4325,7 @@ async function startApp() {
     // Ссылка на срез (пункт 32): состояние читаем ПОСЛЕ построения меню
     // фильтров и ДО первого renderAll, иначе дашборд рисуется дважды.
     applyHashState(location.hash);
+    await DashboardPeriods.ensure();
     renderAll();
     // Ссылка могла прийти сразу на таблицу (#t=b4) — открываем её после
     // первого рендера, когда все агрегаты уже прогреты.
@@ -4307,7 +4339,7 @@ async function startApp() {
     perfMark('first-paint', PERF._t0 || performance.now());
     console.log('perf (мс):', PERF);
     BrunoRefresh.start();
-  } catch (err) { console.error(err); showError(err.message); }
+  } catch (err) { console.error(err); showPeriodError(err,() => location.reload()); }
 }
 /* Перерисовка при изменении размера — ТОЛЬКО когда меняется ширина.
    Раньше слушали window.resize: на телефоне он срабатывает от появления и
