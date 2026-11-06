@@ -638,6 +638,8 @@ def mode_fetch(api, archive, days, fields_mode, page_limit, refresh_last, force,
     print("Время работы: %.0f мин, запросов к API: %s"
           % ((time.time() - t0) / 60.0, "{:,}".format(api.requests_made).replace(",", " ")))
     print("=" * 66)
+    if failed:
+        raise SystemExit(1)
 
 
 # ----------------------------------------------------------------------- main

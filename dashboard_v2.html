@@ -152,7 +152,9 @@
   .role-tile .rt-bar-fill { height: 100%; background: var(--vtb-navy); border-radius: 2px; }
   .role-tile .rt-spark { width: 54px; height: 28px; flex-shrink: 0; }
   .btn-detail { flex-shrink: 0; font-size: 11px; font-weight: 500; color: var(--vtb-blue); background: var(--bg-accent); border: 1px solid var(--border-accent); border-radius: 6px; padding: 5px 10px; cursor: pointer; white-space: nowrap; }
-  .btn-detail:hover { background: var(--border-accent); }
+  #tbl-csv { color: var(--vtb-navy); }
+  #tbl-csv:hover { color: #fff; }
+  .btn-detail:hover { background: var(--vtb-navy); color: #fff; border-color: var(--vtb-navy); }
   .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(10, 20, 40, 0.45); z-index: 200; align-items: center; justify-content: center; padding: 20px; }
   .modal-overlay.on { display: flex; }
   .modal-box { background: var(--surface-1); border-radius: 10px; max-width: 480px; width: 100%; max-height: 80vh; display: flex; flex-direction: column; box-shadow: 0 12px 40px rgba(0,0,0,0.25); }
@@ -582,10 +584,18 @@
   .sp-nav a:hover{color:#FFFFFF}
   .sp-nav a[aria-current="page"]{color:#FFFFFF;border-bottom-color:#00AAFF}
   @media print { .sp-nav { display: none !important; } }
+  .request-register table {table-layout:fixed;width:100%;min-width:1040px}
+  .request-register td {white-space:normal;overflow-wrap:anywhere;line-height:1.4}
+  .request-register th:nth-child(1) {width:125px}
+  .request-register th:nth-child(2) {width:180px}
+  .request-register th:nth-child(3) {width:70px}
+  .request-register th:nth-child(4) {width:160px}
+  .request-register th:nth-child(5) {width:80px}
+  .request-register th:nth-child(6) {width:100px}
 </style>
 </head>
 <body>
-<nav class="sp-nav" aria-label="Разделы"><a href="dashboard_v2.html" aria-current="page">Дашборд</a><a href="planner.html">Поручения</a></nav>
+<nav class="sp-nav" aria-label="Разделы"><a href="dashboard_v2.html" aria-current="page">Дашборд</a><a href="planner.html?demo=1">Поручения</a></nav>
 <div class="app loading">
 
   <div class="top-bar">
@@ -604,7 +614,7 @@
     <div class="top-right">
       <span class="badge-dev">черновик · блоки 01–04</span>
       <span class="updated" id="updated-lbl">обновлено сейчас</span>
-      <a class="refresh-link" id="refresh-link" href="https://github.com/Favorit65/bruno-dashboard/actions" target="_blank" rel="noopener" title="Открыть GitHub Actions: «Обновление модели» собирает свежие данные и публикует дашборд">Обновить данные ↗</a>
+      <a class="refresh-link" id="refresh-link" href="https://github.com/Favorit65/bruno-dashboard/actions" target="_blank" rel="noopener" title="Открыть GitHub Actions: «Обновление модели» собирает свежие данные и публикует дашборд">Журнал обновлений ↗</a>
     </div>
   </div>
 
@@ -674,11 +684,11 @@
     <summary>Как читать дашборд: что на что влияет</summary>
     <div class="howto-body">
       <p><b>Период</b>, <b>Объекты</b> и <b>Функция</b> пересчитывают весь дашборд (блоки 01–04). Окно выполнения также действует во всех разделах; галочки статусов меняют только ряды графика.</p>
-      <p><b>Обращение ≠ неплановая задача.</b> <b>Обращение</b> — запрос клиента (в данных Bruno у записи заполнен <code>feedbackID</code>); по одному обращению может быть заведено несколько задач. <b>Неплановая задача</b> — любая задача вне регламента, в том числе заведённая персоналом вручную, без всякого обращения — таких большинство. Поэтому чисел три, и они разные: обращений, задач по обращениям и неплановых задач всего. Тумблер <b>«Обращения / Неплановые задачи»</b> в блоке «Обращения по объектам» переключает, что именно рисует график, — и одновременно переключает воронку слева, чтобы на экране не оказалось двух разных «обращений». Плашка с числом объектов следует тумблеру: объектов с неплановыми задачами закономерно больше, чем объектов с обращениями. Уникальность обращения считается в пределах суток и объекта — обращение, задачи по которому шли два дня, попадает в оба дня (та же методика, что в отчётной презентации).</p>
+      <p><b>Обращение ≠ неплановая задача.</b> <b>Обращение</b> — запрос клиента (в данных Bruno у записи заполнен <code>feedbackID</code>); по одному обращению может быть заведено несколько задач. <b>Неплановая задача</b> — любая задача вне регламента, в том числе заведённая персоналом вручную, без всякого обращения — таких большинство. Поэтому чисел три, и они разные: обращений, задач по обращениям и неплановых задач всего. Тумблер <b>«Обращения / Неплановые задачи»</b> в блоке «Обращения по объектам» переключает, что именно рисует график, — и одновременно переключает воронку слева, чтобы на экране не оказалось двух разных «обращений». Плашка с числом объектов следует тумблеру: объектов с неплановыми задачами закономерно больше, чем объектов с обращениями. Каждое обращение учитывается один раз по дате и времени регистрации (МСК). Статус в реестре показывает, завершены ли все связанные с ним задания.</p>
       <p><b>Функция</b> (с 16.10 вместо роли) — кто выполняет работу: Клининг В/С и Д/С, Админы клининга В/С и Д/С, Коменданты, ММС, Флористы, Администраторы банка, Такелажники, Эксплуатация, Диспетчеры. Определяется по <b>команде</b> задачи, а для личных заданий — по членству сотрудника в командах. При неоднозначной функции или смене задание показывается отдельно. Задание учитывается один раз. Эффективность зависит от выбранного окна выполнения, как описано ниже. Роли в Bruno сейчас в переходном состоянии, поэтому по ним не группируем.</p>
       <p><b>Эффективность:</b> ежедневные — выполнено / (выполнено + пропущено); пролонгированные — выполнено / (выполнено + пропущено + ожидает выполнения). Нулевой знаменатель — «—». Новые и выполняемые задания видны отдельно, но не входят в знаменатель.</p><p><b>Окно выполнения:</b> от планового начала до последнего допустимого старта. До 24 часов включительно — ежедневные, больше — пролонгированные. Ранний допуск не учитывается. Выполнение отражается по фактической дате в Москве; остальные статусы — по дате задания. Это текущие статусы заданий, не история переходов между ними.</p>
       <p><b>Тумблер «Все / Плановые / Неплановые»</b> действует на блоки 01, 02 и «Статистику по функциям». План–факт (блок 03) всегда считается только по плановым (регулярным) задачам.</p>
-      <p><b>Блок 04 «Персонал»</b> умеет считать двумя способами, переключатель — в самом блоке. <b>«Статистика Bruno»</b> (по умолчанию) — нативные посуточные агрегаты Bruno по сотруднику; действуют период, объект и роль, но не тумблер план/внеплан — такого разреза у Bruno нет. <b>«Счёт по задачам»</b> — наш пересчёт по taskPlan с делением задачи между исполнителями; действуют все фильтры, но цифры законно отличаются от нативных.</p>
+      <p><b>Персонал.</b> Учитываются задания с известным сотрудником. Для распределения, среднего и медианы эффективность рассчитывается отдельно по сотруднику и функции. В показателе численности каждый сотрудник учитывается один раз.</p>
       <p><b>Время — общее для всех графиков.</b> Переключатель <b>Авто / Месяц / Неделя / День</b> в фильтрах задаёт детализацию столбцов сразу в блоке 01, блоке 03 и «Обращениях по объектам». Стрелки <b>‹ ›</b> на любой карточке двигают период у всех рядов одновременно; на краю архива стрелка гаснет.</p>
       <p><b>Клик — это тоже фильтр.</b> Клик по столбцу проваливается внутрь: год → месяц → день → час, синхронно во всех блоках (плашки, дерево и блоки 02/04 пересчитываются на тот же отрезок). Путь показан крошками справа от навигатора — клик по крошке возвращает на этот уровень. Объект в блоке 02 сужает фильтр объектов; плашка роли в блоке 01 — фильтр ролей; узел дерева категорий — то же, что тумблер «Все / Плановые / Неплановые»; подпись в легенде обращений или ролей добавляет и снимает объект/роль. Всё активное перечислено чипами под фильтрами и снимается там же.</p>
       <p><b>Таблицы и выгрузка.</b> Кнопка <b>⊞</b> в шапке карточки открывает тот же блок таблицей: строки — то, что нарисовано на графике, с учётом всех фильтров. Внутри — кнопка <b>«Скачать CSV»</b> (файл открывается в русском Excel двойным щелчком: разделитель «;», десятичная запятая, в первых строках записан срез — период, объекты, роль). Кнопка <b>«Таблицы»</b> в панели фильтров открывает список всех шести таблиц сразу. Кнопка <b>PNG</b> рядом с ⊞ сохраняет сам график картинкой; треймап объектов, воронку, плашки и дерево категорий так снять нельзя — для них используйте <b>«Печать → Сохранить в PDF»</b> в браузере. В таблице строки только «живые»: объект или сотрудник без задач за период в неё не попадает; клик по заголовку столбца сортирует.</p>
@@ -1173,7 +1183,7 @@ function bucketAt(a, off, wide) {
 }
 
 function mapCoreV2(core) {
-  META = core.meta || {};
+  META = {...core.meta, feedbackRegister:core.feedbackRegister};
   const d = core.dirs || {};
   const objIds = (d.objects || {}).ids || [], objNames = (d.objects || {}).names || [];
   const zoneIds = (d.zones || {}).ids || [], zoneNames = (d.zones || {}).names || [], zoneObj = (d.zones || {}).obj || [];
@@ -1343,7 +1353,7 @@ function mapCubesV2(cubes) {
 
 function mapLegacy(raw) {
   legacyActivity((raw.daily || {}).byActivity);
-  META = raw.meta || {};
+  META = {...raw.meta, feedbackRegister:raw.feedbackRegister};
   const dir = raw.directories || {};
   TEAMS = dir.teams || {};
   const functionCube = (raw.daily || {}).byFunctionTeamDay;
@@ -1522,7 +1532,7 @@ function periodDates() {
   return _cachePeriod;
 }
 
-function roleFilterAllSel() { return state.roles.size === 0 || state.roles.size === ROLES.length; }
+function roleFilterAllSel() { return !state.noRoles && (state.roles.size === 0 || state.roles.size === ROLES.length); }
 
 /* ==============================================================
    ЕДИНАЯ МАШИНА ВРЕМЕНИ (П2)
@@ -1977,15 +1987,20 @@ function defaultTip(b, i, series, totals) {
 
 function renderSpark(host, data, color) {
   const W = Math.max(40, host.clientWidth || 52), H = parseInt(host.dataset.h || '30', 10);
-  const max = Math.max(1, ...data), min = Math.min(0, ...data);
+  const finite = data.filter(Number.isFinite);
+  if (!finite.length) { host.textContent = '—'; return; }
+  const max = Math.max(1, ...finite), min = Math.min(0, ...finite);
   const n = data.length || 1;
   const xOf = i => (n === 1 ? W / 2 : W * i / (n - 1));
   const yOf = v => H - 2 - ((v - min) / (max - min || 1)) * (H - 4);
   const s = svg('svg', { class: 'chart-svg', viewBox: `0 0 ${W} ${H}`, height: H, preserveAspectRatio: 'none' });
-  const pts = data.map((v, i) => `${xOf(i)},${yOf(v)}`).join(' ');
-  s.appendChild(svg('polyline', { points: pts, fill: 'none', stroke: color, 'stroke-width': 1.6, 'stroke-linejoin': 'round' }));
-  const area = svg('polygon', { points: `${xOf(0)},${H} ${pts} ${xOf(n - 1)},${H}`, fill: color, opacity: 0.13 });
-  s.insertBefore(area, s.firstChild);
+  let path = '';
+  data.forEach((value,i) => {
+    if (!Number.isFinite(value)) return;
+    path += (i && Number.isFinite(data[i-1]) ? ' L' : ' M') + xOf(i) + ' ' + yOf(value);
+    s.appendChild(svg('circle',{cx:xOf(i),cy:yOf(value),r:1.2,fill:color}));
+  });
+  s.appendChild(svg('path',{d:path,fill:'none',stroke:color,'stroke-width':1.6}));
   host.innerHTML = ''; host.appendChild(s);
 }
 
@@ -2068,11 +2083,11 @@ function b1MoM() {
   const c = b1MoMBuckets(); if (!c) return null;
   const last = c.last, prev = c.prev;
   const rel = (a, p) => p > 0 ? (a - p) / p : null;
-  return { all: rel(last.all, prev.all), completed: rel(last.completed, prev.completed), missed: rel(last.missed, prev.missed), effPP: effAll(last.completed, last.all) - effAll(prev.completed, prev.all), dayCut: c.dayCut, prevMonth: c.prevMonth };
+  return { all: rel(last.all, prev.all), completed: rel(last.completed, prev.completed), missed: rel(last.missed, prev.missed), dayCut: c.dayCut, prevMonth: c.prevMonth };
 }
 function b1Sparks() {
   const b = b1MonthlyRaw();
-  return { all: b.map(x => x.all), completed: b.map(x => x.completed), missed: b.map(x => x.missed), eff: b.map(x => Math.round((activityEfficiency(x.completed, x.missed, x.waiting) || 0) * 100)) };
+  return { all: b.map(x => x.all), completed: b.map(x => x.completed), missed: b.map(x => x.missed), eff: b.map(x => { const value=activityEfficiency(x.completed,x.missed,x.waiting); return value==null ? null : value*100; }) };
 }
 
 // Клик по столбику МЕНЯЕТ реальный фильтр периода (не отдельное состояние
@@ -2270,7 +2285,7 @@ function renderB1FunnelCascade(u, total) {
   const completed = u.COMPLETED;
   const stages = [
     { name: FB_MODE_FB() ? 'Задач по обращениям' : 'Неплановых задач', val: total },
-    { name: 'Взято в работу', val: taken },
+    { name: 'Вышли из ожидания', val: taken },
     { name: 'Начато', val: started },
     { name: 'Завершено', val: completed },
   ];
@@ -2469,7 +2484,7 @@ function renderB1Roles() {
     const spark = monthKeys.map(ym => {
       const rows = functionRows(b1SparkDates(6).filter(d => d.startsWith(ym)));
       const v = DP.summary(rows, functionOptions(roles[i].role))[0];
-      return v && v.eff != null ? v.eff * 100 : 0;
+      return v && v.eff != null ? v.eff*100 : null;
     });
     renderSpark(el.querySelector('.rt-spark'), spark, '#002882');
   });
@@ -2622,7 +2637,7 @@ function renderB1Feedback() {
     const total = buckets.reduce((a, b) => a + b.all, 0);
     const t = fbTotals([state.time.hour]);
     drawTiles(t, fbMode ? 'Объектов с обращениями' : 'Объектов с неплановыми', fbMode ? t.objFb : t.objUnpl);
-    document.getElementById('b1-fb-hint').textContent = 'часы дня · роль здесь не действует';
+    document.getElementById('b1-fb-hint').textContent = 'часы дня · МСК';
     if (!total) { chartHost.innerHTML = `<p class="note empty">Нет ${fbMode ? 'обращений' : 'неплановых задач'} в этот день (или всё отфильтровано выбранным объектом).</p>`; legend.innerHTML = ''; note.textContent = ''; return; }
     const series = fbMode
       ? [{ key: 'fb', label: 'Обращений', color: '#002882' }]
@@ -2634,7 +2649,7 @@ function renderB1Feedback() {
     renderSeries(chartHost, buckets, series, { shape: 'bars', maxLabels: 24 });
     renderPickLegend(legend, series, {});
     note.textContent = fbMode
-      ? 'Распределение обращений по часам суток внутри дня (по времени задачи, заведённой по обращению). Статусов у обращения нет, поэтому здесь только количество. Фильтр «Роль» не действует.'
+      ? 'Обращения сгруппированы по часу регистрации (МСК). Учитываются выбранные функции и окно связанных заданий.'
       : 'Распределение неплановых задач по часам суток внутри дня. Фильтры функции и окна выполнения учитываются.';
     return;
   }
@@ -2654,10 +2669,7 @@ function renderB1Feedback() {
     isOn: s => selAll || !s.objId || state.objects.has(s.objId),
     onPick: s => toggleObjectFilter(s.objId),
   });
-  note.textContent = (fbMode
-    ? `Обращение — запрос клиента (feedbackID); одно обращение может породить несколько задач, поэтому «задач по обращениям» (${fmt(t.tasks)}) больше, чем самих обращений (${fmt(t.fb)}). Неплановых задач ещё больше (${fmt(t.unpl)}): в них входят и заведённые вручную, без обращения. `
-    : `Неплановая задача — любая задача вне регламента, включая заведённые вручную: по обращениям из них только ${fmt(t.tasks)} из ${fmt(t.unpl)}. Поэтому объектов с неплановыми задачами может быть больше, чем с обращениями (${fmt(t.objUnpl)} против ${fmt(t.objFb)}). `)
-    + 'Резкие скачки стоит сверять с внешними причинами (кампании, инструктаж, сезонность), а не сразу трактовать как ухудшение качества обслуживания.';
+  note.textContent = 'Обращения считаются один раз по дате регистрации. Функция и окно отбирают обращения по связанным заданиям. Для неплановых задач используется дата активности. Переключатель плановые/неплановые в этом блоке заменён собственным выбором источника.';
 }
 function renderB1FeedbackObjDetail() {
   openTable('fb','obj');
@@ -2722,7 +2734,7 @@ function renderB3() {
 
   const plan = rows.reduce((a, r) => a + r.plan, 0), onTime = rows.reduce((a, r) => a + r.onTime, 0), late = rows.reduce((a, r) => a + r.late, 0), missed = rows.reduce((a, r) => a + r.missed, 0);
   const delaySum = rows.reduce((a, r) => a + r.delayHoursSum, 0), delayN = rows.reduce((a, r) => a + r.delayHoursN, 0);
-  const completedTotal = onTime + late;
+  const completedTotal = periodDates().reduce((n,d)=>n+dayAgg(d).planned.COMPLETED,0);
   const waiting=periodDates().reduce((n,d)=>n+dayAgg(d).planned.WAITING,0);
   const exec = activityEfficiency(completedTotal,missed,waiting);
   const pctLateOfCompleted = completedTotal ? late / completedTotal : 0;
@@ -2974,11 +2986,11 @@ function renderActiveFilters() {
   if (!isFullPeriod) chips.push({ k: 'period', txt: 'Период: ' + windowLabel() + (state.time.hour ? ' · часы' : '') });
   if (!objAll) {
     const names = [...state.objects].map(id => objById[id] ? objById[id].name : id);
-    chips.push({ k: 'obj', txt: 'Объекты: ' + (names.length <= 2 ? names.map(esc).join(', ') : esc(names[0]) + ' и ещё ' + (names.length - 1)) });
+    chips.push({ k: 'obj', txt: 'Объекты: ' + (!names.length ? 'нет выбранных' : names.length <= 2 ? names.map(esc).join(', ') : esc(names[0]) + ' и ещё ' + (names.length - 1)) });
   }
   if (!roleFilterAllSel()) {
     const rs = [...state.roles];
-    chips.push({ k: 'role', txt: 'Функция: ' + (rs.length <= 2 ? rs.map(esc).join(', ') : esc(rs[0]) + ' и ещё ' + (rs.length - 1)) });
+    chips.push({ k: 'role', txt: 'Функция: ' + (state.noRoles ? 'нет выбранных' : rs.length <= 2 ? rs.map(esc).join(', ') : esc(rs[0]) + ' и ещё ' + (rs.length - 1)) });
   }
   if (state.scope !== 'all') chips.push({ k: 'scope', txt: state.scope === 'planned' ? 'Только плановые' : 'Только неплановые' });
   if (state.time.gran !== 'auto') chips.push({ k: 'gran', txt: 'Детализация: ' + { month: 'месяц', week: 'неделя', day: 'день' }[state.time.gran] });
@@ -3158,13 +3170,15 @@ function renderB4() {
     chartHost.innerHTML = '<p class="note empty">Нет данных по сотрудникам в выбранном периоде.</p>';
     return;
   }
+  const middle = Math.floor(list.length / 2);
+  const median = (list[middle].eff + list[Math.floor((list.length-1)/2)].eff) / 2;
   const avgEff = list.reduce((a, e) => a + e.eff, 0) / list.length;
   const roles = [...new Set(list.map(e => e.role))].sort();
   const tiles = [
-    { lbl: 'Сотрудников', val: fmt(list.length) },
+    { lbl: 'Уникальных сотрудников', val: fmt(new Set(list.map(e=>e.empId)).size) },
     { lbl: 'Ролей', val: fmt(roles.length) },
     { lbl: 'Средняя эфф.', val: pct(avgEff, 1) },
-    { lbl: 'Медиана эфф.', val: pct(list[Math.floor(list.length / 2)].eff, 1) },
+    { lbl: 'Медиана эфф.', val: pct(median, 1) },
   ];
   kpiWrap.innerHTML = '';
   tiles.forEach(t => { const el = document.createElement('div'); el.className = 'kpi-tile solo'; el.innerHTML = `<div><p class="lbl">${t.lbl}</p><p class="val">${t.val}</p></div>`; kpiWrap.appendChild(el); });
@@ -3207,7 +3221,7 @@ function renderB4() {
     isOn: se => roleAll || state.roles.has(se.role),
     onPick: se => toggleRoleFilter(se.role),
   });
-  note.textContent = 'Эффективность сотрудника: '+activityFormula()+'. Сотрудники с нулевым знаменателем не включены в интервалы процентов.';
+  note.textContent = 'На графике, в среднем и медиане единица учёта — сотрудник внутри функции. Эффективность: '+activityFormula()+'. Сотрудники с нулевым знаменателем не включены в интервалы процентов.';
   const ch = document.getElementById('b4-chart-hint');
   if (ch) ch.textContent = 'по заданиям · '+activityLabel();
 }
@@ -3270,7 +3284,11 @@ function setupPeriodMenu() {
   document.getElementById('dt-apply').onclick = e => {
     e.stopPropagation();
     const fv = document.getElementById('dt-from').value, tv = document.getElementById('dt-to').value;
-    if (!fv || !tv || fv > tv) return;
+    const start = document.getElementById('dt-from'), end = document.getElementById('dt-to');
+    start.required = end.required = true;
+    end.setCustomValidity(fv && tv && fv > tv ? 'Конец периода должен быть не раньше начала.' : '');
+    if (!start.reportValidity() || !end.reportValidity()) return;
+    menu.classList.remove('open');
     state.period = { from: fv, to: tv }; state.periodMode = 'absolute';
     resetTimeNav();
     document.getElementById('flt-period-lbl').textContent = fv + ' — ' + tv;
@@ -3278,6 +3296,7 @@ function setupPeriodMenu() {
   };
   menu.querySelectorAll('.preset').forEach(btn => btn.onclick = e => {
     e.stopPropagation();
+    menu.classList.remove('open');
     const p = btn.dataset.preset;
     if (p === 'week') applyCurrentWeek(); else if (p === 'q3m') applyLast3Months(); else if (p === 'month') applyLastMonth(); else applyYTD();
     setupPeriodMenu(); renderAll();
@@ -3299,10 +3318,11 @@ function applyObjectFilter(ids) {
 // То же для фильтра «Роль» — клик по плашке роли (блок 01) сужает роль-фильтр
 // на весь дашборд (блоки 01/02/03 через objectRowsForDate + блок 04).
 function applyRoleFilter(roles) {
+  state.noRoles = false;
   state.roles = new Set(roles);
-  document.querySelectorAll('#menu-role input[value]').forEach(i => { i.checked = state.roles.has(i.value); });
-  const allInp = document.getElementById('role-all'); if (allInp) allInp.checked = state.roles.size === ROLES.length;
-  document.getElementById('flt-role-lbl').textContent = fltLabel(state.roles, ROLES.length);
+  document.querySelectorAll('#menu-role input[value]').forEach(i => { i.checked = roleFilterAllSel() || state.roles.has(i.value); });
+  const allInp = document.getElementById('role-all'); if (allInp) allInp.checked = roleFilterAllSel();
+  document.getElementById('flt-role-lbl').textContent = state.noRoles ? 'нет выбранных' : fltLabel(state.roles, ROLES.length);
   renderAll();
 }
 function setupObjectMenu() {
@@ -3321,7 +3341,7 @@ function setupRoleMenu() {
   menu.innerHTML = `<label style="border-bottom:1px solid var(--border);margin-bottom:4px;padding-bottom:6px;"><input type="checkbox" id="role-all" checked>Все</label>
     ${ROLES.map(r => `<label><input type="checkbox" value="${esc(r)}" checked>${esc(r)}</label>`).join('')}`;
   const allInp = menu.querySelector('#role-all'), inps = menu.querySelectorAll('input[value]');
-  const upd = () => { state.roles.clear(); inps.forEach(i => { if (i.checked) state.roles.add(i.value); }); document.getElementById('flt-role-lbl').textContent = fltLabel(state.roles, ROLES.length); renderSoon(); };
+  const upd = () => { state.roles.clear(); inps.forEach(i => { if (i.checked) state.roles.add(i.value); }); state.noRoles = !state.roles.size; document.getElementById('flt-role-lbl').textContent = state.noRoles ? 'нет выбранных' : fltLabel(state.roles, ROLES.length); renderSoon(); };
   allInp.onchange = () => { inps.forEach(i => i.checked = allInp.checked); upd(); };
   inps.forEach(i => i.onchange = () => { allInp.checked = [...inps].every(x => x.checked); upd(); });
 }
@@ -3349,6 +3369,7 @@ function setupFilters() {
     e.stopPropagation();
     applyCurrentWeek();
     state.objects = new Set(enabledObjectIds());
+    state.noRoles = false;
     state.roles = new Set();
     state.scope = 'all';
     state.duration = 'daily';
@@ -3397,7 +3418,7 @@ function setupFilters() {
     document.querySelectorAll('#b1-fb-toggle button').forEach(x => x.classList.remove('active'));
     b.classList.add('active'); state.fbSrc = b.dataset.fbsrc;
     syncHash();
-    renderB1Funnel(); renderB1Feedback();
+    renderB1Funnel(); renderB1Feedback(); renderTableLayer();
   });
 }
 // Клик по ячейке треймапа сужает фильтр «Объекты» до одного объекта, поэтому крестик
@@ -3552,7 +3573,8 @@ function buildHash() {
   if (state.periodMode === 'week') add('w', 'week');
   else if (state.period.from && state.period.to) add('p', state.period.from + '_' + state.period.to);
   if (!allEnabledObjectsSelected()) add('o', state.objects.size ? [...state.objects].map(objKey).join(',') : 'none');
-  if (state.roles.size && state.roles.size < ROLES.length) add('r', [...state.roles].join(','));
+  if (state.noRoles) add('r','none');
+  else if (state.roles.size && state.roles.size < ROLES.length) add('r', [...state.roles].join(','));
   add('u', state.duration);
   add('v', [...state.statuses].join(','));
   if (state.scope !== 'all') add('s', state.scope);
@@ -3598,10 +3620,10 @@ function syncControlsFromState() {
   const oa = document.getElementById('obj-all'); if (oa) oa.checked = allEnabledObjectsSelected();
   document.getElementById('flt-object-lbl').textContent = objectFilterLabel();
   // пустое множество ролей = «все», поэтому в меню все галочки стоят
-  const allRoles = state.roles.size === 0;
+  const allRoles = roleFilterAllSel();
   document.querySelectorAll('#menu-role input[value]').forEach(i => { i.checked = allRoles || state.roles.has(i.value); });
   const ra = document.getElementById('role-all'); if (ra) ra.checked = allRoles || state.roles.size === ROLES.length;
-  document.getElementById('flt-role-lbl').textContent = fltLabel(state.roles, ROLES.length);
+  document.getElementById('flt-role-lbl').textContent = state.noRoles ? 'нет выбранных' : fltLabel(state.roles, ROLES.length);
   document.querySelectorAll('#b1-scope-toggle button').forEach(x => x.classList.toggle('active', x.dataset.scope === state.scope));
   document.querySelectorAll('#gran-toggle button').forEach(x => x.classList.toggle('active', x.dataset.gran === state.time.gran));
   document.querySelectorAll('#b4-src-toggle button').forEach(x => x.classList.toggle('active', x.dataset.src === state.b4src));
@@ -3625,6 +3647,7 @@ function applyHashState(str) {
     state.objects = DP.sanitizeObjects(Object.prototype.hasOwnProperty.call(q, 'o') ? ids : enabledObjectIds(), OBJECTS);
 
     const rs = (q.r || '').split(',').filter(x => ROLES.includes(x));
+    state.noRoles = q.r === 'none';
     state.roles = new Set(rs.length === ROLES.length ? [] : rs);
 
     state.duration = q.u === 'prolonged' ? 'prolonged' : 'daily';
@@ -3711,7 +3734,8 @@ function csvVal(v, t) {
   if (t === 'int') return String(Math.round(v));
   if (t === 'pct1') return (v * 100).toFixed(1).replace('.', ',');
   if (t === 'num1') return Number(v).toFixed(1).replace('.', ',');
-  return csvEsc(v);
+  const text = String(v);
+  return csvEsc(/^\s*[=+@-]/.test(text) ? "'" + text : text);
 }
 function cellHtml(v, t) {
   if (v == null || v === '') return '—';
@@ -3736,14 +3760,17 @@ function slicePairs(extra) {
     ['Период', (state.period.from || ARCHIVE_FROM) + ' — ' + (state.period.to || ARCHIVE_TO)],
     ['Окно', windowLabel()],
     ['Объекты', objNamesLabel()],
-    ['Функция', roleFilterAllSel() ? 'все' : [...state.roles].join(', ')],
+    ['Функция', roleFilterAllSel() ? 'все' : [...state.roles].join(', ') || 'нет выбранных'],
     ['Категория задач', SCOPE_WORD[state.scope] || state.scope],
     ['Детализация', 'по дням'],
     ['Длительность', activityLabel()],
     ['Эффективность', activityFormula()],
     ['Дата учёта', 'Выполнено: фактическая дата по Москве; остальные статусы: дата задания'],
   ];
-  (extra || []).forEach(p => pairs.push(p));
+  for (const pair of extra || []) {
+    const index = pairs.findIndex(x => x[0] === pair[0]);
+    if (index < 0) pairs.push(pair); else pairs[index] = pair;
+  }
   return pairs;
 }
 function buildCsv(cols, rows, headPairs) {
@@ -3974,7 +4001,7 @@ const TABLES = {
         g.plan > 0 ? g.onTime / g.plan : null,
         g.delayN > 0 ? g.delaySum / g.delayN : null,
       ]);
-      return { cols, rows, note: 'Только плановые (регулярные) задачи — тумблер «Все / Плановые / Неплановые» на этот блок не действует. Среднее опоздание — по выполненным с опозданием; в часовом разрезе оно не считается.' };
+      return { cols, rows, head:[['Категория задач','плановые']], note: 'Только плановые (регулярные) задачи — тумблер «Все / Плановые / Неплановые» на этот блок не действует. Среднее опоздание — по выполненным с опозданием; в часовом разрезе оно не считается.' };
     },
   },
   b2: {
@@ -4043,7 +4070,7 @@ const TABLES = {
     },
   },
   fb: {
-    title: 'Обращения и неплановые задачи', slug: 'обращения', png: 'b1-fb-chart',
+    register: true, title: 'Обращения и неплановые задачи', slug: 'обращения', png: 'b1-fb-chart',
     pngTitle() { return fbWords().title; },
     variants() { return null; },
     build(variant) {
@@ -4058,7 +4085,7 @@ const TABLES = {
       ].concat(FB_ST.map(k => r.v.st[k] || 0)));
       return {
         cols, rows,
-        head: [['Разрез статусов', fbMode ? 'по задачам по обращениям' : 'по неплановым задачам']],
+        head: [['Категория задач', fbWords().title], ['Разрез статусов', fbMode ? 'по задачам по обращениям' : 'по неплановым задачам']],
         note: 'Столбцы статусов относятся ' + (fbMode ? 'к задачам по обращениям (у самого обращения статуса нет)' : 'к неплановым задачам')
           + '. Учитываются период, объекты, функция и окно выполнения.',
       };
@@ -4096,9 +4123,11 @@ function closeTable() {
 }
 function tableSubtitle(def) {
   const parts = [windowLabel(), 'объекты: ' + objNamesLabel()];
-  if (!roleFilterAllSel()) parts.push('роль: ' + [...state.roles].join(', '));
-  if (state.scope !== 'all') parts.push(SCOPE_WORD[state.scope]);
-  parts.push(activityLabel(), 'по дням');
+  if (!roleFilterAllSel()) parts.push('функция: ' + ([...state.roles].join(', ') || 'нет выбранных'));
+  if (def === TABLES.b3) parts.push('плановые');
+  else if (def === TABLES.fb) parts.push(fbWords().title);
+  else if (state.scope !== 'all') parts.push(SCOPE_WORD[state.scope]);
+  parts.push(activityLabel(), def.register && FB_MODE_FB() ? 'по времени регистрации' : 'по дням');
   return parts.join(' · ');
 }
 function renderTableLayer() {
@@ -4117,7 +4146,7 @@ function renderTableLayer() {
   if (sortKey !== _tblSortKey) { _tblSortKey = sortKey; _tblSort = null; }
   _tblLast = { def, data, variant: st.variant };
 
-  document.getElementById('tbl-title').textContent = def.title;
+  document.getElementById('tbl-title').textContent = def.register ? fbWords().title : def.title;
   document.getElementById('tbl-sub').textContent = tableSubtitle(def);
 
   const vwrap = document.getElementById('tbl-variants');
@@ -4137,11 +4166,13 @@ function renderTableLayer() {
       return dir > 0 ? c : -c;
     });
   }
+  _tblLast.data.rows = rows;
   const cols = data.cols;
   const sums = cols.map((c, i) => c.t === 'int' && /^(Всего задач|Выполнено|Пропущено|Ожидает выполнения|Выполняется|Новое|Задач|Плановые задачи|Вовремя|С опозданием|Задач по обращениям|Неплановых задач)$/.test(c.h) ? rows.reduce((a, r) => a + (Number(r[i]) || 0), 0) : null);
   const body = document.getElementById('tbl-body');
+  body.classList.toggle('request-register',Boolean(def.register && FB_MODE_FB()));
   if (!rows.length) {
-    body.innerHTML = '<p class="note empty" style="margin:14px 0;">Нет данных в выбранном срезе.</p>';
+    body.innerHTML = '<p class="note empty" style="margin:14px 0;">Нет данных в выбранном срезе.</p>' + (data.note ? '<p class="tbl-note">'+esc(data.note)+'</p>' : '');
   } else {
     const head = cols.map((c, i) => {
       const ar = _tblSort && _tblSort.i === i ? `<span class="sort-ic">${_tblSort.dir > 0 ? '▲' : '▼'}</span>` : '';

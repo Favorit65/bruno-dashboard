@@ -6,7 +6,7 @@ const policy = require('../dashboard-policy.js');
 const source = fs.readFileSync(require.resolve('../dashboard-refresh.js'),'utf8');
 function fixture() {
   const label = { textContent:'',classList:{add(){},toggle(){}},insertAdjacentElement(){} };
-  const c = { ACTIVITY_ROWS:[], ACTIVITY_VIEW_KEY:null, console:{warn(){}}, Date, Intl, Map, Set, Promise,
+  const c = { ACTIVITY_ROWS:[], ACTIVITY_VIEW_KEY:null, ACTIVITY_EMPTY_RESTORE:{key:'old',maps:{}}, console:{warn(){}}, Date, Intl, Map, Set, Promise,
     DP:{...policy,weekPeriod:()=>({from:'2026-11-02',to:'2026-11-02'}),today:()=> '2026-11-02'},
     document:{getElementById:()=>label,createElement:()=>({addEventListener(){}}),addEventListener:(k,f)=>{c.events[k]=f;}},
     events:{}, intervals:[], setInterval:(fn,ms)=>c.intervals.push({fn,ms}),
@@ -35,7 +35,7 @@ test('installs an hourly timer and checks when a hidden tab becomes visible',()=
 test('new model replaces rows once and preserves explicit filters and dates',async()=>{
   const c=fixture(), period=JSON.stringify(c.state.period), selection=[...c.state.objects];
   assert.equal(await c.BrunoRefresh.refresh(true),true);
-  assert.equal(c.ROWS_BY_DATE.size,1);assert.equal(c.META.buildId,'new');assert.equal(JSON.stringify(c.state.period),period);
+  assert.equal(c.ROWS_BY_DATE.size,1);assert.equal(c.META.buildId,'new');assert.equal(c.ACTIVITY_EMPTY_RESTORE,null);assert.equal(JSON.stringify(c.state.period),period);
   assert.deepEqual([...c.state.objects],selection);assert.equal(c.state.scope,'planned');assert.equal(c.state.roles.has('Клининг Д/С'),true);
   assert.deepEqual(c.revisionCalls,['new','new']);
   assert.equal(await c.BrunoRefresh.refresh(true),true);assert.equal(c.mapCalls,1);assert.equal(c.ROWS_BY_DATE.size,1);
@@ -45,8 +45,8 @@ test('failed download retains the working snapshot',async()=>{
   assert.equal(await c.BrunoRefresh.refresh(true),false);assert.equal(c.ROWS_BY_DATE,rows);assert.equal(c.META.buildId,'old');
 });
 test('failed mapping restores all model references',async()=>{
-  const c=fixture(), rows=c.ROWS_BY_DATE;c.mapCubesV2=()=>{throw new Error('bad cube');};
-  assert.equal(await c.BrunoRefresh.refresh(true),false);assert.equal(c.ROWS_BY_DATE,rows);assert.equal(c.META.buildId,'old');assert.equal(c.ROWS_BY_DATE.has('old'),true);
+  const c=fixture(), rows=c.ROWS_BY_DATE, cache=c.ACTIVITY_EMPTY_RESTORE;c.mapCubesV2=()=>{throw new Error('bad cube');};
+  assert.equal(await c.BrunoRefresh.refresh(true),false);assert.equal(c.ROWS_BY_DATE,rows);assert.equal(c.META.buildId,'old');assert.equal(c.ROWS_BY_DATE.has('old'),true);assert.equal(c.ACTIVITY_EMPTY_RESTORE,cache);
 });
 test('week mode advances to the new Monday while explicit periods stay fixed',async()=>{
   const c=fixture();c.state.periodMode='week';await c.BrunoRefresh.refresh(true);

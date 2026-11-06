@@ -99,6 +99,7 @@ from collections import defaultdict
 from pathlib import Path
 from datetime import datetime, timezone
 from function_stats import FunctionStats
+from feedback_register import FeedbackRegister, mask_contacts
 from activity_stats import ActivityStats
 
 
@@ -620,7 +621,7 @@ def build_employee_directory(users, role_lookup, team_membership, project_id_hin
 # --------------------------------------------------------------- посуточный проход
 
 def process_archive(archive, manifest, employee_dir, team_membership, feedback_cap, days_override=None,
-                    role_id_of_employee=None):
+                    role_id_of_employee=None, register=None):
     function_stats = FunctionStats(team_membership)
     activity_stats = ActivityStats(function_stats.attribution)
     by_object_day = defaultdict(empty_bucket)          # "date|objectID" -> bucket (planned/unplanned внутри)
@@ -628,6 +629,7 @@ def process_archive(archive, manifest, employee_dir, team_membership, feedback_c
     by_zone_day = defaultdict(lambda: {"objectID": "", "completed": 0, "missed": 0})
     by_employee_day = defaultdict(lambda: {"ai": 0, "ci": 0, "at": 0.0, "ct": 0.0})
     feedback_examples = []  # (date, objectID, zoneID, text) — храним последние feedback_cap
+    private_feedback_ids = set()
 
     # НОВОЕ (проход 6, роль-фильтр на весь дашборд + детализация день->часы):
     #  - by_object_role_day: "date|objectID|role" -> bucket (planned/unplanned), доли
@@ -754,6 +756,10 @@ def process_archive(archive, manifest, employee_dir, team_membership, feedback_c
                 # Preserve original Bruno statuses for the agreed function metric.
                 function_stats.add(rec, d)
                 activity_stats.add(rec, d)
+                if register is not None and rec.get("feedbackID") and rec.get("id"):
+                    register.add(rec, function_stats.attribution(rec)[0], extract_feedback_text(rec.get("feedback")))
+                if rec.get("isPrivate") and rec.get("feedbackID"):
+                    private_feedback_ids.add(str(rec["feedbackID"]))
                 # Diagnostic only: a past deadline never changes Bruno's status.
                 # The agreed missed count is strictly the original MISSED marker.
                 if status in ("NEW", "WAITING", "COMPLETING") and fetched_ts is not None:
@@ -944,13 +950,13 @@ def process_archive(archive, manifest, employee_dir, team_membership, feedback_c
                         fb_tasks_by_object_hour[fb_hkey] += 1
                         if fid:
                             feedback_ids_by_object_hour[fb_hkey].add(fid)
-                    text = extract_feedback_text(rec.get("feedback"))
+                    text = mask_contacts(extract_feedback_text(rec.get("feedback"))) if not rec.get("isPrivate") else ""
                     if text:
-                        feedback_examples.append({
+                        feedback_examples.append((fid, {
                             "date": d, "objectID": obj,
                             "zoneID": str(rec.get("zoneID") or ""),
                             "text": text[:300],
-                        })
+                        }))
 
         # --- statByZone: объём по зонам (для treemap) ---
         sz_path = day_dir / "statByZone.json.gz"
@@ -1062,6 +1068,7 @@ def process_archive(archive, manifest, employee_dir, team_membership, feedback_c
         for key, n in fb_tasks_by_object_hour.items()
     }
 
+    feedback_examples = [example for fid, example in feedback_examples if fid not in private_feedback_ids]
     feedback_examples = feedback_examples[-feedback_cap:] if feedback_cap else feedback_examples
 
     # дробные доли храним с 3 знаками — как и в кубе ролей, иначе float-хвосты
@@ -1136,6 +1143,7 @@ def main():
     print("=" * 66)
 
     snap_date, objects, zones, users, teams, roles = load_directories(archive)
+    register = FeedbackRegister(zones)
     role_lookup = build_role_lookup(roles)
     team_membership = build_team_membership(teams)
     employee_dir, emp_stats, role_id_of_employee = build_employee_directory(
@@ -1150,7 +1158,7 @@ def main():
      fb_by_object_day, fb_by_object_hour,
      by_worker_func_day, team_usage, by_function_team_day, function_completion_anomalies, activity_rows, activity_qa) = process_archive(
         archive, manifest, employee_dir, team_membership, args.feedback_cap,
-        role_id_of_employee=role_id_of_employee)
+        role_id_of_employee=role_id_of_employee, register=register)
 
     obj_dict = {uid(o): o.get("name") or "" for o in objects if not o.get("deleted")}
     zone_dict = {uid(z): {"name": z.get("name") or "", "objectID": str(z.get("objectID") or "")}
@@ -1262,6 +1270,7 @@ def main():
             # 16.10: выработка — "дата|объект|сотрудник|функция" -> {done}
             "byWorkerFuncDay": by_worker_func_day,
         },
+        "feedbackRegister": register.rows(),
         "feedbackExamples": feedback_examples,
         # НОВОЕ (проход 13): кубы для презентации-копии утверждённой колоды.
         # Лежат отдельно от "daily" сознательно: model_v2.encode() читает только

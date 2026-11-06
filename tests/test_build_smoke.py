@@ -25,7 +25,11 @@ class BuildSmokeTest(unittest.TestCase):
                 for i,status in enumerate(['COMPLETED','MISSED','WAITING']):
                     f.write(json.dumps({'id':str(i),'dateLocal':202610310800,'objectID':obj,'teamID':'t','employees':['e'],
                                         'taskID':'p','status':status,'employeeID':'e' if status=='COMPLETED' else '',
-                                        'completionDeadlineDate':'2020-01-01T00:00:00Z'})+'\n')
+                                        'completionDeadlineDate':'2020-01-01T00:00:00Z',
+                                        'feedbackID':'private-request' if i < 2 else 'public-request',
+                                        'isPrivate':i == 1,
+                                        'feedback':{'date':'2026-10-31T08:00:00Z',
+                                                    'text':'Скрытый текст' if i < 2 else 'Почта test@example.org'}})+'\n')
             (archive/'manifest.json').write_text(json.dumps({'days':{day:{'complete':True,'fetchedAt':'2026-10-31T12:00:00Z'}}}),encoding='utf-8')
             result=subprocess.run([sys.executable,str(BASE/'build_model.py'),'--archive',str(archive),'--out',str(root/'model.json.gz')],capture_output=True)
             self.assertEqual(result.returncode,0,result.stderr.decode('utf-8',errors='replace'))
@@ -42,6 +46,10 @@ class BuildSmokeTest(unittest.TestCase):
             self.assertEqual((raw['COMPLETED'],raw['MISSED'],raw['WAITING']),(1,1,1))
             self.assertEqual(core['meta']['staleOpenAsMissed'],0)
             self.assertEqual(core['meta']['openPastDeadline'],1)
+            requests = {row['id']: row for row in core['feedbackRegister']}
+            self.assertEqual(requests['private-request']['text'], '[закрытое обращение]')
+            self.assertEqual(requests['public-request']['text'], 'Почта [контакт скрыт]')
+            self.assertEqual([row['text'] for row in core['feedbackExamples']], ['Почта [контакт скрыт]'])
 
 
 if __name__=='__main__':unittest.main()

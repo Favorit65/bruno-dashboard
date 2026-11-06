@@ -72,7 +72,11 @@ jobs:
           MSK = timezone(timedelta(hours=3))
           now = datetime.now(MSK)
           today = now.date()
-          deep = os.environ.get("EVENT_NAME") != "schedule" or now.hour == 2
+          from pathlib import Path
+          marker = Path("archive/last-deep-refresh.txt")
+          last_deep = marker.read_text().strip() if marker.exists() else ""
+          deep = os.environ.get("EVENT_NAME") != "schedule" or (now.hour >= 2 and last_deep != today.isoformat())
+          print("deep_date=" + (today.isoformat() if deep else ""))
           refresh_last = 5 if deep else 2
 
           d_from = (os.environ.get("IN_FROM") or "").strip()
@@ -116,6 +120,12 @@ jobs:
             --refresh-last "${{ steps.period.outputs.refresh_last }}" \
             ${{ steps.period.outputs.recent_flag }} \
             ${{ inputs.force_full && '--force' || '' }}
+
+      - name: Отметить успешную расширенную сверку
+        if: ${{ inputs.skip_fetch != true && steps.period.outputs.deep_date != '' && !inputs.date_from && !inputs.date_to }}
+        env:
+          DEEP_DATE: ${{ steps.period.outputs.deep_date }}
+        run: echo "$DEEP_DATE" > archive/last-deep-refresh.txt
 
       - name: Сохранить архив в ветку data-archive
         working-directory: archive
