@@ -5624,7 +5624,7 @@
   },
   "2026-10-26": {
    "complete": true,
-   "fetchedAt": "2026-11-17T22:20:22.499305+00:00",
+   "fetchedAt": "2026-11-18T04:17:53.614281+00:00",
    "fields": "slim",
    "counts": {
     "taskPlan": 21284,
@@ -5712,7 +5712,7 @@
   },
   "2026-10-30": {
    "complete": true,
-   "fetchedAt": "2026-11-17T22:20:45.555483+00:00",
+   "fetchedAt": "2026-11-18T04:18:25.990291+00:00",
    "fields": "slim",
    "counts": {
     "taskPlan": 15020,
@@ -5768,7 +5768,7 @@
   },
   "2026-11-02": {
    "complete": true,
-   "fetchedAt": "2026-11-17T22:21:36.136152+00:00",
+   "fetchedAt": "2026-11-18T04:19:08.801147+00:00",
    "fields": "slim",
    "counts": {
     "taskPlan": 16225,
@@ -5904,7 +5904,7 @@
   },
   "2026-11-09": {
    "complete": true,
-   "fetchedAt": "2026-11-17T22:22:33.636576+00:00",
+   "fetchedAt": "2026-11-18T04:20:03.723149+00:00",
    "fields": "slim",
    "counts": {
     "taskPlan": 16469,
@@ -5989,7 +5989,7 @@
   },
   "2026-11-13": {
    "complete": true,
-   "fetchedAt": "2026-11-17T22:23:18.979102+00:00",
+   "fetchedAt": "2026-11-18T04:20:50.811557+00:00",
    "fields": "slim",
    "counts": {
     "taskPlan": 10197,
@@ -6009,7 +6009,7 @@
   },
   "2026-11-14": {
    "complete": true,
-   "fetchedAt": "2026-11-17T03:55:53.574529+00:00",
+   "fetchedAt": "2026-11-18T04:20:55.631873+00:00",
    "fields": "slim",
    "counts": {
     "taskPlan": 236,
@@ -6027,7 +6027,7 @@
   },
   "2026-11-15": {
    "complete": true,
-   "fetchedAt": "2026-11-17T22:23:30.289043+00:00",
+   "fetchedAt": "2026-11-18T04:21:09.474934+00:00",
    "fields": "slim",
    "counts": {
     "taskPlan": 120,
@@ -6047,7 +6047,7 @@
   },
   "2026-11-16": {
    "complete": true,
-   "fetchedAt": "2026-11-17T22:24:22.777640+00:00",
+   "fetchedAt": "2026-11-18T04:21:59.633054+00:00",
    "fields": "slim",
    "counts": {
     "taskPlan": 13197,
@@ -6078,27 +6078,21 @@
   },
   "2026-11-17": {
    "complete": true,
-   "fetchedAt": "2026-11-17T22:24:36.233695+00:00",
+   "fetchedAt": "2026-11-18T04:22:15.361198+00:00",
    "fields": "slim",
    "counts": {
     "taskPlan": 10301,
-    "statByZone": 456,
-    "statByEmployee": 121,
-    "statByTeam": 437
+    "statByZone": 500,
+    "statByEmployee": 164,
+    "statByTeam": 455
    },
    "bytes": {
-    "taskPlan": 1027466,
-    "statByZone": 26729,
-    "statByEmployee": 6551,
-    "statByTeam": 28253
+    "taskPlan": 1149767,
+    "statByZone": 29425,
+    "statByEmployee": 8978,
+    "statByTeam": 29814
    },
    "openDeadlines": [
-    "2026-11-17T23:00:00+00:00",
-    "2026-11-18T00:00:00+00:00",
-    "2026-11-18T01:00:00+00:00",
-    "2026-11-18T02:00:00+00:00",
-    "2026-11-18T03:00:00+00:00",
-    "2026-11-18T04:00:00+00:00",
     "2026-11-18T05:00:00+00:00",
     "2026-11-18T06:00:00+00:00",
     "2026-11-18T07:00:00+00:00",
@@ -6121,22 +6115,21 @@
   },
   "2026-11-18": {
    "complete": true,
-   "fetchedAt": "2026-11-17T22:24:51.669425+00:00",
+   "fetchedAt": "2026-11-18T04:22:54.645417+00:00",
    "fields": "slim",
    "counts": {
-    "taskPlan": 10172,
+    "taskPlan": 10176,
     "statByZone": 1,
     "statByEmployee": 0,
     "statByTeam": 1
    },
    "bytes": {
-    "taskPlan": 685480,
+    "taskPlan": 694664,
     "statByZone": 332,
     "statByEmployee": 56,
     "statByTeam": 726
    },
    "openDeadlines": [
-    "2026-11-18T04:00:00+00:00",
     "2026-11-18T05:00:00+00:00",
     "2026-11-18T06:00:00+00:00",
     "2026-11-18T07:00:00+00:00",
@@ -6179,5 +6172,5 @@
   }
  },
  "dirs": {},
- "updatedAt": "2026-11-17T22:24:51.669440+00:00"
+ "updatedAt": "2026-11-18T04:22:54.645433+00:00"
 }
