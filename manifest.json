@@ -5624,7 +5624,7 @@
   },
   "2026-10-26": {
    "complete": true,
-   "fetchedAt": "2026-11-21T23:13:22.023087+00:00",
+   "fetchedAt": "2026-11-22T03:09:39.770977+00:00",
    "fields": "slim",
    "counts": {
     "taskPlan": 21284,
@@ -5712,7 +5712,7 @@
   },
   "2026-10-30": {
    "complete": true,
-   "fetchedAt": "2026-11-21T23:13:44.605705+00:00",
+   "fetchedAt": "2026-11-22T03:10:03.094830+00:00",
    "fields": "slim",
    "counts": {
     "taskPlan": 15020,
@@ -5768,7 +5768,7 @@
   },
   "2026-11-02": {
    "complete": true,
-   "fetchedAt": "2026-11-21T23:14:33.903671+00:00",
+   "fetchedAt": "2026-11-22T03:10:53.265756+00:00",
    "fields": "slim",
    "counts": {
     "taskPlan": 16225,
@@ -5904,7 +5904,7 @@
   },
   "2026-11-09": {
    "complete": true,
-   "fetchedAt": "2026-11-21T23:15:28.029367+00:00",
+   "fetchedAt": "2026-11-22T03:11:47.134347+00:00",
    "fields": "slim",
    "counts": {
     "taskPlan": 16469,
@@ -6023,7 +6023,7 @@
   },
   "2026-11-15": {
    "complete": true,
-   "fetchedAt": "2026-11-21T23:15:39.550062+00:00",
+   "fetchedAt": "2026-11-22T03:11:57.569022+00:00",
    "fields": "slim",
    "counts": {
     "taskPlan": 120,
@@ -6043,7 +6043,7 @@
   },
   "2026-11-16": {
    "complete": true,
-   "fetchedAt": "2026-11-21T23:16:27.890056+00:00",
+   "fetchedAt": "2026-11-22T03:12:52.105637+00:00",
    "fields": "slim",
    "counts": {
     "taskPlan": 13188,
@@ -6068,7 +6068,7 @@
   },
   "2026-11-17": {
    "complete": true,
-   "fetchedAt": "2026-11-21T23:17:17.526011+00:00",
+   "fetchedAt": "2026-11-22T03:13:42.471983+00:00",
    "fields": "slim",
    "counts": {
     "taskPlan": 10301,
@@ -6091,7 +6091,7 @@
   },
   "2026-11-18": {
    "complete": true,
-   "fetchedAt": "2026-11-21T23:17:38.299214+00:00",
+   "fetchedAt": "2026-11-22T03:14:07.026076+00:00",
    "fields": "slim",
    "counts": {
     "taskPlan": 10226,
@@ -6112,7 +6112,7 @@
   },
   "2026-11-19": {
    "complete": true,
-   "fetchedAt": "2026-11-21T23:18:26.981650+00:00",
+   "fetchedAt": "2026-11-22T03:14:53.684372+00:00",
    "fields": "slim",
    "counts": {
     "taskPlan": 10966,
@@ -6138,7 +6138,7 @@
   },
   "2026-11-20": {
    "complete": true,
-   "fetchedAt": "2026-11-21T23:19:14.001226+00:00",
+   "fetchedAt": "2026-11-22T03:15:41.756087+00:00",
    "fields": "slim",
    "counts": {
     "taskPlan": 10209,
@@ -6163,7 +6163,7 @@
   },
   "2026-11-21": {
    "complete": true,
-   "fetchedAt": "2026-11-21T23:19:16.207270+00:00",
+   "fetchedAt": "2026-11-22T03:15:43.913436+00:00",
    "fields": "slim",
    "counts": {
     "taskPlan": 238,
@@ -6191,7 +6191,7 @@
   },
   "2026-11-22": {
    "complete": true,
-   "fetchedAt": "2026-11-21T23:19:18.467030+00:00",
+   "fetchedAt": "2026-11-22T03:15:46.123205+00:00",
    "fields": "slim",
    "counts": {
     "taskPlan": 119,
@@ -6200,7 +6200,7 @@
     "statByTeam": 0
    },
    "bytes": {
-    "taskPlan": 6045,
+    "taskPlan": 5897,
     "statByZone": 52,
     "statByEmployee": 56,
     "statByTeam": 52
@@ -6233,5 +6233,5 @@
   }
  },
  "dirs": {},
- "updatedAt": "2026-11-21T23:19:18.467045+00:00"
+ "updatedAt": "2026-11-22T03:15:46.123220+00:00"
 }
